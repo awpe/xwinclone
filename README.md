@@ -1,5 +1,12 @@
 # xwinclone
-This program can be used to translate another window content in its own window.
+
+X window system's WINdow CLONE application.
+
+Program aimed to be light-weight and use few system resources.
+
+This program can be used to translate another window's content in its own 
+window with some features like background color/image, window centering, 
+rectangle selection, start/stop hotkeys, FPS control.
 
 In order to translate window content and grab key combination event, program 
 communicates with xorg server directly using Xlib and its composite extension. 
