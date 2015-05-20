@@ -6,3 +6,4 @@
 - [ ] Add configuration file support
 - [ ] Make command promt arguments processing routine process any number of 
 arguments in any order
+- [ ] Add tray support
