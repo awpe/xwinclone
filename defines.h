@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #define _POSIX_C_SOURCE                              200112L
-#define FRAMERATE_FPS                                30  //fps
+#define FRAMERATE_FPS                                60  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
 #define TIME_TO_WAIT_FOR_SRCWIN_TO_BECOME_VISIBLE_MS 500 //ms
 #define DEFAULT_BG_COLOR                             "#0000ff" //rgb color
