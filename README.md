@@ -1,6 +1,6 @@
 # xwinclone
 
-X window system's WINdow CLONE application.
+**X** window system's **WIN**dow **CLONE** application.
 
 Program aimed to be light-weight and use few system resources.
 
