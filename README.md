@@ -2,7 +2,7 @@
 
 **X** window system's **WIN**dow **CLONE** application.
 
-Program aimed to be light-weight and use few system resources.
+Program aimed to be light-weight and utilise few system resources.
 
 This program can be used to translate another window's content in its own 
 window with some features like background color/image, window centering, 
