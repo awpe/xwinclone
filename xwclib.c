@@ -556,6 +556,8 @@ processArgs (      Display *  d,
         return NULL;
     }
 
+    memset(&ret->bgColor, 0, sizeof(ret->bgColor));
+    
     ret->focusDelay.tv_nsec = 0;
     ret->focusDelay.tv_sec  = focusTime;
     ret->frameDelay.tv_nsec = ( 1.0 / frameRate ) * 1000000000L;
