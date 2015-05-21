@@ -21,18 +21,21 @@ extern "C"
      */
     struct _XWCOptions
     {
-        int          focusTime;  /**< how long to wait, before you focuse on 
-                                  * window you want to be cloned (in seconds)*/
-        int          frameRate;  /**< how often should xwinclone refresh its 
-                                  * content (frames per second) */
-        int          autoCenter; /**< whether to enable autocentering of source 
-                                  * window int the xwinclone window (in case 
-                                  * source window is smaller than xwinclone's 
-                                  * window).\n 1 - enabled, 0 -  disabled, 
-                                  * other - enabled*/
-        int          topOffset; /**< Top offset for source window (pixels)*/
-        const char * bgColor;   /**< Background color string to be parsed with 
-                                 * XParseColor (in this program - #rrggbb)*/
+        int               autoCenter; /**< whether to enable autocentering of 
+                                       * source window int the xwinclone window 
+                                       * (in case source window is smaller than 
+                                       * xwinclone's window).\n 1 - enabled, 
+                                       * 0 -  disabled, other - enabled*/
+        int               topOffset;  /**< Source window top offset (pixels)*/
+        XColor            bgColor;    /**< Background color data*/
+        const char      * bgColorStr; /**< Background color string (#rrggbb)*/
+        struct timespec   focusDelay; /**< how long to wait, before you focuse 
+                                       * on window you want to be cloned*/
+        struct timespec   frameDelay; /**< how often should xwinclone refresh 
+                                       * its content (frames per second)*/
+        int               exitKey;    /**< Exit key number according to 
+                                       * keysymdef.h*/
+        int               exitKeyMask;/**< Exit key modifier according to X.h*/ 
     } ;
 
     /** 
@@ -49,8 +52,11 @@ extern "C"
      * @var XWCOptions.topOffset 
      * Field 'topOffset' sets top offset for source window (in pixels)
      * @var XWCOptions.bgColor 
-     * Field 'bgColor' color string in #rrggbb format which specifies color of 
-     * window background example "#ffeedd"
+     * Field 'bgColor' color data struct used for background color manipulation
+     * @var XWCOptions.exitKey 
+     * Field 'exitKey' defines exit key number according to keysymdef.h
+     * @var XWCOptions.exitKeyMask 
+     * Field 'exitKeyMask' defines exit key modifier according to X.h
      */
     typedef struct _XWCOptions XWCOptions;
 
@@ -88,7 +94,7 @@ extern "C"
      * to mutually assign error code somewhere...
      */
     int
-    errorHandlerBasic (Display     * display,
+    errorHandlerBasic (    Display * display,
                        XErrorEvent * error);
 
     /**
@@ -114,7 +120,7 @@ extern "C"
      */
     Window
     getTopWindow (Display * d,
-                  Window    start);
+                   Window   start);
 
     /**
      * Tries to find window, at or below the specified window, that has a 
@@ -127,7 +133,7 @@ extern "C"
      */
     Window
     getNamedWindow (Display * d,
-                    Window    start);
+                     Window   start);
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -145,30 +151,39 @@ extern "C"
      */
     Window
     getActiveWindow (Display* d);
-
+    
+    /**
+     * Prints window name as reported to window manager (ICCC WM_NAME).
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] w Window xid of window which WM_CLASS should be printed
+     * @todo Add return value for result checking
+     * @sa XAllocClassHint(), XGetClassHint()
+     */
     void
     printWindowName (Display * d,
-                     Window    w);
+                      Window   w);
     /**
      * Prints window class as reported to window manager (ICCC WM_CLASS).
      * @param[in] d Pointer to Xlib's Display data struct.
      * @param[in] w Window xid of window which WM_CLASS should be printed
+     * @todo Add return value for result checking
      * @sa XAllocClassHint(), XGetClassHint()
      */
     void
     printWindowClass (Display * d,
-                      Window    w);
+                       Window   w);
 
     /**
      * Prints window info (class and name).
      * @param[in] d Pointer to Xlib's Display data struct.
      * @param[in] w Window xid of window which info should be printed
      * @param[in] xWinAttr Pointer to XWindowAttributes data struct
+     * @todo Add return value for result checking
      * @sa printWindowName(), printWindowClass(), XWindowAttributes
      */
     void
-    printWindowInfo (Display           * d,
-                     Window              w,
+    printWindowInfo (          Display * d,
+                                Window   w,
                      XWindowAttributes * xWinAttr);
 
     /**
@@ -180,9 +195,9 @@ extern "C"
      * @sa XSetWMName(), XStringListToTextProperty()
      */
     Bool
-    setWinTitlebar (Display    * d,
-                   Window       WID,
-                   const char * name);
+    setWinTitlebar (     Display * d,
+                          Window   WID,
+                   const    char * name);
     /**
      * Sets window class properties (ICCC WM_CLASS) which have two c-strings
      * first with permanent window name and second with the name of class.
@@ -196,22 +211,24 @@ extern "C"
      * PropModeReplace
      */
     Bool
-    setWindowClass (Display    * d,
-                    Window       WID,
-                    const char * permNameStr,
-                    const char * classStr);
+    setWindowClass (      Display * d,
+                           Window   WID,
+                    const    char * permNameStr,
+                    const    char * classStr);
 
     /**
      * Processes string arguments. Allocates and fills up `XWCOptions` struct. 
      * Returns Null on error.
      * @param[in] argCnt Number of strings in arguments array.
      * @param[in] argArr Pointer to array of arguments's strings.
+     * @param[in] d Pointer to Xlib's Display struct.
      * @return Pointer to `XWCOptions` or NULL in case of error.
      * @todo Add some heuristics to argument processing.
      */
     XWCOptions *
-    processArgs (      int     argCnt,
-                 const char ** argArr);
+    processArgs (      Display *  d,
+                           int    argCnt,
+                 const    char ** argArr);
 
     /**
      * Extracts pointer to screen where window belongs.
@@ -220,7 +237,7 @@ extern "C"
      * @return Pointer to Xlib's Screen structure or NULL in case of error.
      */
     Screen *
-    getScreenByWindowAttr (Display           * d,
+    getScreenByWindowAttr (          Display * d,
                            XWindowAttributes * winAttr);
 
     /**
@@ -230,15 +247,40 @@ extern "C"
      * or Xlib's None macro in case of error
      */
     Window
-    getScrRootWin (Screen * s);
+    getRootWinOfScr (Screen * s);
     
-    
+    /**
+     * Registers exit key combination for a given window.
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] WID Window xid of window where exit event will be grabed
+     * @param[in] prgCfg Data struct with program's configuration
+     * @return Xlib's True on success, False otherwise
+     */
     Bool
-    grabExitKey (Display * d,
-                 Window WID);
+    grabExitKey (   Display * d,
+                     Window   WID,
+                 XWCOptions * prgCfg);
     
+    /**
+     * Checks if x server we have connection to has composite extension of 
+     * supported version
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @return Xlib's True on success, False otherwise
+     */
     Bool
     chkCompExt (Display * d);
+    
+    /**
+     * Tries to parse color string and allocate color struct.
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] prgCfg Data struct with program's configuration 
+     * @param[in] s Pointer to Xlib's Screen data struct
+     * @return Xlib's True on success, False otherwise
+     */ 
+    Bool
+    parseColor (   Display * d,
+                XWCOptions * prgCfg,
+                    Screen * s);
 
 #ifdef	__cplusplus
 }
