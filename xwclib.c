@@ -24,7 +24,15 @@ errorHandlerBasic (    Display * display,
     if (!display)
     {
         /*do something*/
+        return 1;
     }
+    
+    if (!error)
+    {
+        /*do something*/
+        return 1;
+    }
+    
     printf ("ERROR: X11 error\n\terror code: %d\n", error->error_code);
     X_ERROR = True;
     return 1;
@@ -642,7 +650,8 @@ grabExitKey (   Display * d,
 
     if (d == NULL)
     {
-        printf ("Cannot grab exit key combination: null pointer to X connection!\n");
+        printf ("Cannot grab exit key combination: null pointer to X "
+                "connection!\n");
         return False;
     }
 
