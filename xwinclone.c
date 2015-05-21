@@ -16,6 +16,9 @@ main (int     argc,
     Pixmap                 pm, srcWinCompPixmap;
     XEvent                 xEvent;
     char                   exitKeyPressed;
+
+    /*Make a program to be portable to all locales*/
+    setlocale (LC_ALL, ""); 
     
     if (( xDpy = openDefaultDisplay () )  == NULL)
     {
@@ -179,7 +182,7 @@ main (int     argc,
 
     pm = XCreatePixmap (xDpy, rootWin, rootWinAttr.width, rootWinAttr.height,
                         srcWinAttr.depth);
-    
+
     xGraphicsCtx = XCreateGC (xDpy, pm, 0, NULL);
     XSetForeground (xDpy, xGraphicsCtx, prgCfg->bgColor.pixel);
     //XSetBackground (xDisp, xGraphicsCtx, trgWinBgClr.pixel);
@@ -204,7 +207,7 @@ main (int     argc,
                     {
                         printf ("Exit key combination catched!\n");
                         exitKeyPressed = 1;
-                        XUngrabKey (xDpy, prgCfg->exitKeyCode, 
+                        XUngrabKey (xDpy, prgCfg->exitKeyCode,
                                     prgCfg->exitKeyMask, rootWin);
                     }
                     else
@@ -217,7 +220,7 @@ main (int     argc,
                 default:
                     break;
             }
-            
+
             if (exitKeyPressed)
             {
                 break;
@@ -229,23 +232,25 @@ main (int     argc,
             break;
         }
 
-/*
-        XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
+        /*
+                XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
 
-        if (getXErrState () == True)
-        {
-            XFreePixmap (xDpy, pm);
-            XDestroyWindow (xDpy, trgWin);
-            XCloseDisplay (xDpy);
-            free (prgCfg);
-            return EXIT_FAILURE;
-        }
-*/
+                if (getXErrState () == True)
+                {
+                    XFreePixmap (xDpy, pm);
+                    XDestroyWindow (xDpy, trgWin);
+                    XCloseDisplay (xDpy);
+                    free (prgCfg);
+                    return EXIT_FAILURE;
+                }
+         */
 
         XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
 
         if (getXErrState () == True)
         {
+            XFreeGC (xDpy, xGraphicsCtx);
+            XFreePixmap (xDpy, srcWinCompPixmap);
             XFreePixmap (xDpy, pm);
             XDestroyWindow (xDpy, trgWin);
             XCloseDisplay (xDpy);
@@ -258,7 +263,7 @@ main (int     argc,
 
         srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
 
-        XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx, 0, 0, 
+        XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx, 0, 0,
                    trgWinAttr.width, trgWinAttr.height, 0, 0);
 
         /*
@@ -271,10 +276,13 @@ main (int     argc,
 
         nanosleep (&prgCfg->frameDelay, NULL);
     }
+    
+    XFreeGC (xDpy, xGraphicsCtx);
     XFreePixmap (xDpy, pm);
     XFreePixmap (xDpy, srcWinCompPixmap);
     XDestroyWindow (xDpy, trgWin);
     XCloseDisplay (xDpy);
     free (prgCfg);
+    
     return EXIT_SUCCESS;
 }
