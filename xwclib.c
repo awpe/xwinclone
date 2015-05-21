@@ -18,7 +18,7 @@ openDefaultDisplay (void)
 }
 
 int
-errorHandlerBasic (Display     * display,
+errorHandlerBasic (    Display * display,
                    XErrorEvent * error)
 {
     if (!display)
@@ -73,7 +73,7 @@ getFocusedWindow (Display * d)
 
 Window
 getTopWindow (Display * d,
-              Window    start)
+               Window   start)
 {
     Window         w;
     Window         parent;
@@ -127,7 +127,7 @@ getTopWindow (Display * d,
 
 Window
 getNamedWindow (Display * d,
-                Window    start)
+                 Window   start)
 {
     Window w;
 
@@ -173,7 +173,7 @@ getActiveWindow (Display* d)
 
 void
 printWindowName (Display * d,
-                 Window    w)
+                  Window   w)
 {
     XTextProperty    prop;
     Status           s;
@@ -239,7 +239,7 @@ printWindowName (Display * d,
 
 void
 printWindowClass (Display * d,
-                  Window    w)
+                   Window   w)
 {
     XClassHint * class;
     Status       s;
@@ -296,8 +296,8 @@ printWindowClass (Display * d,
 }
 
 void
-printWindowInfo (Display           * d,
-                 Window              w,
+printWindowInfo (          Display * d,
+                            Window   w,
                  XWindowAttributes * xWinAttr)
 {
 
@@ -328,9 +328,9 @@ printWindowInfo (Display           * d,
 }
 
 Bool
-setWinTitlebar (Display    * d,
-                Window       WID,
-                const char * name)
+setWinTitlebar (     Display * d,
+                      Window   WID,
+               const    char * name)
 {
     XTextProperty tp;
 
@@ -396,11 +396,11 @@ strncpy (a, name, strlen (name));
     return True;
 }
 
-Bool
-setWindowClass (Display    * d,
-                Window       WID,
-                const char * permNameStr,
-                const char * classStr)
+    Bool
+    setWindowClass (      Display * d,
+                           Window   WID,
+                    const    char * permNameStr,
+                    const    char * classStr)
 {
     XClassHint * xClassHint;
 
@@ -456,11 +456,13 @@ setWindowClass (Display    * d,
 }
 
 XWCOptions *
-processArgs (      int     argCnt,
-             const char ** argArr)
+processArgs (      Display *  d,
+                       int    argCnt,
+             const    char ** argArr)
 {
-    int frameRate, focusTime, autoCenter, topOffset;
-    const char * bgColor = NULL;
+    int          frameRate, focusTime, autoCenter, topOffset;
+    const char * bgColorStr;
+
     if (argCnt == 2 && ( ! strcmp (argArr[1], "-help")
         || ! strcmp (argArr[1], "-h")
         || ! strcmp (argArr[1], "--help") ))
@@ -511,7 +513,7 @@ processArgs (      int     argCnt,
             return NULL;
         }
         if (strcmp (argArr[9], "-bg")
-            || ! ( strlen (bgColor = argArr[10]) != 7 ))
+            || ! ( strlen (bgColorStr = argArr[10]) != 7 ))
         {
             printf ("Error parsing BGCOLOR argument (example '-bg #ffeedd')!\n\nTry:\n\n"
                     "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
@@ -530,23 +532,42 @@ processArgs (      int     argCnt,
         frameRate  = FRAMERATE_FPS;
         autoCenter = AUTOCENTERING;
         topOffset  = TOP_OFFSET;
-        bgColor    = DEFAULT_BG_COLOR;
+        bgColorStr = DEFAULT_BG_COLOR;
     }
+    
     XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
-    if (!ret)
+    
+    if (ret == NULL)
     {
         printf ("Error allocating memory for options struct!\n");
+        return NULL;
     }
-    ret->focusTime  = focusTime;
-    ret->frameRate  = frameRate;
-    ret->autoCenter = autoCenter;
-    ret->topOffset  = topOffset;
-    ret->bgColor    = bgColor;
+
+    ret->focusDelay.tv_nsec = 0;
+    ret->focusDelay.tv_sec  = focusTime;
+    ret->frameDelay.tv_nsec = ( 1.0 / frameRate ) * 1000000000L;
+    ret->frameDelay.tv_sec  = 0;
+    ret->autoCenter         = autoCenter;
+    ret->topOffset          = topOffset;
+    ret->bgColorStr         = bgColorStr;
+
+    printf ("Selected focus time is %ld\n"
+            "Selected frame rate is %ld, this results in %ldns frame delay\n"
+            "Selected autocentering mode is %d(bool)\n"
+            "Selected top offset is %d(px)\n"
+            "Selected bgcolor is %s(#rrggbb)\n\n",
+            ret->focusDelay.tv_sec,
+            (__syscall_slong_t) ( 1000000000.0F / ret->frameDelay.tv_nsec ),
+            ret->frameDelay.tv_nsec,
+            ret->autoCenter,
+            ret->topOffset,
+            ret->bgColorStr);
+
     return ret;
 }
 
 Screen *
-getScreenByWindowAttr (Display           * d,
+getScreenByWindowAttr (          Display * d,
                        XWindowAttributes * winAttr)
 {
     if (d == NULL)
@@ -574,7 +595,7 @@ getScreenByWindowAttr (Display           * d,
 }
 
 Window
-getScrRootWin (Screen * s)
+getRootWinOfScr (Screen * s)
 {
     if (s == NULL)
     {
@@ -592,22 +613,41 @@ getScrRootWin (Screen * s)
 }
 
 Bool
-grabExitKey (Display * d,
-             Window WID)
+grabExitKey (   Display * d,
+                 Window   grabWin,
+             XWCOptions * prgCfg)
 {
-    /*
-        modifiers   = EXIT_MASK;
-        keycode     = XKeysymToKeycode (xDisp, EXIT_KEY);
-        grabWin     = rootWin;
-        ownerEvents = False;
-        ptrMode     = GrabModeAsync;
-        kbdMode     = GrabModeAsync;
+    
+    if (d == NULL)
+    {
+        printf ("Cannot grab exit key combination: null pointer to X connection!\n");
+        return False;
+    }
 
-        XGrabKey (xDisp, keycode, modifiers, grabWin, ownerEvents, ptrMode,
-                  kbdMode);
+    if (prgCfg == NULL)
+    {
+        printf ("Cannot grab exit key combination: invalid pointer to options "
+                "data structure!\n");
+        return False;
+    }
+    
+    if (grabWin == None)
+    {
+        printf ("Cannot grab exit key combination: no window specified!\n");
+        return False;
+    }
+    
+    XGrabKey (d, XKeysymToKeycode (d, prgCfg->exitKey), prgCfg->exitKeyMask, 
+              grabWin, False, GrabModeAsync, GrabModeAsync);
+    
+    if (getXErrState () == True)
+    {
+        printf ("Cannot grab exit key combination: XGrabKey error!\n");
+        return False;
+    }
 
-        XSelectInput (xDisp, rootWin,  KeyPressMask );
-     */
+    XSelectInput (d, grabWin,  KeyPressMask );
+    /*XSelectInput only throws badwindow which we've already checked*/
     return True;
 }
 
@@ -640,5 +680,34 @@ chkCompExt (Display* d)
         printf ("Composite extension ready, version %d.%d\n", xCompExtVerMaj,
                 xCompExtVerMin);
     }
+    return True;
+}
+
+Bool
+parseColor (   Display * d,
+            XWCOptions * prgCfg,
+                Screen * s)
+{
+    Colormap xClrMap = DefaultColormapOfScreen (s);
+    /*
+     * Maybe this color string parsing must take place 
+     * while processing options... And now it is here :)
+     */
+    printf ("\nParsing the window background color string \"%s\" ... ",
+            prgCfg->bgColorStr);
+
+    if (! XParseColor (d, xClrMap, prgCfg->bgColorStr, &prgCfg->bgColor)
+        || ! XAllocColor (d, xClrMap, &prgCfg->bgColor))
+    {
+        printf ("Error:\n\tXParseColor and/or XAllocColor error\n");
+        return False;
+    }
+    
+    printf ("Success\n");
+
+    /* redundant information
+    printf ("Color parsing result: pixel=%ld, red=%d, green=%d, blue=%d\n",
+            xColor.pixel, xColor.red, xColor.green, xColor.blue);
+     */
     return True;
 }
