@@ -10,9 +10,10 @@ extern "C" {
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
 #define TIME_TO_WAIT_FOR_SRCWIN_TO_BECOME_VISIBLE_MS 500 //ms
 #define DEFAULT_BG_COLOR                             "#0000ff" //rgb color
-#define EXIT_KEY                                     XK_c // from keysymdef.h
+//#define EXIT_KEY                                     XK_g // from keysymdef.h
+#define EXIT_KEY_STR                                 "g"
 #define EXIT_MASK                                    ControlMask // from X.h
-#define DEF_EXIT_KOMBINATION_STR                     "CTRL + c"
+#define DEF_EXIT_KOMBINATION_STR                     "CTRL + g"
 #define WM_CLASS_PRG_NAME_STR                        "XWinClone"
 #define WM_CLASS_CLASS_NAME_STR                      "xwinclone"
 #define AUTOCENTERING                                1 //1=true; 0=false

@@ -153,7 +153,7 @@ getNamedWindow (Display * d,
 }
 
 Window
-getActiveWindow (Display* d)
+getActiveWindow (Display * d)
 {
     if (d == NULL)
     {
@@ -328,9 +328,9 @@ printWindowInfo (          Display * d,
 }
 
 Bool
-setWinTitlebar (     Display * d,
-                      Window   WID,
-               const    char * name)
+setWinTitlebar (      Display * d,
+                       Window   WID,
+                const    char * name)
 {
     XTextProperty tp;
 
@@ -396,11 +396,11 @@ strncpy (a, name, strlen (name));
     return True;
 }
 
-    Bool
-    setWindowClass (      Display * d,
-                           Window   WID,
-                    const    char * permNameStr,
-                    const    char * classStr)
+Bool
+setWindowClass (      Display * d,
+                       Window   WID,
+                const    char * permNameStr,
+                const    char * classStr)
 {
     XClassHint * xClassHint;
 
@@ -461,7 +461,9 @@ processArgs (      Display *  d,
              const    char ** argArr)
 {
     int          frameRate, focusTime, autoCenter, topOffset;
-    const char * bgColorStr;
+    const char * bgColorStr, * exitKeyStr;
+    KeySym       exitKeySym;
+    unsigned int exitKeyMask;
 
     if (argCnt == 2 && ( ! strcmp (argArr[1], "-help")
         || ! strcmp (argArr[1], "-h")
@@ -528,15 +530,18 @@ processArgs (      Display *  d,
     }
     else
     {
-        focusTime  = TIME_TO_CHANGE_FOCUS_SEC;
-        frameRate  = FRAMERATE_FPS;
-        autoCenter = AUTOCENTERING;
-        topOffset  = TOP_OFFSET;
-        bgColorStr = DEFAULT_BG_COLOR;
+        focusTime   = TIME_TO_CHANGE_FOCUS_SEC;
+        frameRate   = FRAMERATE_FPS;
+        autoCenter  = AUTOCENTERING;
+        topOffset   = TOP_OFFSET;
+        bgColorStr  = DEFAULT_BG_COLOR;
+        //exitKey     = EXIT_KEY;
+        exitKeyStr  = EXIT_KEY_STR;
+        exitKeyMask = EXIT_MASK;
     }
-    
+
     XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
-    
+
     if (ret == NULL)
     {
         printf ("Error allocating memory for options struct!\n");
@@ -550,6 +555,23 @@ processArgs (      Display *  d,
     ret->autoCenter         = autoCenter;
     ret->topOffset          = topOffset;
     ret->bgColorStr         = bgColorStr;
+    //ret->exitKey            = exitKey;
+    ret->exitKeyStr         = exitKeyStr;
+    ret->exitKeyMask        = exitKeyMask;
+
+    if (( exitKeySym = XStringToKeysym (exitKeyStr) ) == NoSymbol)
+    {
+        printf ("Error parsing exit key string (%s)\n", exitKeyStr);
+        free (ret);
+        return NULL;
+    }
+
+    if (!( ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym) ))
+    {
+        printf ("Unknown keycode %d\n", ret->exitKeyCode);
+        free (ret);
+        return NULL;
+    }
 
     printf ("Selected focus time is %ld\n"
             "Selected frame rate is %ld, this results in %ldns frame delay\n"
@@ -617,7 +639,7 @@ grabExitKey (   Display * d,
                  Window   grabWin,
              XWCOptions * prgCfg)
 {
-    
+
     if (d == NULL)
     {
         printf ("Cannot grab exit key combination: null pointer to X connection!\n");
@@ -630,29 +652,29 @@ grabExitKey (   Display * d,
                 "data structure!\n");
         return False;
     }
-    
+
     if (grabWin == None)
     {
         printf ("Cannot grab exit key combination: no window specified!\n");
         return False;
     }
-    
-    XGrabKey (d, XKeysymToKeycode (d, prgCfg->exitKey), prgCfg->exitKeyMask, 
-              grabWin, False, GrabModeAsync, GrabModeAsync);
-    
+
+    XGrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin, False,
+              GrabModeAsync, GrabModeAsync);
+
     if (getXErrState () == True)
     {
         printf ("Cannot grab exit key combination: XGrabKey error!\n");
         return False;
     }
 
-    XSelectInput (d, grabWin,  KeyPressMask );
+    XSelectInput (d, grabWin,  KeyPressMask);
     /*XSelectInput only throws badwindow which we've already checked*/
     return True;
 }
 
 Bool
-chkCompExt (Display* d)
+chkCompExt (Display * d)
 {
     int compositeErrorBase, compositeEventBase, xCompExtVerMin, xCompExtVerMaj;
 
@@ -702,7 +724,7 @@ parseColor (   Display * d,
         printf ("Error:\n\tXParseColor and/or XAllocColor error\n");
         return False;
     }
-    
+
     printf ("Success\n");
 
     /* redundant information
