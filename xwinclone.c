@@ -13,11 +13,9 @@ main (int     argc,
     GC                     xGraphicsCtx;
     XVisualInfo            xVisInfo;
     Visual               * xVis;
-    Pixmap                 pm, pm2;
+    Pixmap                 pm, srcWinCompPixmap;
     XEvent                 xEvent;
     char                   exitKeyPressed;
-
-    
     
     if (( xDpy = openDefaultDisplay () )  == NULL)
     {
@@ -65,7 +63,6 @@ main (int     argc,
         free (prgCfg);
         return EXIT_FAILURE;
     }
-
 
     if (( rootWin = getRootWinOfScr (xScr) ) == None)
     {
@@ -184,7 +181,6 @@ main (int     argc,
                         srcWinAttr.depth);
     
     xGraphicsCtx = XCreateGC (xDpy, pm, 0, NULL);
-
     XSetForeground (xDpy, xGraphicsCtx, prgCfg->bgColor.pixel);
     //XSetBackground (xDisp, xGraphicsCtx, trgWinBgClr.pixel);
     //XSetFillStyle (xDisp, xGraphicsCtx, FillSolid);
@@ -208,6 +204,8 @@ main (int     argc,
                     {
                         printf ("Exit key combination catched!\n");
                         exitKeyPressed = 1;
+                        XUngrabKey (xDpy, prgCfg->exitKeyCode, 
+                                    prgCfg->exitKeyMask, rootWin);
                     }
                     else
                     {
@@ -231,6 +229,7 @@ main (int     argc,
             break;
         }
 
+/*
         XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
 
         if (getXErrState () == True)
@@ -241,6 +240,7 @@ main (int     argc,
             free (prgCfg);
             return EXIT_FAILURE;
         }
+*/
 
         XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
 
@@ -256,10 +256,10 @@ main (int     argc,
         XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, trgWinAttr.width,
                         trgWinAttr.height);
 
-        pm2 = XCompositeNameWindowPixmap (xDpy, srcWin);
+        srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
 
-        XCopyArea (xDpy, pm2, pm, xGraphicsCtx, 0, 0, trgWinAttr.width,
-                   trgWinAttr.height, 0, 0);
+        XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx, 0, 0, 
+                   trgWinAttr.width, trgWinAttr.height, 0, 0);
 
         /*
                 XCopyArea (xDpy, srcWin, pm, xGraphicsCtx, 0, 0, trgWinWidth,
@@ -272,7 +272,7 @@ main (int     argc,
         nanosleep (&prgCfg->frameDelay, NULL);
     }
     XFreePixmap (xDpy, pm);
-    XFreePixmap (xDpy, pm2);
+    XFreePixmap (xDpy, srcWinCompPixmap);
     XDestroyWindow (xDpy, trgWin);
     XCloseDisplay (xDpy);
     free (prgCfg);
