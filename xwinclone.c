@@ -13,7 +13,11 @@ main (int     argc,
     GC                     xGraphicsCtx;
     XVisualInfo            xVisInfo;
     Visual               * xVis;
-    Pixmap                 pm;
+    Pixmap                 pm, pm2;
+    XEvent                 xEvent;
+    char                   exitKeyPressed;
+
+    
     
     if (( xDpy = openDefaultDisplay () )  == NULL)
     {
@@ -178,7 +182,7 @@ main (int     argc,
 
     pm = XCreatePixmap (xDpy, rootWin, rootWinAttr.width, rootWinAttr.height,
                         srcWinAttr.depth);
-    //Pixmap pmDB = XCreatePixmap (xDisp, rootWin, 1920, 1200, srcWinDepth);
+    
     xGraphicsCtx = XCreateGC (xDpy, pm, 0, NULL);
 
     XSetForeground (xDpy, xGraphicsCtx, prgCfg->bgColor.pixel);
@@ -188,16 +192,44 @@ main (int     argc,
     XCompositeRedirectWindow (xDpy, srcWin, CompositeRedirectAutomatic);
     XCompositeRedirectSubwindows (xDpy, srcWin, CompositeRedirectAutomatic);
 
-    Pixmap pm2;
+    exitKeyPressed = 0;
 
     while (1)
     {
-        /*
-                while (XPending (xDpy))
-                {
-                    XNextEvent (xDpy, &xEvent);
-                }
-         */
+        while (XPending (xDpy))
+        {
+            XNextEvent (xDpy, &xEvent);
+            switch (xEvent.type) {
+                case KeyPress:
+                    /*Now this is redundant check, but it will be useful when 
+                     * further event processing arrives*/
+                    if (xEvent.xkey.keycode == prgCfg->exitKeyCode
+                        && xEvent.xkey.state & prgCfg->exitKeyMask)
+                    {
+                        printf ("Exit key combination catched!\n");
+                        exitKeyPressed = 1;
+                    }
+                    else
+                    {
+                        /*We don't need this event so send it somewhere else*/
+                        XAllowEvents (xDpy, ReplayKeyboard, xEvent.xkey.time);
+                        XFlush (xDpy);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            
+            if (exitKeyPressed)
+            {
+                break;
+            }
+        }
+
+        if (exitKeyPressed)
+        {
+            break;
+        }
 
         XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
 
@@ -240,6 +272,7 @@ main (int     argc,
         nanosleep (&prgCfg->frameDelay, NULL);
     }
     XFreePixmap (xDpy, pm);
+    XFreePixmap (xDpy, pm2);
     XDestroyWindow (xDpy, trgWin);
     XCloseDisplay (xDpy);
     free (prgCfg);

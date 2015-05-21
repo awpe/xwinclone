@@ -33,9 +33,12 @@ extern "C"
                                        * on window you want to be cloned*/
         struct timespec   frameDelay; /**< how often should xwinclone refresh 
                                        * its content (frames per second)*/
-        int               exitKey;    /**< Exit key number according to 
-                                       * keysymdef.h*/
-        int               exitKeyMask;/**< Exit key modifier according to X.h*/ 
+        //int               exitKey;    /**< Exit key number according to 
+        //                               * keysymdef.h*/
+        const char      * exitKeyStr; /**< string representing exit key 
+                                       * (keysymdef.h)*/
+        KeyCode           exitKeyCode;/**< result of exit key string parsing*/
+        int               exitKeyMask;/**< Exit key modifier according to X.h*/
     } ;
 
     /** 
@@ -53,8 +56,10 @@ extern "C"
      * Field 'topOffset' sets top offset for source window (in pixels)
      * @var XWCOptions.bgColor 
      * Field 'bgColor' color data struct used for background color manipulation
-     * @var XWCOptions.exitKey 
-     * Field 'exitKey' defines exit key number according to keysymdef.h
+     * @var XWCOptions.exitKeyStr 
+     * Field 'exitKeyStr' exit key string (keysymdef.h)
+     * @var XWCOptions.exitKeyCode 
+     * Field 'exitKeyCode' result of exit key string parsing
      * @var XWCOptions.exitKeyMask 
      * Field 'exitKeyMask' defines exit key modifier according to X.h
      */
