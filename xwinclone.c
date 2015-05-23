@@ -101,7 +101,7 @@ main (int     argc,
         return EXIT_FAILURE;
     }
 
-    /*
+    /* if verbose_enable==1 ...
         printf ("Matched visual 0x%lx class %d (%s) depth %d\n",
                 vinfo.visualid,
                 vinfo.class,
@@ -232,7 +232,7 @@ main (int     argc,
             break;
         }
 
-        /*
+        /* will be used for autocentering
                 XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
 
                 if (getXErrState () == True)

@@ -63,19 +63,23 @@ getFocusedWindow (Display * d)
 
     printf ("getting input focus window ... ");
     XGetInputFocus (d, &w, &revert_to);
+    
     if (getXErrState () == True)
     {
         printf ("fail\n");
         return None;
     }
+    
     if (w == None)
     {
         printf ("no focus window\n");
     }
+    
     else
     {
         printf ("success\n\twindow xid: %lX\n", w);
     }
+    
     return w;
 }
 
@@ -99,6 +103,7 @@ getTopWindow (Display * d,
         printf ("Error getting top window: No display specified!\n");
         return None;
     }
+    
     if (start == None)
     {
         printf ("Error getting top window: Invalid window specified!\n");
@@ -106,6 +111,7 @@ getTopWindow (Display * d,
     }
 
     printf ("getting child-of-root window ... \n");
+    
     while (parent != root)
     {
         w = parent;
@@ -144,6 +150,7 @@ getNamedWindow (Display * d,
         printf ("Error getting named window: No display specified!\n");
         return None;
     }
+    
     if (start == None)
     {
         printf ("Error getting named window: Invalid window specified!\n");
@@ -151,31 +158,35 @@ getNamedWindow (Display * d,
     }
 
     printf ("getting named window ... ");
+    
     w = XmuClientWindow (d, start);
     if (w == start)
     {
         printf ("fail or window already has WM_STATE property\n");
     }
     printf ("returning window: %X\n", (int) w);
+    
     return w;
 }
 
 Window
 getActiveWindow (Display * d)
 {
+    Window w;
+    
     if (d == NULL)
     {
         printf ("Error getting active window: No display specified!\n");
         return None;
     }
-    Window w;
-
+    
     if ( ( w = getFocusedWindow (d) ) == None
         || ( w = getTopWindow (d, w) ) == None
         || ( w = getNamedWindow (d, w) ) == None )
     {
         return None;
     }
+    
     return w;
 }
 
@@ -238,9 +249,9 @@ printWindowName (Display * d,
     {
         printf ("Error printing window name: XGetWMName err\n");
     }
+    
     if (prop.value != NULL)
     {
-
         XFree (prop.value);
     }
 }
@@ -294,11 +305,12 @@ printWindowClass (Display * d,
         {
             XFree (class->res_class);
         }
+        
         if (class->res_name != NULL)
         {
-
             XFree (class->res_name);
         }
+        
         XFree (class);
     }
 }
@@ -360,16 +372,6 @@ setWinTitlebar (      Display * d,
         return False;
     }
 
-    /*
-char * a;
-a = (char*) malloc (sizeof (char ) * 1024);
-if (!a)
-{
-    //
-}
-memset (a, 0, sizeof (char ) * 1024);
-strncpy (a, name, strlen (name));
-     */
     memset (&tp, 0, sizeof (tp ));
     tp.value = NULL;
 
@@ -395,7 +397,6 @@ strncpy (a, name, strlen (name));
 
     if (getXErrState () == True)
     {
-
         printf ("Error setting name of window: "
                 "XChangeProperty err\n");
         return False;
@@ -424,6 +425,7 @@ setWindowClass (      Display * d,
                 "is not specified!\n");
         return False;
     }
+    
     if (classStr == NULL)
     {
         printf ("Error changing window class: Class string is not "
@@ -441,7 +443,6 @@ setWindowClass (      Display * d,
     {
         if (xClassHint != NULL)
         {
-
             XFree (xClassHint);
         }
         return False;
