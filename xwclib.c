@@ -3,7 +3,7 @@
 /*Here global X_ERROR initialization takes place*/
 Bool X_ERROR = False;
 
-Display*
+Display *
 openDefaultDisplay (void)
 {
     Display * d;
@@ -21,18 +21,18 @@ int
 errorHandlerBasic (    Display * display,
                    XErrorEvent * error)
 {
-    if (!display)
+    if (! display)
     {
         /*do something*/
         return 1;
     }
-    
-    if (!error)
+
+    if (! error)
     {
         /*do something*/
         return 1;
     }
-    
+
     printf ("ERROR: X11 error\n\terror code: %d\n", error->error_code);
     X_ERROR = True;
     return 1;
@@ -63,23 +63,23 @@ getFocusedWindow (Display * d)
 
     printf ("getting input focus window ... ");
     XGetInputFocus (d, &w, &revert_to);
-    
+
     if (getXErrState () == True)
     {
         printf ("fail\n");
         return None;
     }
-    
+
     if (w == None)
     {
         printf ("no focus window\n");
     }
-    
+
     else
     {
         printf ("success\n\twindow xid: %lX\n", w);
     }
-    
+
     return w;
 }
 
@@ -103,7 +103,7 @@ getTopWindow (Display * d,
         printf ("Error getting top window: No display specified!\n");
         return None;
     }
-    
+
     if (start == None)
     {
         printf ("Error getting top window: Invalid window specified!\n");
@@ -111,7 +111,7 @@ getTopWindow (Display * d,
     }
 
     printf ("getting child-of-root window ... \n");
-    
+
     while (parent != root)
     {
         w = parent;
@@ -150,7 +150,7 @@ getNamedWindow (Display * d,
         printf ("Error getting named window: No display specified!\n");
         return None;
     }
-    
+
     if (start == None)
     {
         printf ("Error getting named window: Invalid window specified!\n");
@@ -158,14 +158,14 @@ getNamedWindow (Display * d,
     }
 
     printf ("getting named window ... ");
-    
+
     w = XmuClientWindow (d, start);
     if (w == start)
     {
         printf ("fail or window already has WM_STATE property\n");
     }
     printf ("returning window: %X\n", (int) w);
-    
+
     return w;
 }
 
@@ -173,20 +173,20 @@ Window
 getActiveWindow (Display * d)
 {
     Window w;
-    
+
     if (d == NULL)
     {
         printf ("Error getting active window: No display specified!\n");
         return None;
     }
-    
+
     if ( ( w = getFocusedWindow (d) ) == None
         || ( w = getTopWindow (d, w) ) == None
         || ( w = getNamedWindow (d, w) ) == None )
     {
         return None;
     }
-    
+
     return w;
 }
 
@@ -235,7 +235,7 @@ printWindowName (Display * d,
         }
         if (list != NULL)
         {
-            for (i = 0; i < count; ++i)
+            for (i = 0; i < count; ++ i)
             {
                 if (list[i] != NULL)
                 {
@@ -249,7 +249,7 @@ printWindowName (Display * d,
     {
         printf ("Error printing window name: XGetWMName err\n");
     }
-    
+
     if (prop.value != NULL)
     {
         XFree (prop.value);
@@ -305,12 +305,12 @@ printWindowClass (Display * d,
         {
             XFree (class->res_class);
         }
-        
+
         if (class->res_name != NULL)
         {
             XFree (class->res_name);
         }
-        
+
         XFree (class);
     }
 }
@@ -425,7 +425,7 @@ setWindowClass (      Display * d,
                 "is not specified!\n");
         return False;
     }
-    
+
     if (classStr == NULL)
     {
         printf ("Error changing window class: Class string is not "
@@ -464,6 +464,43 @@ setWindowClass (      Display * d,
     return getXErrState () != True;
 }
 
+Bool
+parseColor (   Display * d,
+            XWCOptions * prgCfg,
+                Screen * s)
+{
+    Colormap xClrMap = DefaultColormapOfScreen (s);
+    /*
+     * Maybe this color string parsing must take place 
+     * while processing options... :)
+     */
+    printf ("\nParsing the window background color string \"%s\" ... ",
+            prgCfg->bgColorStr);
+
+    char * bgClrStrTmp = (char*) malloc (8 * sizeof (char));
+    memcpy (bgClrStrTmp + 1, prgCfg->bgColorStr, 6);
+    bgClrStrTmp[0] = '#';
+    bgClrStrTmp[7] = '\0';
+
+    if (! XParseColor (d, xClrMap, bgClrStrTmp, &prgCfg->bgColor)
+        || ! XAllocColor (d, xClrMap, &prgCfg->bgColor))
+    {
+        printf ("Error:\n\tXParseColor and/or XAllocColor error\n");
+        free (bgClrStrTmp);
+        return False;
+    }
+
+    free (bgClrStrTmp);
+
+    printf ("Success\n");
+
+    /* redundant information
+    printf ("Color parsing result: pixel=%ld, red=%d, green=%d, blue=%d\n",
+            xColor.pixel, xColor.red, xColor.green, xColor.blue);
+     */
+    return True;
+}
+
 XWCOptions *
 processArgs (      Display *  d,
                        int    argCnt,
@@ -474,9 +511,18 @@ processArgs (      Display *  d,
     KeySym       exitKeySym;
     unsigned int exitKeyMask;
 
+    focusTime   = TIME_TO_CHANGE_FOCUS_SEC;
+    frameRate   = FRAMERATE_FPS;
+    autoCenter  = AUTOCENTERING;
+    topOffset   = TOP_OFFSET;
+    bgColorStr  = DEFAULT_BG_COLOR;
+    //exitKey     = EXIT_KEY;
+    exitKeyStr  = EXIT_KEY_STR;
+    exitKeyMask = EXIT_MASK;
+
     if (argCnt == 2 && ( ! strcmp (argArr[1], "-help")
-        || ! strcmp (argArr[1], "-h")
-        || ! strcmp (argArr[1], "--help") ))
+                        || ! strcmp (argArr[1], "-h")
+                        || ! strcmp (argArr[1], "--help") ))
     {
         printf ("\nUSAGE:\n\n"
                 "\t%s [-fr FRAMERATE -ft FOCUSTIME "
@@ -487,7 +533,7 @@ processArgs (      Display *  d,
                 "\t\tFOCUSTIME is %d(seconds)\n"
                 "\t\tAUTOCENTER is %d(boolean)\n"
                 "\t\tTOPOFFSET is %d(pixels)\n"
-                "\t\tBGCOLOR is %s(#rrggbb)\n"
+                "\t\tBGCOLOR is %s(rrggbb)\n"
                 "\tpress %s to exit program\n\n", PROGRAM_NAME_STR,
                 FRAMERATE_FPS, TIME_TO_CHANGE_FOCUS_SEC, AUTOCENTERING,
                 TOP_OFFSET, DEFAULT_BG_COLOR, DEF_EXIT_KOMBINATION_STR);
@@ -524,9 +570,9 @@ processArgs (      Display *  d,
             return NULL;
         }
         if (strcmp (argArr[9], "-bg")
-            || ! ( strlen (bgColorStr = argArr[10]) != 7 ))
+            || ! ( strlen (bgColorStr = argArr[10]) == 6 ))
         {
-            printf ("Error parsing BGCOLOR argument (example '-bg #ffeedd')!\n\nTry:\n\n"
+            printf ("Error parsing BGCOLOR argument (example '-bg FFEEDD')!\n\nTry:\n\n"
                     "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
             return NULL;
         }
@@ -537,17 +583,6 @@ processArgs (      Display *  d,
                 "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
         return NULL;
     }
-    else
-    {
-        focusTime   = TIME_TO_CHANGE_FOCUS_SEC;
-        frameRate   = FRAMERATE_FPS;
-        autoCenter  = AUTOCENTERING;
-        topOffset   = TOP_OFFSET;
-        bgColorStr  = DEFAULT_BG_COLOR;
-        //exitKey     = EXIT_KEY;
-        exitKeyStr  = EXIT_KEY_STR;
-        exitKeyMask = EXIT_MASK;
-    }
 
     XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
 
@@ -557,8 +592,8 @@ processArgs (      Display *  d,
         return NULL;
     }
 
-    memset(&ret->bgColor, 0, sizeof(ret->bgColor));
-    
+    memset (&ret->bgColor, 0, sizeof (ret->bgColor));
+
     ret->focusDelay.tv_nsec = 0;
     ret->focusDelay.tv_sec  = focusTime;
     ret->frameDelay.tv_nsec = ( 1.0 / frameRate ) * 1000000000L;
@@ -577,7 +612,7 @@ processArgs (      Display *  d,
         return NULL;
     }
 
-    if (!( ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym) ))
+    if (! ( ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym) ))
     {
         printf ("Unknown keycode %d\n", ret->exitKeyCode);
         free (ret);
@@ -698,7 +733,7 @@ chkCompExt (Display * d)
         printf ("No composite extension found, aborting...\n");
         return False;
     }
-    else if (!XCompositeQueryVersion (d, &xCompExtVerMaj, &xCompExtVerMin))
+    else if (! XCompositeQueryVersion (d, &xCompExtVerMaj, &xCompExtVerMin))
     {
         printf ("X Server doesn't support such a version of the X Composite "
                 "Extension which is compatible with the client library\n");
@@ -714,34 +749,5 @@ chkCompExt (Display * d)
         printf ("Composite extension ready, version %d.%d\n", xCompExtVerMaj,
                 xCompExtVerMin);
     }
-    return True;
-}
-
-Bool
-parseColor (   Display * d,
-            XWCOptions * prgCfg,
-                Screen * s)
-{
-    Colormap xClrMap = DefaultColormapOfScreen (s);
-    /*
-     * Maybe this color string parsing must take place 
-     * while processing options... And now it is here :)
-     */
-    printf ("\nParsing the window background color string \"%s\" ... ",
-            prgCfg->bgColorStr);
-
-    if (! XParseColor (d, xClrMap, prgCfg->bgColorStr, &prgCfg->bgColor)
-        || ! XAllocColor (d, xClrMap, &prgCfg->bgColor))
-    {
-        printf ("Error:\n\tXParseColor and/or XAllocColor error\n");
-        return False;
-    }
-
-    printf ("Success\n");
-
-    /* redundant information
-    printf ("Color parsing result: pixel=%ld, red=%d, green=%d, blue=%d\n",
-            xColor.pixel, xColor.red, xColor.green, xColor.blue);
-     */
     return True;
 }

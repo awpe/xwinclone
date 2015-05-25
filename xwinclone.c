@@ -18,8 +18,8 @@ main (int     argc,
     char                   exitKeyPressed;
 
     /*Make a program to be portable to all locales*/
-    setlocale (LC_ALL, ""); 
-    
+    setlocale (LC_ALL, "");
+
     if (( xDpy = openDefaultDisplay () )  == NULL)
     {
         return EXIT_FAILURE;
@@ -61,6 +61,13 @@ main (int     argc,
     printWindowInfo (xDpy, srcWin, &srcWinAttr);
 
     if (( xScr = getScreenByWindowAttr (xDpy, &srcWinAttr) ) == None)
+    {
+        XCloseDisplay (xDpy);
+        free (prgCfg);
+        return EXIT_FAILURE;
+    }
+
+    if (parseColor (xDpy, prgCfg, xScr) == False)
     {
         XCloseDisplay (xDpy);
         free (prgCfg);
@@ -198,7 +205,8 @@ main (int     argc,
         while (XPending (xDpy))
         {
             XNextEvent (xDpy, &xEvent);
-            switch (xEvent.type) {
+            switch (xEvent.type)
+            {
                 case KeyPress:
                     /*Now this is redundant check, but it will be useful when 
                      * further event processing arrives*/
@@ -276,13 +284,13 @@ main (int     argc,
 
         nanosleep (&prgCfg->frameDelay, NULL);
     }
-    
+
     XFreeGC (xDpy, xGraphicsCtx);
     XFreePixmap (xDpy, pm);
     XFreePixmap (xDpy, srcWinCompPixmap);
     XDestroyWindow (xDpy, trgWin);
     XCloseDisplay (xDpy);
     free (prgCfg);
-    
+
     return EXIT_SUCCESS;
 }
