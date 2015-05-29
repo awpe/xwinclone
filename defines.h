@@ -2,15 +2,17 @@
 #define	DEFINES_H
 
 #ifdef	__cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-
+    /**************************************************************************/
+    /*Options*/
 #define _POSIX_C_SOURCE                              200112L
-#define FRAMERATE_FPS                                60  //fps
+#define FRAMERATE_FPS                                2  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
 #define TIME_TO_WAIT_FOR_SRCWIN_TO_BECOME_VISIBLE_MS 500 //ms
-#define DEFAULT_BG_COLOR                             "#0000ff" //rgb color
-//#define EXIT_KEY                                     XK_g // from keysymdef.h
+#define DEFAULT_BG_COLOR                             "000000" //rgb color
+    //#define EXIT_KEY                                     XK_g // from keysymdef.h
 #define EXIT_KEY_STR                                 "g"
 #define EXIT_MASK                                    ControlMask // from X.h
 #define DEF_EXIT_KOMBINATION_STR                     "CTRL + g"
@@ -18,8 +20,15 @@ extern "C" {
 #define WM_CLASS_CLASS_NAME_STR                      "xwinclone"
 #define AUTOCENTERING                                1 //1=true; 0=false
 #define TOP_OFFSET                                   71 // in pixels
-#define PROGRAM_NAME_STR                             "XWinClone"
+#define PROGRAM_EXE_NAME_STR                         "xwinclone"
+#define BG_IMAGE_PATH                                
+    /**************************************************************************/
 
+    /**************************************************************************/
+    /*Program definitions*/
+#define STR_EQUAL                                    0
+#define INT_CONV_OK                                  0
+    /**************************************************************************/
 #ifdef	__cplusplus
 }
 #endif

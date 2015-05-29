@@ -5,7 +5,7 @@
 
 #ifndef XWCLIB_H
 #define	XWCLIB_H
- 
+
 #ifdef	__cplusplus
 extern "C"
 {
@@ -13,6 +13,43 @@ extern "C"
 
 #include "defines.h"
 #include "headers.h"
+
+    typedef enum argNames_
+    {
+        HELP       = 0,
+        FRAMERATE  = 1,
+        BGCOLOR    = 2,
+        AUTOCENTER = 3,
+        FOCUSTIME  = 4,
+        TOPOFFSET  = 5,
+        /****************************************/
+        /*Write count of possible arguments here*/
+        OPTIONS_COUNT = 6
+        /****************************************/
+    } argNames;
+
+    typedef enum argTypes_
+    {
+        C_STR, INT
+    } argTypes;
+
+    typedef struct argument_
+    {
+        int            m_SynCnt;
+        const char **  m_SynStrs;
+        argTypes       m_Type;
+        argNames       m_Name;
+        const char *   m_NameStr;
+        Bool           m_IsSet;
+        Bool           m_HasValue;
+        void       *   m_Value;
+    } argument;
+
+    typedef struct arguments_
+    {
+        int         m_ArgCnt;
+        argument ** m_Args;
+    } arguments;
 
     /**
      * Actual structure to hold various program options. Maybe you want to use 
@@ -37,8 +74,8 @@ extern "C"
         //                               * keysymdef.h*/
         const char      * exitKeyStr; /**< string representing exit key 
                                        * (keysymdef.h)*/
-        KeyCode           exitKeyCode;/**< result of exit key string parsing*/
-        int               exitKeyMask;/**< Exit key modifier according to X.h*/
+        KeyCode           exitKeyCode; /**< result of exit key string parsing*/
+        int               exitKeyMask; /**< Exit key modifier according to X.h*/
     } ;
 
     /** 
@@ -99,7 +136,7 @@ extern "C"
      * to mutually assign error code somewhere...
      */
     int
-    errorHandlerBasic (    Display * display,
+    errorHandlerBasic (Display     * display,
                        XErrorEvent * error);
 
     /**
@@ -112,7 +149,7 @@ extern "C"
      * @sa XGetInputFocus()
      */
     Window
-    getFocusedWindow (Display* d);
+    getFocusedWindow (Display * d);
 
     /**
      * Tries to find top (child-of-root) window which is the parent to 
@@ -125,7 +162,7 @@ extern "C"
      */
     Window
     getTopWindow (Display * d,
-                   Window   start);
+                  Window    start);
 
     /**
      * Tries to find window, at or below the specified window, that has a 
@@ -138,7 +175,7 @@ extern "C"
      */
     Window
     getNamedWindow (Display * d,
-                     Window   start);
+                    Window    start);
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -155,8 +192,8 @@ extern "C"
      * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
      */
     Window
-    getActiveWindow (Display* d);
-    
+    getActiveWindow (Display * d);
+
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -166,7 +203,7 @@ extern "C"
      */
     void
     printWindowName (Display * d,
-                      Window   w);
+                     Window    w);
     /**
      * Prints window class as reported to window manager (ICCC WM_CLASS).
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -176,7 +213,7 @@ extern "C"
      */
     void
     printWindowClass (Display * d,
-                       Window   w);
+                      Window    w);
 
     /**
      * Prints window info (class and name).
@@ -187,8 +224,8 @@ extern "C"
      * @sa printWindowName(), printWindowClass(), XWindowAttributes
      */
     void
-    printWindowInfo (          Display * d,
-                                Window   w,
+    printWindowInfo (Display           * d,
+                     Window              w,
                      XWindowAttributes * xWinAttr);
 
     /**
@@ -200,9 +237,9 @@ extern "C"
      * @sa XSetWMName(), XStringListToTextProperty()
      */
     Bool
-    setWinTitlebar (     Display * d,
-                          Window   WID,
-                   const    char * name);
+    setWinTitlebar (Display    * d,
+                    Window       WID,
+                    const char * name);
     /**
      * Sets window class properties (ICCC WM_CLASS) which have two c-strings
      * first with permanent window name and second with the name of class.
@@ -216,10 +253,10 @@ extern "C"
      * PropModeReplace
      */
     Bool
-    setWindowClass (      Display * d,
-                           Window   WID,
-                    const    char * permNameStr,
-                    const    char * classStr);
+    setWindowClass (Display    * d,
+                    Window       WID,
+                    const char * permNameStr,
+                    const char * classStr);
 
     /**
      * Processes string arguments. Allocates and fills up `XWCOptions` struct. 
@@ -231,9 +268,9 @@ extern "C"
      * @todo Add some heuristics to argument processing.
      */
     XWCOptions *
-    processArgs (      Display *  d,
-                           int    argCnt,
-                 const    char ** argArr);
+    processArgs (Display    *  d,
+                 int           argCnt,
+                 const char ** argArr);
 
     /**
      * Extracts pointer to screen where window belongs.
@@ -242,7 +279,7 @@ extern "C"
      * @return Pointer to Xlib's Screen structure or NULL in case of error.
      */
     Screen *
-    getScreenByWindowAttr (          Display * d,
+    getScreenByWindowAttr (Display           * d,
                            XWindowAttributes * winAttr);
 
     /**
@@ -253,7 +290,7 @@ extern "C"
      */
     Window
     getRootWinOfScr (Screen * s);
-    
+
     /**
      * Registers exit key combination for a given window.
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -262,10 +299,20 @@ extern "C"
      * @return Xlib's True on success, False otherwise
      */
     Bool
-    grabExitKey (   Display * d,
-                     Window   WID,
+    grabExitKey (Display    * d,
+                 Window       WID,
                  XWCOptions * prgCfg);
-    
+    /**
+     * Deregisters exit key combination for a given window.
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] WID Window xid of window where exit event will be grabed
+     * @param[in] prgCfg Data struct with program's configuration
+     */
+    void
+    ungrabExitKey (Display    * d,
+                   Window       grabWin,
+                   XWCOptions * prgCfg);
+
     /**
      * Checks if x server we have connection to has composite extension of 
      * supported version
@@ -274,18 +321,18 @@ extern "C"
      */
     Bool
     chkCompExt (Display * d);
-    
+
     /**
      * Tries to parse color string and allocate color struct.
      * @param[in] d Pointer to Xlib's Display data struct.
      * @param[in] prgCfg Data struct with program's configuration 
      * @param[in] s Pointer to Xlib's Screen data struct
      * @return Xlib's True on success, False otherwise
-     */ 
+     */
     Bool
-    parseColor (   Display * d,
+    parseColor (Display    * d,
                 XWCOptions * prgCfg,
-                    Screen * s);
+                Screen     * s);
 
 #ifdef	__cplusplus
 }
