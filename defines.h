@@ -2,8 +2,7 @@
 #define	DEFINES_H
 
 #ifdef	__cplusplus
-extern "C"
-{
+extern "C" {
 #endif
     /**************************************************************************/
     /*Options*/
@@ -21,13 +20,17 @@ extern "C"
 #define AUTOCENTERING                                1 //1=true; 0=false
 #define TOP_OFFSET                                   71 // in pixels
 #define PROGRAM_EXE_NAME_STR                         "xwinclone"
-#define BG_IMAGE_PATH                                
+#define BG_IMAGE_PATH                                "./"
+#define DEFAULT_LOG_LVL                              0
     /**************************************************************************/
 
     /**************************************************************************/
     /*Program definitions*/
 #define STR_EQUAL                                    0
 #define INT_CONV_OK                                  0
+#define LOG_LVL_NO                                   0
+#define LOG_LVL_1                                    1
+#define LOG_LVL_2                                    2
     /**************************************************************************/
 #ifdef	__cplusplus
 }

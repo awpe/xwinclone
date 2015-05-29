@@ -39,10 +39,7 @@ main (int     argc,
         return EXIT_FAILURE;
     }
 
-    printf ("Now move focus to window you want to be cloned...\n");
-    nanosleep (&prgCfg->focusDelay, NULL);
-
-    if (( srcWin = getActiveWindow (xDpy) ) == None)
+    if (( srcWin = getActiveWindow (xDpy, prgCfg) ) == None)
     {
         XCloseDisplay (xDpy);
         free (prgCfg);
