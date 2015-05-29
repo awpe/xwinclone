@@ -39,10 +39,7 @@ main (int     argc,
         return EXIT_FAILURE;
     }
 
-    printf ("Now move focus to window you want to be cloned...\n");
-    nanosleep (&prgCfg->focusDelay, NULL);
-
-    if (( srcWin = getActiveWindow (xDpy) ) == None)
+    if (( srcWin = getActiveWindow (xDpy, prgCfg) ) == None)
     {
         XCloseDisplay (xDpy);
         free (prgCfg);
@@ -97,12 +94,12 @@ main (int     argc,
         return EXIT_FAILURE;
     }
 
-    printf ("Creating translation window ... ");
+    logCtr ("Creating translation window ... ", LOG_LVL_1);
 
     if (! XMatchVisualInfo (xDpy, XScreenNumberOfScreen (xScr),
                             srcWinAttr.depth, TrueColor, &xVisInfo))
     {
-        printf ("Error: no such visual\n");
+        logCtr ("Error: no such visual\n", LOG_LVL_NO);
         XCloseDisplay (xDpy);
         free (prgCfg);
         return EXIT_FAILURE;
@@ -131,7 +128,7 @@ main (int     argc,
 
     if (getXErrState () == True)
     {
-        printf ("failed to create window!\n");
+        logCtr ("failed to create window!\n", LOG_LVL_NO);
         if (trgWin != None)
         {
             XDestroyWindow (xDpy, trgWin);
@@ -164,14 +161,14 @@ main (int     argc,
 
     if (getXErrState () == True)
     {
-        printf ("failed to map window!\n");
+        logCtr ("failed to map window!\n", LOG_LVL_NO);
         XDestroyWindow (xDpy, trgWin);
         XCloseDisplay (xDpy);
         free (prgCfg);
         return EXIT_FAILURE;
     }
 
-    printf ("success\n");
+    logCtr ("success\n", LOG_LVL_1);
 
     XSync (xDpy, 0);
 
@@ -215,7 +212,7 @@ main (int     argc,
                     if (xEvent.xkey.keycode == prgCfg->exitKeyCode
                         && xEvent.xkey.state & prgCfg->exitKeyMask)
                     {
-                        printf ("Exit key combination catched!\n");
+                        logCtr ("Exit key combination catched!\n", LOG_LVL_1);
                         exitKeyPressed = 1;
                         XUngrabKey (xDpy, prgCfg->exitKeyCode,
                                     prgCfg->exitKeyMask, rootWin);
@@ -251,8 +248,8 @@ main (int     argc,
         {
             XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
             trgWinLeftOffset = (trgWinAttr.width - srcWinAttr.width) / 2;
-            trgWinTopOffset  = (trgWinAttr.height - srcWinAttr.height + 
-					prgCfg->topOffset) / 2;
+            trgWinTopOffset  = (trgWinAttr.height - srcWinAttr.height +
+                                prgCfg->topOffset) / 2;
         }
 
         if (getXErrState () == True)

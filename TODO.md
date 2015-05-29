@@ -9,3 +9,4 @@ arguments in any order
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [x] Repair top offset mechanism
+- [x] Add log level control option

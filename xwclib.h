@@ -22,9 +22,10 @@ extern "C"
         AUTOCENTER = 3,
         FOCUSTIME  = 4,
         TOPOFFSET  = 5,
+        LOGLVL     = 6,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 6
+        OPTIONS_COUNT = 7
         /****************************************/
     } argNames;
 
@@ -107,7 +108,12 @@ extern "C"
     @warning Not thread safe!
      */
     extern Bool X_ERROR;
-
+    
+    /** @var int LOG_LVL
+    @brief Sets logging level 0, 1, 2
+     */
+    extern int LOG_LVL;
+    
     /**
      * Returns call-time state of X_ERROR variable. X_ERROR is always set 
      * to False.
@@ -192,7 +198,8 @@ extern "C"
      * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
      */
     Window
-    getActiveWindow (Display * d);
+    getActiveWindow (Display    * d,
+                     XWCOptions * prgCfg);
 
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
@@ -333,6 +340,15 @@ extern "C"
     parseColor (Display    * d,
                 XWCOptions * prgCfg,
                 Screen     * s);
+    
+    /**
+     * Processes log messages according to current logging level.
+     * @param[in] msg Pointer to null-terminated C-string with message.
+     * @param[in] lvl Desired log level of message
+     */    
+    void
+    logCtr (const char * msg, 
+            int          lvl);
 
 #ifdef	__cplusplus
 }
