@@ -6,6 +6,7 @@
 - [ ] Add configuration file support
 - [x] Make command promt arguments processing routine process any number of 
 arguments in any order
+- [ ] Add background image support
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [x] Repair top offset mechanism
