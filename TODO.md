@@ -12,3 +12,4 @@ arguments in any order
 - [x] Repair top offset mechanism
 - [x] Add log level control option
 - [ ] Set propriate logging levels by using all of them (0, 1, 2)
+- [ ] Send mouse clicks from target window to source
