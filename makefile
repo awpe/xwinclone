@@ -2,7 +2,7 @@ PrgName = xwinclone
 
 CC      = gcc
 
-CFLAGS  = -Wall -pedantic -std=c11
+CFLAGS  = -Wall -pedantic -std=c11 -O2 -Werror
 
 ODIR    = obj
 

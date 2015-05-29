@@ -200,6 +200,8 @@ main (int     argc,
 
     exitKeyPressed = 0;
 
+    srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
+
     while (1)
     {
         while (XPending (xDpy))
@@ -240,23 +242,26 @@ main (int     argc,
             break;
         }
 
-        /* will be used for autocentering
-                XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
-
-                if (getXErrState () == True)
-                {
-                    XFreePixmap (xDpy, pm);
-                    XDestroyWindow (xDpy, trgWin);
-                    XCloseDisplay (xDpy);
-                    free (prgCfg);
-                    return EXIT_FAILURE;
-                }
-         */
+        int trgWinLeftOffset = 0;
+        int trgWinTopOffset  = 0;
 
         XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
 
+        if (prgCfg->autoCenter == True)
+        {
+            XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
+            trgWinLeftOffset = (trgWinAttr.width - srcWinAttr.width) / 2;
+            trgWinTopOffset  = (trgWinAttr.height - srcWinAttr.height + 
+					prgCfg->topOffset) / 2;
+        }
+
         if (getXErrState () == True)
         {
+            ungrabExitKey (xDpy, rootWin, prgCfg);
+            XCompositeUnredirectWindow (xDpy, srcWin,
+                                        CompositeRedirectAutomatic);
+            XCompositeUnredirectSubwindows (xDpy, srcWin,
+                                            CompositeRedirectAutomatic);
             XFreeGC (xDpy, xGraphicsCtx);
             XFreePixmap (xDpy, srcWinCompPixmap);
             XFreePixmap (xDpy, pm);
@@ -266,18 +271,15 @@ main (int     argc,
             return EXIT_FAILURE;
         }
 
-        XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, trgWinAttr.width,
-                        trgWinAttr.height);
+        XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
+                        rootWinAttr.height);
 
         srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
 
-        XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx, 0, 0,
-                   trgWinAttr.width, trgWinAttr.height, 0, 0);
-
-        /*
-                XCopyArea (xDpy, srcWin, pm, xGraphicsCtx, 0, 0, trgWinWidth,
-                           trgWinHeight, 0, 0);
-         */
+        XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx,
+                   0,                0 + prgCfg->topOffset,
+                   srcWinAttr.width, srcWinAttr.height - prgCfg->topOffset,
+                   trgWinLeftOffset, trgWinTopOffset);
 
         XCopyArea (xDpy, pm, trgWin, xGraphicsCtx, 0, 0, trgWinAttr.width,
                    trgWinAttr.height, 0, 0);
@@ -285,6 +287,11 @@ main (int     argc,
         nanosleep (&prgCfg->frameDelay, NULL);
     }
 
+    ungrabExitKey (xDpy, rootWin, prgCfg);
+    XCompositeUnredirectWindow (xDpy, srcWin,
+                                CompositeRedirectAutomatic);
+    XCompositeUnredirectSubwindows (xDpy, srcWin,
+                                    CompositeRedirectAutomatic);
     XFreeGC (xDpy, xGraphicsCtx);
     XFreePixmap (xDpy, pm);
     XFreePixmap (xDpy, srcWinCompPixmap);

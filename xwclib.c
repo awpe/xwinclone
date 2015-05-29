@@ -18,16 +18,16 @@ openDefaultDisplay (void)
 }
 
 int
-errorHandlerBasic (    Display * display,
+errorHandlerBasic (Display     * display,
                    XErrorEvent * error)
 {
-    if (! display)
+    if (display == NULL)
     {
         /*do something*/
         return 1;
     }
 
-    if (! error)
+    if (error == NULL)
     {
         /*do something*/
         return 1;
@@ -42,7 +42,7 @@ Bool
 getXErrState (void)
 {
     Bool res = X_ERROR;
-    X_ERROR = False;
+    X_ERROR  = False;
     return res;
 }
 
@@ -85,14 +85,13 @@ getFocusedWindow (Display * d)
 
 Window
 getTopWindow (Display * d,
-               Window   start)
+              Window    start)
 {
     Window         w;
     Window         parent;
     Window         root;
     Window       * children;
     unsigned int   nchildren;
-    Status         s;
 
     w         = start;
     parent    = start;
@@ -115,9 +114,8 @@ getTopWindow (Display * d,
     while (parent != root)
     {
         w = parent;
-        s = XQueryTree (d, w, &root, &parent, &children, &nchildren);
 
-        if (s)
+        if (XQueryTree (d, w, &root, &parent, &children, &nchildren))
         {
             if (children != NULL)
             {
@@ -141,7 +139,7 @@ getTopWindow (Display * d,
 
 Window
 getNamedWindow (Display * d,
-                 Window   start)
+                Window    start)
 {
     Window w;
 
@@ -192,10 +190,9 @@ getActiveWindow (Display * d)
 
 void
 printWindowName (Display * d,
-                  Window   w)
+                 Window    w)
 {
     XTextProperty    prop;
-    Status           s;
     int              count, result, i;
     char          ** list;
 
@@ -216,9 +213,7 @@ printWindowName (Display * d,
 
     printf ("window name:\n");
 
-    s = XGetWMName (d, w, &prop);
-
-    if (getXErrState () == False && s)
+    if (getXErrState () == False && XGetWMName (d, w, &prop) != 0)
     {
         count  = 0;
         list   = NULL;
@@ -258,10 +253,9 @@ printWindowName (Display * d,
 
 void
 printWindowClass (Display * d,
-                   Window   w)
+                  Window    w)
 {
     XClassHint * class;
-    Status       s;
 
     if (d == NULL)
     {
@@ -287,9 +281,7 @@ printWindowClass (Display * d,
         return;
     }
 
-    s = XGetClassHint (d, w, class);
-
-    if (getXErrState () == False && s)
+    if (getXErrState () == False && XGetClassHint (d, w, class) != 0)
     {
         printf ("application: \n"
                 "\tname: %s\n\tclass: %s\n", class->res_name, class->res_class);
@@ -316,14 +308,15 @@ printWindowClass (Display * d,
 }
 
 void
-printWindowInfo (          Display * d,
-                            Window   w,
+printWindowInfo (Display           * d,
+                 Window              w,
                  XWindowAttributes * xWinAttr)
 {
 
     if (d == NULL)
     {
-        printf ("Error cannot print window information: Bad X display pointer\n");
+        printf ("Error cannot print window information: "
+                "Bad X display pointer\n");
         return;
     }
 
@@ -343,14 +336,15 @@ printWindowInfo (          Display * d,
     printWindowName (d, w);
     printWindowClass (d, w);
 
-    printf ("Width: %d\nHeight: %d\nDepth: %d\n", xWinAttr->width, xWinAttr->height, xWinAttr->depth);
+    printf ("Width: %d\nHeight: %d\nDepth: %d\n", xWinAttr->width,
+            xWinAttr->height, xWinAttr->depth);
 
 }
 
 Bool
-setWinTitlebar (      Display * d,
-                       Window   WID,
-                const    char * name)
+setWinTitlebar (Display    * d,
+                Window       WID,
+                const char * name)
 {
     XTextProperty tp;
 
@@ -406,10 +400,10 @@ setWinTitlebar (      Display * d,
 }
 
 Bool
-setWindowClass (      Display * d,
-                       Window   WID,
-                const    char * permNameStr,
-                const    char * classStr)
+setWindowClass (Display    * d,
+                Window       WID,
+                const char * permNameStr,
+                const char * classStr)
 {
     XClassHint * xClassHint;
 
@@ -461,29 +455,29 @@ setWindowClass (      Display * d,
 
     XFree (xClassHint);
 
-    return getXErrState () != True;
+    return getXErrState () == False;
 }
 
 Bool
-parseColor (   Display * d,
+parseColor (Display    * d,
             XWCOptions * prgCfg,
-                Screen * s)
+            Screen     * s)
 {
     Colormap xClrMap = DefaultColormapOfScreen (s);
     /*
      * Maybe this color string parsing must take place 
      * while processing options... :)
      */
-    printf ("\nParsing the window background color string \"%s\" ... ",
+    printf ("\nParsing window background color string \"%s\" ... ",
             prgCfg->bgColorStr);
 
-    char * bgClrStrTmp = (char*) malloc (8 * sizeof (char));
+    char * bgClrStrTmp = (char*) malloc (8 * sizeof (char ));
+    bgClrStrTmp[0]     = '#';
+    bgClrStrTmp[7]     = '\0';
     memcpy (bgClrStrTmp + 1, prgCfg->bgColorStr, 6);
-    bgClrStrTmp[0] = '#';
-    bgClrStrTmp[7] = '\0';
 
-    if (! XParseColor (d, xClrMap, bgClrStrTmp, &prgCfg->bgColor)
-        || ! XAllocColor (d, xClrMap, &prgCfg->bgColor))
+    if ( XParseColor (d, xClrMap, bgClrStrTmp, &prgCfg->bgColor) == 0
+        || XAllocColor (d, xClrMap, &prgCfg->bgColor) == 0)
     {
         printf ("Error:\n\tXParseColor and/or XAllocColor error\n");
         free (bgClrStrTmp);
@@ -501,86 +495,348 @@ parseColor (   Display * d,
     return True;
 }
 
-XWCOptions *
-processArgs (      Display *  d,
-                       int    argCnt,
-             const    char ** argArr)
+void
+delArg (argument * arg)
 {
-    int          frameRate, focusTime, autoCenter, topOffset;
-    const char * bgColorStr, * exitKeyStr;
-    KeySym       exitKeySym;
-    unsigned int exitKeyMask;
-
-    focusTime   = TIME_TO_CHANGE_FOCUS_SEC;
-    frameRate   = FRAMERATE_FPS;
-    autoCenter  = AUTOCENTERING;
-    topOffset   = TOP_OFFSET;
-    bgColorStr  = DEFAULT_BG_COLOR;
-    //exitKey     = EXIT_KEY;
-    exitKeyStr  = EXIT_KEY_STR;
-    exitKeyMask = EXIT_MASK;
-
-    if (argCnt == 2 && ( ! strcmp (argArr[1], "-help")
-                        || ! strcmp (argArr[1], "-h")
-                        || ! strcmp (argArr[1], "--help") ))
+    if (arg == NULL)
     {
-        printf ("\nUSAGE:\n\n"
-                "\t%s [-fr FRAMERATE -ft FOCUSTIME "
-                "-ac AUTOCENTER -toffset TOPOFFSET -bg BGCOLOR]\n\n"
-                "\tthisProgramName [-help | -h | --help]\n\n"
-                "\tDefaults:\n"
-                "\t\tFRAMERATE is %d(fps)\n"
-                "\t\tFOCUSTIME is %d(seconds)\n"
-                "\t\tAUTOCENTER is %d(boolean)\n"
-                "\t\tTOPOFFSET is %d(pixels)\n"
-                "\t\tBGCOLOR is %s(rrggbb)\n"
-                "\tpress %s to exit program\n\n", PROGRAM_NAME_STR,
-                FRAMERATE_FPS, TIME_TO_CHANGE_FOCUS_SEC, AUTOCENTERING,
-                TOP_OFFSET, DEFAULT_BG_COLOR, DEF_EXIT_KOMBINATION_STR);
+        return;
+    }
+
+    if (arg->m_Value != NULL)
+    {
+        if (arg->m_Type == INT)
+        {
+            free (arg->m_Value);
+        }
+    }
+
+    if ( arg->m_SynStrs != NULL)
+    {
+        free (arg->m_SynStrs);
+    }
+}
+
+void
+delArgs (arguments * args)
+{
+    if (args == NULL)
+    {
+        return;
+    }
+
+    if ( args->m_Args != NULL)
+    {
+        for (int i = 0; i < args->m_ArgCnt; ++i)
+        {
+            if (args->m_Args[i] != NULL)
+            {
+                delArg (args->m_Args[i]);
+                free (args->m_Args[i]);
+            }
+        }
+        free (args->m_Args);
+    }
+    free (args);
+}
+
+arguments *
+initArgs ()
+{
+    arguments * args = (arguments*) malloc (sizeof (arguments ));
+
+    if (args == NULL)
+    {
         return NULL;
     }
-    else if (argCnt == 11)
+
+    args->m_ArgCnt = OPTIONS_COUNT;
+    args->m_Args   = (argument**) malloc (sizeof (argument ) * args->m_ArgCnt);
+
+    for (int i = 0; i < args->m_ArgCnt; ++i)
     {
-        if (strcmp (argArr[1], "-fr")
-            || ! ( frameRate = strtol (argArr[2], NULL, 10) ))
+        args->m_Args[i] = (argument*) malloc (sizeof (argument ));
+        memset (args->m_Args[i], 0, sizeof (*args->m_Args[i] ));
+        args->m_Args[i]->m_NameStr  = NULL;
+        args->m_Args[i]->m_SynStrs  = NULL;
+        args->m_Args[i]->m_Value    = NULL;
+        args->m_Args[i]->m_HasValue = False;
+    }
+
+    return args;
+}
+
+Bool
+addArg (arguments  * args,
+        Bool         hasValue,
+        argTypes     type,
+        argNames     name,
+        const char * nameStr,
+        int          argSynCnt, ...)
+{
+    if (args == NULL)
+    {
+        return False;
+    }
+
+    va_list argStrList;
+
+    va_start (argStrList, argSynCnt);
+
+    argument * arg = args->m_Args[name];
+
+    if (arg == NULL)
+    {
+        return False;
+    }
+
+    arg->m_IsSet    = False;
+    arg->m_SynCnt   = argSynCnt;
+    arg->m_Type     = type;
+    arg->m_Name     = name;
+    arg->m_HasValue = hasValue;
+    arg->m_NameStr  = nameStr;
+    arg->m_SynStrs  = (const char **) malloc (sizeof (const char*) * argSynCnt);
+
+    if (arg->m_SynStrs == NULL)
+    {
+        return False;
+    }
+
+    for (int i = 0; i < argSynCnt; ++i)
+    {
+        arg->m_SynStrs[i] = va_arg (argStrList, const char *);
+    }
+
+    if (arg->m_HasValue == True)
+    {
+        switch (arg->m_Type)
         {
-            printf ("Error parsing FRAMERATE argument!\n\nTry:\n\n"
-                    "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
-            return NULL;
-        }
-        if (strcmp (argArr[3], "-ft")
-            || ! ( focusTime = strtol (argArr[4], NULL, 10) ))
-        {
-            printf ("Error parsing FOCUSTIME argument!\n\nTry:\n\n"
-                    "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
-            return NULL;
-        }
-        if (strcmp (argArr[5], "-ac")
-            || ! ( autoCenter = strtol (argArr[6], NULL, 10) ))
-        {
-            printf ("Error parsing AUTOCENTER argument!\n\nTry:\n\n"
-                    "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
-            return NULL;
-        }
-        if (strcmp (argArr[7], "-toffset")
-            || ! ( topOffset = strtol (argArr[8], NULL, 10) ))
-        {
-            printf ("Error parsing TOPOFFSET argument!\n\nTry:\n\n"
-                    "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
-            return NULL;
-        }
-        if (strcmp (argArr[9], "-bg")
-            || ! ( strlen (bgColorStr = argArr[10]) == 6 ))
-        {
-            printf ("Error parsing BGCOLOR argument (example '-bg FFEEDD')!\n\nTry:\n\n"
-                    "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
-            return NULL;
+            case INT:
+                arg->m_Value = (int*) malloc (sizeof (int ));
+                break;
+
+            case C_STR:
+                //arg->m_Value = (char**) malloc (sizeof (char*));
+                break;
+
+            default:
+                printf ("Error adding argument, bad type specified!\n");
+                free (arg->m_SynStrs);
+                return False;
         }
     }
-    else if (argCnt != 1)
+
+    switch (arg->m_Name)
     {
-        printf ("Error parsing arguments!\n\nTry:\n\n"
-                "\t%s [-help | -h | --help]\n\n", PROGRAM_NAME_STR);
+        case HELP:
+            break;
+
+        case AUTOCENTER:
+            *( (int*) arg->m_Value ) = AUTOCENTERING;
+            break;
+
+        case TOPOFFSET:
+            *( (int*) arg->m_Value ) = TOP_OFFSET;
+            break;
+
+        case FOCUSTIME:
+            *( (int*) arg->m_Value ) = TIME_TO_CHANGE_FOCUS_SEC;
+            break;
+
+        case BGCOLOR:
+            arg->m_Value             = (void*) DEFAULT_BG_COLOR;
+            break;
+
+        case FRAMERATE:
+            *( (int*) arg->m_Value ) = FRAMERATE_FPS;
+            break;
+
+        default:
+            printf ("Unknown argument type!\n");
+            return False;
+            break;
+    }
+
+    va_end (argStrList);
+
+    return True;
+}
+
+void
+printUsage (arguments  * args)
+{
+    if (args == NULL)
+    {
+        return;
+    }
+
+    printf ("\nUSAGE:\n\n\t%s ", PROGRAM_EXE_NAME_STR);
+
+    for (int i = 0; i < args->m_ArgCnt; ++i)
+    {
+        printf ("[");
+        for (int j = 0; j < args->m_Args[i]->m_SynCnt; ++j)
+        {
+            printf ("%s", args->m_Args[i]->m_SynStrs[j]);
+
+            if (j + 1 < args->m_Args[i]->m_SynCnt)
+            {
+                printf (" | ");
+            }
+        }
+        if (args->m_Args[i]->m_HasValue == True)
+        {
+            printf (" %s", args->m_Args[i]->m_NameStr);
+        }
+        printf ("] ");
+    }
+
+    printf ("\n\n\tDefaults:\n");
+
+    for (int i = 0; i < args->m_ArgCnt; ++i)
+    {
+        if (args->m_Args[i]->m_HasValue == True)
+        {
+            printf ("\t\t%s\t", args->m_Args[i]->m_NameStr);
+
+            switch (args->m_Args[i]->m_Type)
+            {
+                case INT:
+                    printf ("%d\n", *( (int*) args->m_Args[i]->m_Value ));
+                    break;
+
+                case C_STR:
+                    printf ("\t%s\n", (const char*) args->m_Args[i]->m_Value );
+                    break;
+
+                default:
+                    printf ("Unknown argument type!\n");
+                    break;
+            }
+
+        }
+    }
+
+    printf ("\n\tpress %s to exit program\n\n", DEF_EXIT_KOMBINATION_STR);
+}
+
+XWCOptions *
+processArgs (Display    *  d,
+             int           argCnt,
+             const char ** argArr)
+{
+    KeySym         exitKeySym;
+    arguments    * args;
+    char         * endPtr;
+
+    args = initArgs ();
+
+    if (args == NULL)
+    {
+        printf ("Cannot allocate structure to process arguments!\n");
+        return NULL;
+    }
+
+    if (   addArg (args, True,  C_STR, BGCOLOR,    "BGCOLOR",    1, "-bg"   )
+        == False
+
+        || addArg (args, True,  INT,   FRAMERATE,  "FRAMERATE",  1, "-fr"   )
+        == False
+
+        || addArg (args, True,  INT,   FOCUSTIME,  "FOCUSTIME",  1, "-ft"   )
+        == False
+
+        || addArg (args, True,  INT,   TOPOFFSET,  "TOPOFFSET",  1, "-toff" )
+        == False
+
+        || addArg (args, False, C_STR, HELP,       "HELP",       3, "-h",
+                   "-help",
+                   "--help")
+        == False
+
+        || addArg (args, True,  INT,   AUTOCENTER, "AUTOCENTER", 1, "-ac"   )
+        == False
+        )
+    {
+        delArgs (args);
+        printf ("Cannot allocate structures for argument parameters!\n");
+        return NULL;
+    }
+
+    int nextArgOffset = 2;
+
+    for (int i = 1; i < argCnt; i += nextArgOffset)
+    {
+        for (int j = 0; j < OPTIONS_COUNT; ++j)
+        {
+            Bool argFound = False;
+            for (int k = 0; k < args->m_Args[j]->m_SynCnt; ++k)
+            {
+                if (strcmp (argArr[i], args->m_Args[j]->m_SynStrs[k])
+                    == STR_EQUAL)
+                {
+                    if (args->m_Args[j]->m_IsSet == True)
+                    {
+                        printf ("Parameter %s has been set several times!\n",
+                                args->m_Args[j]->m_NameStr);
+                        delArgs (args);
+                        return NULL;
+                    }
+
+                    args->m_Args[j]->m_IsSet = True;
+                    argFound                 = True;
+
+                    switch (args->m_Args[j]->m_Type)
+                    {
+                        case INT:
+                            *( (int*) args->m_Args[j]->m_Value ) =
+                                strtol (argArr[i + 1], &endPtr, 10);
+
+                            if (endPtr == argArr[i + 1])
+                            {
+                                printf ("Error parsing %s argument!\n\nTry:"
+                                        "\n\n\t%s [-help | -h | --help]\n\n",
+                                        args->m_Args[j]->m_NameStr,
+                                        PROGRAM_EXE_NAME_STR);
+                                delArgs (args);
+                                return NULL;
+                            }
+                            break;
+
+                        case C_STR:
+                            args->m_Args[j]->m_Value = (void*) argArr[i + 1];
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    break;
+                }
+            }
+
+            if (argFound == False)
+            {
+
+                printf ("Unknown argument specified!\n\nTry:\n\n\t%s "
+                        "[-help | -h | --help]\n\n", PROGRAM_EXE_NAME_STR);
+                delArgs (args);
+                return NULL;
+            }
+            else
+            {
+                nextArgOffset = ( args->m_Args[j]->m_HasValue == True ) ? 2 : 1;
+                break;
+            }
+
+        }
+    }
+
+    if (args->m_Args[HELP]->m_IsSet == True)
+    {
+        printUsage (args);
+        delArgs (args);
         return NULL;
     }
 
@@ -589,26 +845,31 @@ processArgs (      Display *  d,
     if (ret == NULL)
     {
         printf ("Error allocating memory for options struct!\n");
+        delArgs (args);
         return NULL;
     }
 
-    memset (&ret->bgColor, 0, sizeof (ret->bgColor));
+    memset (&ret->bgColor, 0, sizeof (ret->bgColor ));
+
+    int fr = *(( int*) args->m_Args[FRAMERATE]->m_Value);
+    int fd = *(( int*) args->m_Args[FOCUSTIME]->m_Value);
 
     ret->focusDelay.tv_nsec = 0;
-    ret->focusDelay.tv_sec  = focusTime;
-    ret->frameDelay.tv_nsec = ( 1.0 / frameRate ) * 1000000000L;
+    ret->focusDelay.tv_sec  = fd;
+    ret->frameDelay.tv_nsec = ( 1.0 / fr) * 1000000000L;
     ret->frameDelay.tv_sec  = 0;
-    ret->autoCenter         = autoCenter;
-    ret->topOffset          = topOffset;
-    ret->bgColorStr         = bgColorStr;
+    ret->autoCenter         = *( ( int*) args->m_Args[AUTOCENTER]->m_Value );
+    ret->topOffset          = *( ( int*) args->m_Args[TOPOFFSET]->m_Value );
+    ret->bgColorStr         = (const char*) args->m_Args[BGCOLOR]->m_Value;
     //ret->exitKey            = exitKey;
-    ret->exitKeyStr         = exitKeyStr;
-    ret->exitKeyMask        = exitKeyMask;
+    ret->exitKeyStr         = EXIT_KEY_STR;
+    ret->exitKeyMask        = EXIT_MASK;
 
-    if (( exitKeySym = XStringToKeysym (exitKeyStr) ) == NoSymbol)
+    if (( exitKeySym = XStringToKeysym (ret->exitKeyStr) ) == NoSymbol)
     {
-        printf ("Error parsing exit key string (%s)\n", exitKeyStr);
+        printf ("Error parsing exit key string (%s)\n", ret->exitKeyStr);
         free (ret);
+        delArgs (args);
         return NULL;
     }
 
@@ -616,21 +877,25 @@ processArgs (      Display *  d,
     {
         printf ("Unknown keycode %d\n", ret->exitKeyCode);
         free (ret);
+        delArgs (args);
         return NULL;
     }
 
-    printf ("Selected focus time is %ld\n"
-            "Selected frame rate is %ld, this results in %ldns frame delay\n"
-            "Selected autocentering mode is %d(bool)\n"
-            "Selected top offset is %d(px)\n"
-            "Selected bgcolor is %s(#rrggbb)\n\n",
+    printf ("\nSelected values:\n\n");
+
+    printf ("\tfocus time\t%ld\n"
+            "\tframe rate\t%ld, this results in %ldms frame delay\n"
+            "\tautocentering\t%d\n"
+            "\ttop offset\t%dpx\n"
+            "\tbgcolor\t\t%s\n\n",
             ret->focusDelay.tv_sec,
             (__syscall_slong_t) ( 1000000000.0F / ret->frameDelay.tv_nsec ),
-            ret->frameDelay.tv_nsec,
+            ret->frameDelay.tv_nsec / 1000000,
             ret->autoCenter,
             ret->topOffset,
             ret->bgColorStr);
 
+    delArgs (args);
     return ret;
 }
 
@@ -681,8 +946,8 @@ getRootWinOfScr (Screen * s)
 }
 
 Bool
-grabExitKey (   Display * d,
-                 Window   grabWin,
+grabExitKey (Display    * d,
+             Window       grabWin,
              XWCOptions * prgCfg)
 {
 
@@ -718,6 +983,41 @@ grabExitKey (   Display * d,
     XSelectInput (d, grabWin,  KeyPressMask);
     /*XSelectInput only throws badwindow which we've already checked*/
     return True;
+}
+
+void
+ungrabExitKey (Display    * d,
+               Window       grabWin,
+               XWCOptions * prgCfg)
+{
+
+    if (d == NULL)
+    {
+        printf ("Cannot ungrab exit key combination: null pointer to X "
+                "connection!\n");
+        return;
+    }
+
+    if (prgCfg == NULL)
+    {
+        printf ("Cannot ungrab exit key combination: invalid pointer to options"
+                " data structure!\n");
+        return;
+    }
+
+    if (grabWin == None)
+    {
+        printf ("Cannot ungrab exit key combination: no window specified!\n");
+        return;
+    }
+
+    XUngrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin);
+
+    if (getXErrState () == True)
+    {
+        printf ("Cannot ungrab exit key combination: XUngrabKey error!\n");
+        return;
+    }
 }
 
 Bool

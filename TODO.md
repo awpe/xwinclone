@@ -8,4 +8,4 @@
 arguments in any order
 - [ ] Add tray support
 - [ ] Add rectangle translation support
-- [ ] Repair top offset mechanism
+- [x] Repair top offset mechanism
