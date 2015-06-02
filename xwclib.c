@@ -40,7 +40,18 @@ errorHandlerBasic (Display     * display,
 
     snprintf (buf, sizeof (buf), "ERROR: X11 error\n\terror code: %d\n",
               error->error_code);
+
     logCtr (buf, LOG_LVL_NO);
+
+    XGetErrorText (display, error->error_code, buf, 1024);
+
+    int tmpLen = strlen (buf);
+    if (tmpLen < sizeof (buf) - 1 && tmpLen > 0)
+    {
+        buf[tmpLen] = '\n';
+        buf[tmpLen] = '\0';
+        logCtr (buf, LOG_LVL_NO);
+    }
 
     X_ERROR = True;
     return 1;
@@ -211,7 +222,12 @@ getActiveWindow (Display    * d,
     logCtr ("Waiting for focus to be moved to source window\n\t", LOG_LVL_NO);
     nanosleep (&prgCfg->focusDelay, NULL);
 
-    if (   ( w = getFocusedWindow (d)  ) == None
+    if ((w = prgCfg->srcWinId) == None)
+    {
+        w = getFocusedWindow (d);
+    }
+
+    if (     w == None
         || ( w = getTopWindow (d, w)   ) == None
         || ( w = getNamedWindow (d, w) ) == None )
     {
@@ -551,28 +567,6 @@ parseColor (Display    * d,
 }
 
 void
-delArg (argument * arg)
-{
-    if (arg == NULL)
-    {
-        return;
-    }
-
-    if (arg->m_Value != NULL)
-    {
-        if (arg->m_Type == INT)
-        {
-            free (arg->m_Value);
-        }
-    }
-
-    if ( arg->m_SynStrs != NULL)
-    {
-        free (arg->m_SynStrs);
-    }
-}
-
-void
 delArgs (arguments * args)
 {
     if (args == NULL)
@@ -582,12 +576,30 @@ delArgs (arguments * args)
 
     if ( args->m_Args != NULL)
     {
-        for (int i = 0; i < args->m_ArgCnt; ++ i)
+        argument * arg;
+        for (int i = 0; arg = args->m_Args[i], i < args->m_ArgCnt; ++ i)
         {
-            if (args->m_Args[i] != NULL)
+            if (arg != NULL)
             {
-                delArg (args->m_Args[i]);
-                free (args->m_Args[i]);
+                if (arg->m_Value != NULL)
+                {
+                    if (arg->m_Type == INT)
+                    {
+                        free (arg->m_Value);
+                    }
+
+                    if (arg->m_Type == ULONG)
+                    {
+                        free (arg->m_Value);
+                    }
+                }
+
+                if ( arg->m_SynStrs != NULL)
+                {
+                    free (arg->m_SynStrs);
+                }
+
+                free (arg);
             }
         }
         free (args->m_Args);
@@ -671,6 +683,10 @@ addArg (arguments  * args,
                 arg->m_Value = (int*) malloc (sizeof (int ));
                 break;
 
+            case ULONG:
+                arg->m_Value = (unsigned long*) malloc (sizeof (unsigned long));
+                break;
+
             case C_STR:
                 //arg->m_Value = (char**) malloc (sizeof (char*));
                 break;
@@ -689,27 +705,31 @@ addArg (arguments  * args,
             break;
 
         case AUTOCENTER:
-            *( (int*) arg->m_Value ) = AUTOCENTERING;
+            *( (int*) arg->m_Value )           = AUTOCENTERING;
             break;
 
         case TOPOFFSET:
-            *( (int*) arg->m_Value ) = TOP_OFFSET;
+            *( (int*) arg->m_Value )           = TOP_OFFSET;
             break;
 
         case FOCUSTIME:
-            *( (int*) arg->m_Value ) = TIME_TO_CHANGE_FOCUS_SEC;
+            *( (int*) arg->m_Value )           = TIME_TO_CHANGE_FOCUS_SEC;
             break;
 
         case BGCOLOR:
-            arg->m_Value             = (void*) DEFAULT_BG_COLOR;
+            arg->m_Value                       = (void*) DEFAULT_BG_COLOR;
             break;
 
         case FRAMERATE:
-            *( (int*) arg->m_Value ) = FRAMERATE_FPS;
+            *( (int*) arg->m_Value )           = FRAMERATE_FPS;
             break;
 
         case LOGLVL:
-            *( (int*) arg->m_Value ) = DEFAULT_LOG_LVL;
+            *( (int*) arg->m_Value )           = DEFAULT_LOG_LVL;
+            break;
+
+        case SOURCEID:
+            *( (unsigned long*) arg->m_Value ) = None;
             break;
 
         default:
@@ -754,16 +774,26 @@ printCurValues (arguments  * args)
                     printf ("%s\n", (const char*) args->m_Args[i]->m_Value );
                     break;
 
+                case ULONG:
+                    printf ("0x%lx\n", *( (unsigned long*) args->m_Args[i]->m_Value ));
+                    break;
+
                 default:
                     logCtr ("Unknown argument type detected during arguments "
                             "list traversing!\n", LOG_LVL_NO);
                     break;
             }
-
         }
     }
 
     printf ("\n\tpress %s to exit program\n\n", DEF_EXIT_KOMBINATION_STR);
+}
+
+void
+printVersion (void)
+{
+    printf ("\n%s version %s\n\n", WM_CLASS_PRG_NAME_STR,
+            XWINCLONE_VERSION_STR);
 }
 
 void
@@ -773,6 +803,8 @@ printUsage (arguments  * args)
     {
         return;
     }
+
+    printVersion ();
 
     printf ("\nUSAGE:\n\n\t%s ", PROGRAM_EXE_NAME_STR);
 
@@ -803,11 +835,12 @@ processArgs (Display    *  d,
              int           argCnt,
              const char ** argArr)
 {
-    KeySym         exitKeySym;
-    arguments    * args;
-    char         * endPtr;
-    int            nextArgOffset, i, j, k;
-    char           buf[2048];
+    KeySym          exitKeySym;
+    arguments     * args;
+    char          * endPtr;
+    int             nextArgOffset, i, j, k, fr;
+    unsigned long   srcid;
+    char            buf[2048];
 
     args = initArgs ();
 
@@ -840,6 +873,9 @@ processArgs (Display    *  d,
 
         || addArg (args, True,  INT,   LOGLVL,     "LOGLEVEL",   1, "-ll"   )
         == False
+
+        || addArg (args, True,  ULONG, SOURCEID,   "SOURCEID",   1, "-srcid")
+        == False
         )
     {
         delArgs (args);
@@ -854,7 +890,6 @@ processArgs (Display    *  d,
         Bool argFound = False;
         for (j = 0; j < OPTIONS_COUNT; ++ j)
         {
-
             for (k = 0; k < args->m_Args[j]->m_SynCnt; ++ k)
             {
                 if (strcmp (argArr[i], args->m_Args[j]->m_SynStrs[k])
@@ -910,11 +945,9 @@ processArgs (Display    *  d,
         }
         if (argFound == False)
         {
-
             snprintf (buf, sizeof (buf), "Unknown argument specified!\n\nTry:\n"
                       "\n\t%s [-help | -h | --help]\n\n", PROGRAM_EXE_NAME_STR);
             logCtr (buf, LOG_LVL_NO);
-
             delArgs (args);
             return NULL;
         }
@@ -940,16 +973,16 @@ processArgs (Display    *  d,
         return NULL;
     }
 
-    LOG_LVL = * (( int*)  args->m_Args[LOGLVL]->m_Value);
-
-    int fr  = * (( int*) args->m_Args[FRAMERATE]->m_Value);
-    int fd  = * (( int*) args->m_Args[FOCUSTIME]->m_Value);
+    /*boilerplate wa*/
+    LOG_LVL = * ((int*)           args->m_Args[LOGLVL]->m_Value);
+    fr      = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
+    srcid   = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
 
     memset (&ret->bgColor, 0, sizeof (ret->bgColor ));
 
     ret->focusDelay.tv_nsec = 0;
-    ret->focusDelay.tv_sec  = fd;
-    ret->frameDelay.tv_nsec = ( 1.0 / fr) * 1000000000L;
+    ret->focusDelay.tv_sec  = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
+    ret->frameDelay.tv_nsec = ( 1.00000001 / fr) * 1000000000L;
     ret->frameDelay.tv_sec  = 0;
     ret->autoCenter         = * ( ( int*) args->m_Args[AUTOCENTER]->m_Value );
     ret->topOffset          = * ( ( int*) args->m_Args[TOPOFFSET]->m_Value );
@@ -957,6 +990,7 @@ processArgs (Display    *  d,
     //ret->exitKey            = exitKey;
     ret->exitKeyStr         = EXIT_KEY_STR;
     ret->exitKeyMask        = EXIT_MASK;
+    ret->srcWinId           = srcid;
 
     if (( exitKeySym = XStringToKeysym (ret->exitKeyStr) ) == NoSymbol)
     {
@@ -987,7 +1021,7 @@ processArgs (Display    *  d,
 }
 
 Screen *
-getScreenByWindowAttr (          Display * d,
+getScreenByWindowAttr (Display           * d,
                        XWindowAttributes * winAttr)
 {
     if (d == NULL)
