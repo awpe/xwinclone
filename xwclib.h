@@ -23,15 +23,16 @@ extern "C"
         FOCUSTIME  = 4,
         TOPOFFSET  = 5,
         LOGLVL     = 6,
+        SOURCEID   = 7,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 7
+        OPTIONS_COUNT = 8
         /****************************************/
     } argNames;
 
     typedef enum argTypes_
     {
-        C_STR, INT
+        C_STR, INT, ULONG
     } argTypes;
 
     typedef struct argument_
@@ -59,24 +60,24 @@ extern "C"
      */
     struct _XWCOptions
     {
-        int               autoCenter; /**< whether to enable autocentering of 
-                                       * source window int the xwinclone window 
-                                       * (in case source window is smaller than 
-                                       * xwinclone's window).\n 1 - enabled, 
-                                       * 0 -  disabled, other - enabled*/
-        int               topOffset;  /**< Source window top offset (pixels)*/
-        XColor            bgColor;    /**< Background color data*/
-        const char      * bgColorStr; /**< Background color string (#rrggbb)*/
-        struct timespec   focusDelay; /**< how long to wait, before you focuse 
-                                       * on window you want to be cloned*/
-        struct timespec   frameDelay; /**< how often should xwinclone refresh 
-                                       * its content (frames per second)*/
-        //int               exitKey;    /**< Exit key number according to 
-        //                               * keysymdef.h*/
-        const char      * exitKeyStr; /**< string representing exit key 
-                                       * (keysymdef.h)*/
+        int               autoCenter;  /**< whether to enable autocentering of 
+                                        * source window int the xwinclone window 
+                                        * (in case source window is smaller than 
+                                        * xwinclone's window).\n 1 - enabled, 
+                                        * 0 -  disabled, other - enabled*/
+        int               topOffset;   /**< Source window top offset (pixels)*/
+        XColor            bgColor;     /**< Background color data*/
+        const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
+        struct timespec   focusDelay;  /**< how long to wait, before you focuse 
+                                        * on window you want to be cloned*/
+        struct timespec   frameDelay;  /**< how often should xwinclone refresh 
+                                        * its content (frames per second)*/
+        const char      * exitKeyStr;  /**< string representing exit key 
+                                        * (keysymdef.h)*/
         KeyCode           exitKeyCode; /**< result of exit key string parsing*/
         int               exitKeyMask; /**< Exit key modifier according to X.h*/
+        Window            srcWinId;    /**< Default window id to be used as 
+                                        * source*/
     } ;
 
     /** 
@@ -100,6 +101,8 @@ extern "C"
      * Field 'exitKeyCode' result of exit key string parsing
      * @var XWCOptions.exitKeyMask 
      * Field 'exitKeyMask' defines exit key modifier according to X.h
+     * @var XWCOptions.srcWinId 
+     * Field 'srcWinId' defines window id to be used instead of focused
      */
     typedef struct _XWCOptions XWCOptions;
 
@@ -264,6 +267,9 @@ extern "C"
                     Window       WID,
                     const char * permNameStr,
                     const char * classStr);
+    
+    void
+    printVersion (void);
 
     /**
      * Processes string arguments. Allocates and fills up `XWCOptions` struct. 
