@@ -792,7 +792,7 @@ printCurValues (arguments  * args)
 void
 printVersion (void)
 {
-    printf ("\n%s version %s\n\n", WM_CLASS_PRG_NAME_STR,
+    printf ("\n%s version %s\n", WM_CLASS_PRG_NAME_STR,
             XWINCLONE_VERSION_STR);
 }
 
@@ -927,6 +927,23 @@ processArgs (Display    *  d,
                             }
                             break;
 
+                        case ULONG:
+                            *( (unsigned long*) args->m_Args[j]->m_Value ) =
+                                    strtol (argArr[i + 1], &endPtr, 0);
+
+                            if (endPtr == argArr[i + 1])
+                            {
+                                snprintf (buf, sizeof (buf), "Error parsing "
+                                          "%s argument!\n\nTry:\n\n\t%s [-help "
+                                          "| -h | --help]\n\n",
+                                          args->m_Args[j]->m_NameStr,
+                                          PROGRAM_EXE_NAME_STR);
+                                logCtr (buf, LOG_LVL_NO);
+                                delArgs (args);
+                                return NULL;
+                            }
+                            break;
+
                         case C_STR:
                             args->m_Args[j]->m_Value = (void*) argArr[i + 1];
                             break;
@@ -1011,8 +1028,9 @@ processArgs (Display    *  d,
         return NULL;
     }
 
-    if (LOG_LVL >= LOG_LVL_1)
+    if (LOG_LVL > LOG_LVL_NO)
     {
+        printVersion ();
         printCurValues (args);
     }
 
