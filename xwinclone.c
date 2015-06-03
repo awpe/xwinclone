@@ -15,7 +15,7 @@ main (int     argc,
     Visual               * xVis;
     Pixmap                 pm, srcWinCompPixmap;
     XEvent                 xEvent;
-    char                   transCtrlCombPressed, exitKeyCombPressed;
+    char                   buf[1024], transCtrlCombPressed, exitKeyCombPressed;
     int                    retVal, trgWinLeftOffset, trgWinTopOffset;
 
     retVal               = EXIT_SUCCESS;
@@ -25,6 +25,8 @@ main (int     argc,
 
     /*Make a program to be portable to all locales*/
     setlocale (LC_ALL, "");
+
+    printVersion ();
 
     if (( xDpy = openDefaultDisplay () )  == NULL)
     {
@@ -42,6 +44,13 @@ main (int     argc,
     if (( cfg = processArgs (xDpy, argc, (const char **) argv) ) == NULL)
     {
         XCloseDisplay (xDpy);
+        return EXIT_FAILURE;
+    }
+
+    if (cfg->isSingleton == True && ifSingleInst () == False)
+    {
+        XCloseDisplay (xDpy);
+        free (cfg);
         return EXIT_FAILURE;
     }
 
@@ -72,8 +81,11 @@ main (int     argc,
                 return EXIT_FAILURE;
             }
 
-            printf ("\nMove focus to desired window and press %s to start"
-                    " translation\n", cfg->translationCtrlKeyStr);
+            snprintf (buf, sizeof (buf), "Move focus to desired window and"
+                      " press %s to start translation",
+                      cfg->translationCtrlKeyStr);
+
+            logCtr (buf, LOG_LVL_NO, False);
 
             while (transCtrlCombPressed == 0 && exitKeyCombPressed == 0)
             {
@@ -86,16 +98,21 @@ main (int     argc,
                             if (xEvent.xkey.keycode == cfg->exitKeyCode
                                 && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
                             {
-                                logCtr ("Exit key combination catched"
-                                        "!\n", LOG_LVL_NO);
+                                logCtr ("Exit key sequence received!",
+                                        LOG_LVL_NO, False);
                                 exitKeyCombPressed = 1;
                                 ungrabExitKey (xDpy, rootWin, cfg);
                             }
-                            else  if (xEvent.xkey.keycode == cfg->translationCtrlKeyCode
-                                      && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0)
+                            else if (xEvent.xkey.keycode
+                                     == cfg->translationCtrlKeyCode
+
+                                     && (xEvent.xkey.state
+                                     ^ cfg->translationCtrlKeyMask) == 0
+
+                                     && cfg->isDaemon == True)
                             {
-                                logCtr ("Grab window key combination catched"
-                                        "!\n", LOG_LVL_NO);
+                                logCtr ("Grab window key sequence received!",
+                                        LOG_LVL_NO, False);
                                 transCtrlCombPressed = 1;
                                 ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
                             }
@@ -184,14 +201,14 @@ main (int     argc,
             return EXIT_FAILURE;
         }
 
-        logCtr ("Creating translation window ... ", LOG_LVL_1);
+        logCtr ("Creating translation window:", LOG_LVL_NO, False);
 
         if (! XMatchVisualInfo (xDpy, XScreenNumberOfScreen (xScr),
                                 srcWinAttr.depth, TrueColor, &xVisInfo))
         {
             ungrabExitKey (xDpy, rootWin, cfg);
             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
-            logCtr ("Error: no such visual\n", LOG_LVL_NO);
+            logCtr ("\tError: no such visual", LOG_LVL_NO, False);
             XCloseDisplay (xDpy);
             free (cfg);
             return EXIT_FAILURE;
@@ -199,7 +216,7 @@ main (int     argc,
 
         xVis                           = xVisInfo.visual;
         trgWinSetAttr.colormap         = XCreateColormap (xDpy,
-                                                          XDefaultRootWindow (xDpy),
+                                                          rootWin,
                                                           xVis, AllocNone);
         trgWinSetAttr.background_pixel = cfg->bgColor.pixel;
         trgWinSetAttr.border_pixel     = 0;
@@ -212,7 +229,7 @@ main (int     argc,
 
         if (getXErrState () == True)
         {
-            logCtr ("failed to create window!\n", LOG_LVL_NO);
+            logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
             ungrabExitKey (xDpy, rootWin, cfg);
             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
             if (trgWin != None)
@@ -249,10 +266,11 @@ main (int     argc,
         }
 
         XMapWindow (xDpy, trgWin);
+        XSync (xDpy, 0);
 
         if (getXErrState () == True)
         {
-            logCtr ("failed to map window!\n", LOG_LVL_NO);
+            logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
             ungrabExitKey (xDpy, rootWin, cfg);
             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
             XUnmapWindow (xDpy, trgWin);
@@ -263,9 +281,7 @@ main (int     argc,
             return EXIT_FAILURE;
         }
 
-        logCtr ("success\n", LOG_LVL_1);
-
-        XSync (xDpy, 0);
+        logCtr ("\tsuccess", LOG_LVL_NO, True);
 
         XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
 
@@ -283,8 +299,8 @@ main (int     argc,
 
         printWindowInfo (xDpy, trgWin, &trgWinAttr);
 
-        pm = XCreatePixmap (xDpy, rootWin, rootWinAttr.width, rootWinAttr.height,
-                            srcWinAttr.depth);
+        pm = XCreatePixmap (xDpy, rootWin, rootWinAttr.width,
+                            rootWinAttr.height, srcWinAttr.depth);
         xGraphicsCtx = XCreateGC (xDpy, pm, 0, NULL);
         XSetForeground (xDpy, xGraphicsCtx, cfg->bgColor.pixel);
         XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
@@ -380,8 +396,8 @@ main (int     argc,
 
             if (trgWinAttr.map_state == IsViewable)
             {
-                XCopyArea (xDpy, pm, trgWin, xGraphicsCtx, 0, 0, trgWinAttr.width,
-                           trgWinAttr.height, 0, 0);
+                XCopyArea (xDpy, pm, trgWin, xGraphicsCtx, 0, 0,
+                           trgWinAttr.width, trgWinAttr.height, 0, 0);
 
                 if (getXErrState () == True)
                 {
@@ -390,7 +406,9 @@ main (int     argc,
                 }
             }
 
-            while (XPending (xDpy) && transCtrlCombPressed == 0 && exitKeyCombPressed == 0)
+            while (   XPending (xDpy)      != 0
+                   && transCtrlCombPressed == 0
+                   && exitKeyCombPressed   == 0)
             {
                 XNextEvent (xDpy, &xEvent);
                 switch (xEvent.type)
@@ -399,17 +417,21 @@ main (int     argc,
                         if (xEvent.xkey.keycode == cfg->exitKeyCode
                             && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
                         {
-                            logCtr ("Exit key combination catched"
-                                    "!\n", LOG_LVL_NO);
+                            logCtr ("Exit key sequence received!", LOG_LVL_NO,
+                                    False);
                             exitKeyCombPressed = 1;
                             ungrabExitKey (xDpy, rootWin, cfg);
                         }
-                        else  if (xEvent.xkey.keycode == cfg->translationCtrlKeyCode
-                                  && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0
-                                  && cfg->isDaemon == True)
+                        else if (xEvent.xkey.keycode
+                                 == cfg->translationCtrlKeyCode
+
+                                 && (xEvent.xkey.state ^
+                                 cfg->translationCtrlKeyMask) == 0
+
+                                 && cfg->isDaemon == True)
                         {
-                            logCtr ("Grab window key combination catched"
-                                    "!\n", LOG_LVL_NO);
+                            logCtr ("Grab window key sequence received!",
+                                    LOG_LVL_NO, False);
                             transCtrlCombPressed = 1;
                             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
                         }

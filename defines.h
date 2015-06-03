@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define XWINCLONE_VERSION_STR                        "0.1c"
+#define XWINCLONE_VERSION_STR                        "0.1d"
 
     /**************************************************************************/
     /*Program definitions*/
@@ -38,7 +38,8 @@ extern "C" {
 #define TOP_OFFSET                                   71 // in pixels
 #define PROGRAM_EXE_NAME_STR                         "xwinclone"
 #define BG_IMAGE_PATH                                "./"
-#define DEFAULT_LOG_LVL                              LOG_LVL_1
+#define DEFAULT_LOG_LVL                              LOG_LVL_NO
+#define LOCK_FILE_PATH                               "/tmp/xwinclone.pid"
     /**************************************************************************/
 #ifdef	__cplusplus
 }

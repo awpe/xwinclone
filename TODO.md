@@ -5,7 +5,7 @@ Version 0.1:
 - [x] Show last valid frame if source window becomes unavailable,
  instead of throwing fatal error and killing process.
 - [ ] Add configuration file support
-- [x] Make command promot arguments processing routine process any number of 
+- [x] Make command prompt arguments processing routine process any number of 
 arguments in any order
 - [ ] Add background image support
 - [x] Repair top offset mechanism
@@ -13,7 +13,7 @@ arguments in any order
 - [x] Add ability to specify id of source window from command line
 - [x] Try to acquire source window pixmap only in case it is in visible state
 - [x] Add daemon option
-- [ ] Send mouse clicks from target window to source window on same coords
+- [ ] Send mouse clicks from target window to source window on same coordinates
 - [ ] Redraw target window with fewer FPS in case of source window being 
 unmapped
 - [ ] If source window was unmapped, make program to wait longer, before 
@@ -23,7 +23,15 @@ checking source window state again
 - [ ] Clean code
 - [ ] Document program flow
 - [ ] Write dependencies list
-- [ ] Add singleton option
+- [x] Add singleton option
+- [x] Fix error with grabbing same keys from multiple applications
+- [x] Fix log text formatting
+- [ ] Add option to select exit and translation control key combinations
+- [ ] Add option to select PID file path
+- [ ] Add verbose for resource-clearing routines
+- [ ] Add option to control writing of log info into specified file
+- [ ] add more complex checking of Display pointers, not only for NULL pointer,
+ but also for invalid pointer and access errors.
 
 Version 0.2:
 - [ ] Add tray support

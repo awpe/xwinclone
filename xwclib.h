@@ -1,8 +1,3 @@
-/*
- * TODO add more complex checking of Display pointers, not only for NULL 
- * pointer, but also for invalid pointer and access errors.
- */
-
 #ifndef XWCLIB_H
 #define	XWCLIB_H
 
@@ -25,9 +20,10 @@ extern "C"
         LOGLVL        = 6,
         SOURCEID      = 7,
         DAEMON        = 8,
+        SINGLEINST    = 9,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 9
+        OPTIONS_COUNT = 10
         /****************************************/
     } argNames;
 
@@ -75,16 +71,24 @@ extern "C"
                                         * its content (frames per second)*/
         const char      * exitKeyStr;  /**< string representing exit key 
                                         * (keysymdef.h)*/
-        const char      * translationCtrlKeyStr;  /**< string representing translation control key
+        const char      * translationCtrlKeyStr;  /**< string representing
+                                                   *  translation control key
                                         * (keysymdef.h)*/
         KeyCode           exitKeyCode; /**< result of exit key string parsing*/
         int               exitKeyMask; /**< Exit key modifier according to X.h*/
-        KeyCode           translationCtrlKeyCode; /**< result of translation control key string parsing*/
-        int               translationCtrlKeyMask; /**< Translation control key modifier according to X.h*/        
+        KeyCode           translationCtrlKeyCode; /**< result of translation
+                                                   *  control key string
+                                                   *  parsing*/
+        int               translationCtrlKeyMask; /**< Translation control key
+                                                   *  modifier according to
+                                                   *  X.h*/
         Window            srcWinId;    /**< Default window id to be used as 
                                         * source*/
         int               isDaemon;    /**< If program considered to be run in 
                                         * daemon mode*/
+        int               isSingleton; /**< Allow only one instance of program
+                                        *  to be run, automatically set in
+                                        *  daemon mode*/
     } ;
 
     /** 
@@ -118,12 +122,12 @@ extern "C"
     @warning Not thread safe!
      */
     extern Bool X_ERROR;
-    
+
     /** @var int LOG_LVL
     @brief Sets logging level 0, 1, 2
      */
     extern int LOG_LVL;
-    
+
     /**
      * Returns call-time state of X_ERROR variable. X_ERROR is always set 
      * to False.
@@ -274,7 +278,10 @@ extern "C"
                     Window       WID,
                     const char * permNameStr,
                     const char * classStr);
-    
+
+    /**
+     * Prints out program version
+     */
     void
     printVersion (void);
 
@@ -335,7 +342,7 @@ extern "C"
     grabTranslationCtrlKey (Display    * d,
                             Window       WID,
                             XWCOptions * prgCfg);
-    
+
     /**
      * Deregisters exit key combination for a given window.
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -346,7 +353,7 @@ extern "C"
     ungrabExitKey (Display    * d,
                    Window       grabWin,
                    XWCOptions * prgCfg);
-    
+
     /**
      * Deregisters translation control key combination for a given window.
      * @param[in] d Pointer to Xlib's Display data struct.
@@ -379,18 +386,30 @@ extern "C"
     parseColor (Display    * d,
                 XWCOptions * prgCfg,
                 Screen     * s);
-    
+
     /**
      * Processes log messages according to current logging level.
      * @param[in] msg Pointer to null-terminated C-string with message.
      * @param[in] lvl Desired log level of message
-     */    
+     * @param[in] sequenced if this log msg is a part of sequence
+     */
     void
-    logCtr (const char * msg, 
-            int          lvl);
-    
+    logCtr (const char * msg,
+            int          lvl,
+            Bool         sequenced);
+
+    /**
+     * Returns default root window of display
+     * @param[in] d Pointer to Xlib's Display data struct.
+     */
     Window
-    getDefaultRootWindow(Display * d);
+    getDefaultRootWindow (Display * d);
+
+    /**
+     * Checks if no other instance of this program is running.
+     */
+    Bool
+    ifSingleInst (void);
 
 #ifdef	__cplusplus
 }

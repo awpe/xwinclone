@@ -10,13 +10,13 @@ Display *
 openDefaultDisplay (void)
 {
     Display * d;
-    logCtr ("connecting to X server ... ", LOG_LVL_1);
+    logCtr ("connecting to X server:", LOG_LVL_1, False);
     if (( d = XOpenDisplay (NULL) ) == NULL)
     {
-        logCtr ("fail to connect to X server\n", LOG_LVL_NO);
+        logCtr ("\tfail to connect to X server", LOG_LVL_NO, False);
         return NULL;
     }
-    logCtr ("success\n", LOG_LVL_1);
+    logCtr ("\tsuccess", LOG_LVL_1, True);
     return d;
 }
 
@@ -38,20 +38,14 @@ errorHandlerBasic (Display     * display,
 
     char buf[1024];
 
-    snprintf (buf, sizeof (buf), "ERROR: X11 error\n\terror code: %d\n",
+    snprintf (buf, sizeof (buf), "ERROR: X11 error\n\terror code: %d",
               error->error_code);
 
-    logCtr (buf, LOG_LVL_NO);
+    logCtr (buf, LOG_LVL_NO, False);
 
-    XGetErrorText (display, error->error_code, buf, 1024);
-
-    int tmpLen = strlen (buf);
-    if (tmpLen < sizeof (buf) - 1 && tmpLen > 0)
-    {
-        buf[tmpLen] = '\n';
-        buf[tmpLen] = '\0';
-        logCtr (buf, LOG_LVL_NO);
-    }
+    XGetErrorText (display, error->error_code, buf + 1, 1024);
+    buf[0] = '\t';
+    logCtr (buf, LOG_LVL_NO, False);
 
     X_ERROR = True;
     return 1;
@@ -70,8 +64,8 @@ getFocusedWindow (Display * d)
 {
     if (d == NULL)
     {
-        logCtr ("Error getting focused window: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting focused window: No display specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
@@ -82,24 +76,25 @@ getFocusedWindow (Display * d)
     Window w;
     char   buf[1024];
 
-    logCtr ("getting input focus window ... ", LOG_LVL_1);
+    logCtr ("Searching for focused window:", LOG_LVL_1, False);
     XGetInputFocus (d, &w, &revert_to);
+    XSync (d, 0);
 
     if (getXErrState () == True)
     {
-        logCtr ("fail to get focused window\n", LOG_LVL_NO);
+        logCtr ("\tfail to get focused window", LOG_LVL_NO, True);
         return None;
     }
 
     if (w == None)
     {
-        logCtr ("no focus window\n", LOG_LVL_NO);
+        logCtr ("\tno focus window", LOG_LVL_NO, True);
     }
 
     else
     {
-        snprintf (buf, sizeof (buf), "success\n\twindow xid: %lX\n", w);
-        logCtr (buf, LOG_LVL_1);
+        snprintf (buf, sizeof (buf), "\tsuccess, window XID is %lX", w);
+        logCtr (buf, LOG_LVL_1, True);
     }
 
     return w;
@@ -122,19 +117,19 @@ getTopWindow (Display * d,
 
     if (d == NULL)
     {
-        logCtr ("Error getting top window: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting top window: No display specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
     if (start == None)
     {
-        logCtr ("Error getting top window: Invalid window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting top window: Invalid window specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
-    logCtr ("getting child-of-root window ... \n", LOG_LVL_1);
+    logCtr ("getting child-of-root window:", LOG_LVL_1, False);
 
     while (parent != root)
     {
@@ -150,15 +145,15 @@ getTopWindow (Display * d,
 
         if (getXErrState () == True)
         {
-            logCtr ("failed to get top-most window\n", LOG_LVL_NO);
+            logCtr ("\tfailed to get top-most window\n", LOG_LVL_NO, True);
             return None;
         }
-        snprintf (buf, sizeof (buf), " got parent (window: %lX)\n", w);
-        logCtr (buf, LOG_LVL_1);
+        snprintf (buf, sizeof (buf), "\tgot parent, window XID is %lX", w);
+        logCtr (buf, LOG_LVL_1, True);
     }
 
-    snprintf (buf, sizeof (buf), "success (window: %lX)\n", w);
-    logCtr (buf, LOG_LVL_1);
+    snprintf (buf, sizeof (buf), "\tsuccess, window XID is %lX", w);
+    logCtr (buf, LOG_LVL_1, True);
 
     return w;
 }
@@ -172,29 +167,29 @@ getNamedWindow (Display * d,
 
     if (d == NULL)
     {
-        logCtr ("Error getting named window: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting named window: No display specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
     if (start == None)
     {
-        logCtr ("Error getting named window: Invalid window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting named window: Invalid window specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
-    logCtr ("getting named window:\n\t", LOG_LVL_1);
+    logCtr ("Getting named window:", LOG_LVL_1, False);
 
     w = XmuClientWindow (d, start);
     if (w == start)
     {
-        logCtr ("fail to get named window or window already "
-                "has WM_STATE property\n", LOG_LVL_NO);
+        logCtr ("\tfail to get named window or window already "
+                "has WM_STATE property", LOG_LVL_1, True);
     }
 
-    snprintf (buf, sizeof (buf), "returning window: %lX\n", w);
-    logCtr (buf, LOG_LVL_1);
+    snprintf (buf, sizeof (buf), "\twindow XID is %lX", w);
+    logCtr (buf, LOG_LVL_1, True);
 
     return w;
 }
@@ -207,21 +202,22 @@ getActiveWindow (Display    * d,
 
     if (d == NULL)
     {
-        logCtr ("Error getting active window: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error getting active window: No display specified!",
+                LOG_LVL_NO, False);
         return None;
     }
 
     if (prgCfg == NULL)
     {
         logCtr ("Error getting active window: No program options"
-                " data specified!\n", LOG_LVL_NO);
+                " data specified!", LOG_LVL_NO, False);
         return None;
     }
 
     if (prgCfg->isDaemon == False)
     {
-        logCtr ("Waiting for focus to be moved to source window\n\t", LOG_LVL_NO);
+        logCtr ("Waiting for focus to be moved to source window", LOG_LVL_NO,
+                False);
         nanosleep (&prgCfg->focusDelay, NULL);
     }
 
@@ -251,22 +247,22 @@ printWindowName (Display * d,
 
     if (d == NULL)
     {
-        logCtr ("Error printing window name: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window name: No display specified!",
+                LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error printing window name: Invalid window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window name: Invalid window specified!",
+                LOG_LVL_NO, False);
         return;
     }
 
     memset (&prop, 0, sizeof (prop ));
     prop.value = NULL;
 
-    logCtr ("window name:\n", LOG_LVL_1);
+    logCtr ("window name:", LOG_LVL_1, False);
 
     if (getXErrState () == False && XGetWMName (d, w, &prop) != 0)
     {
@@ -276,13 +272,13 @@ printWindowName (Display * d,
 
         if (result == Success)
         {
-            snprintf (buf, 1024, "\t%s\n", list[0]);
-            logCtr (buf, LOG_LVL_1);
+            snprintf (buf, 1024, "\t%s", list[0]);
+            logCtr (buf, LOG_LVL_1, True);
         }
         else
         {
-            logCtr ("Error printing window name: "
-                    "XmbTextPropertyToTextList err\n", LOG_LVL_1);
+            logCtr ("\tError printing window name: "
+                    "XmbTextPropertyToTextList err", LOG_LVL_NO, True);
         }
         if (list != NULL)
         {
@@ -298,7 +294,8 @@ printWindowName (Display * d,
     }
     else
     {
-        logCtr ("Error printing window name: XGetWMName err\n", LOG_LVL_NO);
+        logCtr ("\tError printing window name: XGetWMName err", LOG_LVL_NO,
+                True);
     }
 
     if (prop.value != NULL)
@@ -316,15 +313,15 @@ printWindowClass (Display * d,
 
     if (d == NULL)
     {
-        logCtr ("Error printing window class: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window class: No display specified!",
+                LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error printing window class: Invalid window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window class: Invalid window specified!",
+                LOG_LVL_NO, False);
         return;
     }
 
@@ -332,8 +329,8 @@ printWindowClass (Display * d,
 
     if (getXErrState () == True)
     {
-        logCtr ("Error printing window class info: XAllocClassHint err\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window class info: XAllocClassHint err",
+                LOG_LVL_NO, False);
         if (class != NULL)
         {
             XFree (class);
@@ -343,15 +340,15 @@ printWindowClass (Display * d,
 
     if (getXErrState () == False && XGetClassHint (d, w, class) != 0)
     {
-        snprintf (buf, sizeof (buf), "application: \n\tname: %s\n\tclass: %s\n",
+        snprintf (buf, sizeof (buf), "application:\n\tname:\t%s\n\tclass:\t%s",
                   class->res_name, class->res_class);
 
-        logCtr (buf, LOG_LVL_1);
+        logCtr (buf, LOG_LVL_1, False);
     }
     else
     {
-        logCtr ("Error printing window class info: XGetClassHint err\n",
-                LOG_LVL_NO);
+        logCtr ("Error printing window class info: XGetClassHint err",
+                LOG_LVL_NO, False);
     }
 
     if (class != NULL)
@@ -381,31 +378,32 @@ printWindowInfo (Display           * d,
     if (d == NULL)
     {
         logCtr ("Error cannot print window information: "
-                "Bad X display pointer\n", LOG_LVL_NO);
+                "Bad X display pointer", LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error cannot print window information: No window specified\n",
-                LOG_LVL_NO);
+        logCtr ("Error cannot print window information: No window specified",
+                LOG_LVL_NO, False);
         return;
     }
 
     if (xWinAttr == NULL)
     {
         logCtr ("Error cannot print window information: "
-                "No window attributes data specified\n", LOG_LVL_NO);
+                "No window attributes data specified", LOG_LVL_NO, False);
         return;
     }
 
     printWindowName (d, w);
     printWindowClass (d, w);
 
-    snprintf (buf, sizeof (buf), "Width: %d\nHeight: %d\nDepth: %d\n",
+    snprintf (buf, sizeof (buf), "Window info:\n\tWidth:\t%d\n\tHeight:\t%d\n\t"
+              "Depth:\t%d",
               xWinAttr->width, xWinAttr->height, xWinAttr->depth);
 
-    logCtr (buf, LOG_LVL_1);
+    logCtr (buf, LOG_LVL_1, False);
 }
 
 Bool
@@ -417,24 +415,26 @@ setWinTitlebar (Display    * d,
 
     if (d == NULL)
     {
-        logCtr ("Error changing window name: No display specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error changing window name: No display specified!",
+                LOG_LVL_NO, False);
         return False;
     }
 
     if (name == NULL)
     {
-        logCtr ("Error changing window name: Name string is not specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error changing window name: Name string is not specified!",
+                LOG_LVL_NO, False);
         return False;
     }
 
     if (WID == None)
     {
         logCtr ("Error changing window name: No window specified!\n",
-                LOG_LVL_NO);
+                LOG_LVL_NO, False);
         return False;
     }
+
+    logCtr ("\tSetting window titlebar text:", LOG_LVL_1, False);
 
     memset (&tp, 0, sizeof (tp ));
     tp.value = NULL;
@@ -444,8 +444,8 @@ setWinTitlebar (Display    * d,
      * so let's think it is const...*/
     if (XStringListToTextProperty ((char **) &name, 1, &tp) == False)
     {
-        logCtr ("Error setting name of window: "
-                "XStringListToTextProperty err\n", LOG_LVL_NO);
+        logCtr ("\t\tError setting name of window: "
+                "XStringListToTextProperty err", LOG_LVL_NO, True);
         return False;
     }
 
@@ -461,10 +461,12 @@ setWinTitlebar (Display    * d,
 
     if (getXErrState () == True)
     {
-        logCtr ("Error setting name of window: "
-                "XChangeProperty err\n", LOG_LVL_NO);
+        logCtr ("\t\tError setting name of window: "
+                "XChangeProperty err", LOG_LVL_NO, True);
         return False;
     }
+
+    logCtr ("\t\tSuccess", LOG_LVL_1, True);
 
     return True;
 }
@@ -479,31 +481,33 @@ setWindowClass (Display    * d,
 
     if (d == NULL)
     {
-        logCtr ("Error changing window class: No display specified!\n" ,
-                LOG_LVL_NO);
+        logCtr ("Error changing window class: No display specified!" ,
+                LOG_LVL_NO, False);
         return False;
     }
 
     if (permNameStr == NULL)
     {
         logCtr ("Error changing window class: Window permanent name string "
-                "is not specified!\n", LOG_LVL_NO);
+                "is not specified!", LOG_LVL_NO, False);
         return False;
     }
 
     if (classStr == NULL)
     {
         logCtr ("Error changing window class: Class string is not "
-                "specified!\n", LOG_LVL_NO);
+                "specified!", LOG_LVL_NO, False);
         return False;
     }
 
     if (WID == None)
     {
-        logCtr ("Error changing window class: No window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Error changing window class: No window specified!",
+                LOG_LVL_NO, False);
         return False;
     }
+
+    logCtr ("\tSetting window class strings:", LOG_LVL_1, False);
 
     if (( xClassHint = XAllocClassHint () ) == NULL || getXErrState () == True)
     {
@@ -511,6 +515,7 @@ setWindowClass (Display    * d,
         {
             XFree (xClassHint);
         }
+        logCtr ("\t\terror setting window class strings!", LOG_LVL_NO, True);
         return False;
     }
 
@@ -527,7 +532,13 @@ setWindowClass (Display    * d,
 
     XFree (xClassHint);
 
-    return getXErrState () == False;
+    if (getXErrState () == False)
+    {
+        logCtr ("\t\tSuccess", LOG_LVL_1, True);
+        return True;
+    }
+
+    return False;
 }
 
 Bool
@@ -541,9 +552,9 @@ parseColor (Display    * d,
      * Maybe this color string parsing must take place 
      * while processing options...
      */
-    snprintf (buf, sizeof (buf), "\nParsing window background color string "
-              "\"%s\" ... ", prgCfg->bgColorStr);
-    logCtr (buf, LOG_LVL_1);
+    snprintf (buf, sizeof (buf), "Parsing window background color string %s:"
+              , prgCfg->bgColorStr);
+    logCtr (buf, LOG_LVL_1, False);
 
     char * bgClrStrTmp = (char*) malloc (8 * sizeof (char ));
     bgClrStrTmp[0]     = '#';
@@ -553,14 +564,15 @@ parseColor (Display    * d,
     if ( XParseColor (d, xClrMap, bgClrStrTmp, &prgCfg->bgColor) == 0
         || XAllocColor (d, xClrMap, &prgCfg->bgColor) == 0)
     {
-        logCtr ("Error:\n\tXParseColor and/or XAllocColor error\n", LOG_LVL_NO);
+        logCtr ("\tError: XParseColor and/or XAllocColor error", LOG_LVL_NO,
+                True);
         free (bgClrStrTmp);
         return False;
     }
 
     free (bgClrStrTmp);
 
-    logCtr ("Success\n", LOG_LVL_1);
+    logCtr ("\tSuccess", LOG_LVL_1, True);
 
     /* redundant information
     printf ("Color parsing result: pixel=%ld, red=%d, green=%d, blue=%d\n",
@@ -697,8 +709,8 @@ addArg (arguments  * args,
                 break;
 
             default:
-                logCtr ("Error adding argument, bad type specified!\n",
-                        LOG_LVL_NO);
+                logCtr ("Error adding argument, bad type specified!",
+                        LOG_LVL_NO, False);
                 free (arg->m_SynStrs);
                 va_end (argStrList);
                 return False;
@@ -711,6 +723,9 @@ addArg (arguments  * args,
             break;
 
         case DAEMON:
+            break;
+
+        case SINGLEINST:
             break;
 
         case AUTOCENTER:
@@ -742,8 +757,8 @@ addArg (arguments  * args,
             break;
 
         default:
-            logCtr ("Unknown argument type detected while creating option!\n",
-                    LOG_LVL_NO);
+            logCtr ("Unknown argument type detected while creating option!",
+                    LOG_LVL_NO, False);
             va_end (argStrList);
             return False;
     }
@@ -756,7 +771,7 @@ addArg (arguments  * args,
 void
 printCurValues (arguments  * args)
 {
-    printf ("\n\n\tCurrent values (default value if no corresponding prompt "
+    printf ("\n\tCurrent values (default value if no corresponding prompt "
             "arg provided):\n\n");
 
     for (int i = 0; i < args->m_ArgCnt; ++ i)
@@ -790,13 +805,13 @@ printCurValues (arguments  * args)
 
                 default:
                     logCtr ("Unknown argument type detected during arguments "
-                            "list traversing!\n", LOG_LVL_NO);
+                            "list traversing!\n", LOG_LVL_NO, False);
                     break;
             }
         }
     }
 
-    printf ("\n\tpress %s to exit program\n\n", EXIT_STR);
+    printf ("\n\tpress %s to exit program\n", EXIT_STR);
 
     printf ("\n\tuse %s combination for translation control\n\n",
             TRANSLATION_CTRL_STR);
@@ -805,8 +820,10 @@ printCurValues (arguments  * args)
 void
 printVersion (void)
 {
-    printf ("\n%s version %s\n", WM_CLASS_PRG_NAME_STR,
-            XWINCLONE_VERSION_STR);
+    char buf[1024];
+    snprintf (buf, sizeof (buf), "%s version %s", WM_CLASS_PRG_NAME_STR,
+              XWINCLONE_VERSION_STR);
+    logCtr (buf, LOG_LVL_NO, False);
 }
 
 void
@@ -816,8 +833,6 @@ printUsage (arguments  * args)
     {
         return;
     }
-
-    printVersion ();
 
     printf ("\nUSAGE:\n\n\t%s ", PROGRAM_EXE_NAME_STR);
 
@@ -855,12 +870,15 @@ processArgs (Display    *  d,
     unsigned long   srcid;
     char            buf[2048];
 
+    logCtr ("Processing arguments and building configuration:", LOG_LVL_1,
+            False);
+
     args = initArgs ();
 
     if (args == NULL)
     {
-        logCtr ("Cannot allocate structure to process arguments!\n",
-                LOG_LVL_NO);
+        logCtr ("\tCannot allocate structure to process arguments!",
+                LOG_LVL_NO, True);
         return NULL;
     }
 
@@ -890,13 +908,17 @@ processArgs (Display    *  d,
         || addArg (args, True,  ULONG, SOURCEID,   "SOURCEID",   1, "-srcid")
         == False
 
+        || addArg (args, False, INT,   SINGLEINST, "SINGLEINST", 2, "-si",
+                   "-single")
+        == False
+
         || addArg (args, False, INT,   DAEMON,     "DAEMON",     2, "-d",
                    "-daemon")
         == False
         )
     {
         delArgs (args);
-        logCtr ("Cannot add new argument to list!\n", LOG_LVL_NO);
+        logCtr ("\tCannot add new argument to list!\n", LOG_LVL_NO, True);
         return NULL;
     }
 
@@ -915,9 +937,9 @@ processArgs (Display    *  d,
                     if (args->m_Args[j]->m_IsSet == True)
                     {
                         snprintf (buf, sizeof (buf), "Parameter %s has been "
-                                  "set several times!\n",
+                                  "set several times!",
                                   args->m_Args[j]->m_NameStr);
-                        logCtr (buf, LOG_LVL_NO);
+                        logCtr (buf, LOG_LVL_NO, True);
                         delArgs (args);
                         return NULL;
                     }
@@ -925,51 +947,52 @@ processArgs (Display    *  d,
                     args->m_Args[j]->m_IsSet = True;
                     argFound                 = True;
 
-                    if ( args->m_Args[j]->m_HasValue == True)
+                    if ( args->m_Args[j]->m_HasValue == False)
                     {
-                        switch (args->m_Args[j]->m_Type)
-                        {
-                            case INT:
-                                *( (int*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 10);
+                        break;
+                    }
+                    switch (args->m_Args[j]->m_Type)
+                    {
+                        case INT:
+                            *( (int*) args->m_Args[j]->m_Value ) =
+                                strtol (argArr[i + 1], &endPtr, 10);
 
-                                if (endPtr == argArr[i + 1])
-                                {
-                                    snprintf (buf, sizeof (buf), "Error parsing "
-                                              "%s argument!\n\nTry:\n\n\t%s [-help "
-                                              "| -h | --help]\n\n",
-                                              args->m_Args[j]->m_NameStr,
-                                              PROGRAM_EXE_NAME_STR);
-                                    logCtr (buf, LOG_LVL_NO);
-                                    delArgs (args);
-                                    return NULL;
-                                }
-                                break;
+                            if (endPtr == argArr[i + 1])
+                            {
+                                snprintf (buf, sizeof (buf), "\tError parsing "
+                                          "%s argument!\n\n\t\tTry:\n\n\t%s "
+                                          "[-help | -h | --help]\n",
+                                          args->m_Args[j]->m_NameStr,
+                                          PROGRAM_EXE_NAME_STR);
+                                logCtr (buf, LOG_LVL_NO, True);
+                                delArgs (args);
+                                return NULL;
+                            }
+                            break;
 
-                            case ULONG:
-                                *( (unsigned long*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 0);
+                        case ULONG:
+                            *( (unsigned long*) args->m_Args[j]->m_Value ) =
+                                strtol (argArr[i + 1], &endPtr, 0);
 
-                                if (endPtr == argArr[i + 1])
-                                {
-                                    snprintf (buf, sizeof (buf), "Error parsing "
-                                              "%s argument!\n\nTry:\n\n\t%s [-help "
-                                              "| -h | --help]\n\n",
-                                              args->m_Args[j]->m_NameStr,
-                                              PROGRAM_EXE_NAME_STR);
-                                    logCtr (buf, LOG_LVL_NO);
-                                    delArgs (args);
-                                    return NULL;
-                                }
-                                break;
+                            if (endPtr == argArr[i + 1])
+                            {
+                                snprintf (buf, sizeof (buf), "\tError parsing "
+                                          "%s argument!\n\nTry:\n\n\t%s [-help "
+                                          "| -h | --help]\n",
+                                          args->m_Args[j]->m_NameStr,
+                                          PROGRAM_EXE_NAME_STR);
+                                logCtr (buf, LOG_LVL_NO, True);
+                                delArgs (args);
+                                return NULL;
+                            }
+                            break;
 
-                            case C_STR:
-                                args->m_Args[j]->m_Value = (void*) argArr[i + 1];
-                                break;
+                        case C_STR:
+                            args->m_Args[j]->m_Value = (void*) argArr[i + 1];
+                            break;
 
-                            default:
-                                break;
-                        }
+                        default:
+                            break;
                     }
                     break;
                 }
@@ -981,9 +1004,9 @@ processArgs (Display    *  d,
         }
         if (argFound == False)
         {
-            snprintf (buf, sizeof (buf), "Unknown argument specified!\n\nTry:\n"
-                      "\n\t%s [-help | -h | --help]\n\n", PROGRAM_EXE_NAME_STR);
-            logCtr (buf, LOG_LVL_NO);
+            snprintf (buf, sizeof (buf), "\tUnknown argument specified!\n\nTry:"
+                      "\n\n\t%s [-help | -h | --help]\n", PROGRAM_EXE_NAME_STR);
+            logCtr (buf, LOG_LVL_NO, True);
             delArgs (args);
             return NULL;
         }
@@ -1004,7 +1027,8 @@ processArgs (Display    *  d,
 
     if (ret == NULL)
     {
-        logCtr ("Error allocating memory for options struct!\n", LOG_LVL_NO);
+        logCtr ("\tError allocating memory for options struct!", LOG_LVL_NO,
+                True);
         delArgs (args);
         return NULL;
     }
@@ -1029,41 +1053,45 @@ processArgs (Display    *  d,
     ret->translationCtrlKeyMask = TRANSLATION_CTRL_MASK;
     ret->srcWinId               = srcid;
     ret->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
+    ret->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
+
+    ret->isSingleton            = ret->isSingleton || ret->isDaemon;
 
     if (( exitKeySym = XStringToKeysym (ret->exitKeyStr) ) == NoSymbol)
     {
-        snprintf (buf, sizeof (buf), "Error parsing exit key string (%s)\n",
+        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
                   ret->exitKeyStr);
-        logCtr (buf, LOG_LVL_NO);
+        logCtr (buf, LOG_LVL_NO, True);
         free (ret);
         delArgs (args);
         return NULL;
     }
 
-    if (! ( ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym) ))
+    if ((ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym)) == 0)
     {
-        snprintf (buf, sizeof (buf), "Unknown keycode %d\n", ret->exitKeyCode);
-        logCtr (buf, LOG_LVL_NO);
+        snprintf (buf, sizeof (buf), "\tUnknown keycode %d", ret->exitKeyCode);
+        logCtr (buf, LOG_LVL_NO, True);
         free (ret);
         delArgs (args);
         return NULL;
     }
 
-    if (( exitKeySym = XStringToKeysym (ret->translationCtrlKeyStr) ) == NoSymbol)
+    if (( exitKeySym = XStringToKeysym (ret->translationCtrlKeyStr) )
+        == NoSymbol)
     {
-        snprintf (buf, sizeof (buf), "Error parsing exit key string (%s)\n",
+        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
                   ret->translationCtrlKeyStr);
-        logCtr (buf, LOG_LVL_NO);
+        logCtr (buf, LOG_LVL_NO, True);
         free (ret);
         delArgs (args);
         return NULL;
     }
 
-    if (! ( ret->translationCtrlKeyCode = XKeysymToKeycode (d, exitKeySym) ))
+    if (( ret->translationCtrlKeyCode = XKeysymToKeycode (d, exitKeySym) ) == 0)
     {
-        snprintf (buf, sizeof (buf), "Unknown keycode %d\n",
+        snprintf (buf, sizeof (buf), "\tUnknown keycode %d",
                   ret->translationCtrlKeyCode);
-        logCtr (buf, LOG_LVL_NO);
+        logCtr (buf, LOG_LVL_NO, True);
         free (ret);
         delArgs (args);
         return NULL;
@@ -1071,9 +1099,10 @@ processArgs (Display    *  d,
 
     if (LOG_LVL > LOG_LVL_NO)
     {
-        printVersion ();
         printCurValues (args);
     }
+
+    logCtr ("\tconfiguration successfully completed", LOG_LVL_1, True);
 
     delArgs (args);
     return ret;
@@ -1083,26 +1112,29 @@ Screen *
 getScreenByWindowAttr (Display           * d,
                        XWindowAttributes * winAttr)
 {
+    logCtr ("Getting screen using window attributes:", LOG_LVL_1, False);
     if (d == NULL)
     {
-        logCtr ("Error getting screen by window attrinutes: "
-                "No display spicified\n", LOG_LVL_NO);
+        logCtr ("\tError getting screen by window attrinutes: "
+                "No display spicified", LOG_LVL_NO, True);
         return NULL;
     }
 
     if (winAttr == NULL)
     {
-        logCtr ("Error getting screen by window attrinutes: "
-                "No window attributes struct spicified\n", LOG_LVL_NO);
+        logCtr ("\tError getting screen by window attrinutes: "
+                "No window attributes struct spicified", LOG_LVL_NO, True);
         return NULL;
     }
 
     if (winAttr->screen == NULL)
     {
-        logCtr ("Error getting screen by window attrinutes: No valid screen "
-                "pointer found in  window attributes struct\n", LOG_LVL_NO);
+        logCtr ("\tError getting screen by window attrinutes: No valid screen "
+                "pointer found in  window attributes struct", LOG_LVL_NO, True);
         return NULL;
     }
+
+    logCtr ("\tsuccess", LOG_LVL_1, True);
 
     return winAttr->screen;
 }
@@ -1110,18 +1142,20 @@ getScreenByWindowAttr (Display           * d,
 Window
 getRootWinOfScr (Screen * s)
 {
+    logCtr ("Getting root window of screen:", LOG_LVL_1, False);
     if (s == NULL)
     {
-        logCtr ("Error getting root window of screen: "
-                "Invalid pointer to Screen data struct!\n", LOG_LVL_NO);
+        logCtr ("\tError getting root window of screen: "
+                "Invalid pointer to Screen data struct!", LOG_LVL_NO, True);
         return None;
     }
 
     if (s->root == None)
     {
-        logCtr ("Error getting root window of screen: "
-                "No root wondow specified for given screen!\n", LOG_LVL_NO);
+        logCtr ("\tError getting root window of screen: "
+                "No root wondow specified for given screen!", LOG_LVL_NO, True);
     }
+    logCtr ("\tsuccess", LOG_LVL_1, True);
     return s->root;
 }
 
@@ -1130,36 +1164,41 @@ grabExitKey (Display    * d,
              Window       grabWin,
              XWCOptions * prgCfg)
 {
+    logCtr ("Trying to grab exit key combination:", LOG_LVL_1, False);
     if (d == NULL)
     {
-        logCtr ("Cannot grab exit key combination: null pointer to X "
-                "connection!\n", LOG_LVL_NO);
+        logCtr ("\tCannot grab exit key combination: null pointer to X "
+                "connection!", LOG_LVL_NO, True);
         return False;
     }
 
     if (prgCfg == NULL)
     {
-        logCtr ("Cannot grab exit key combination: invalid pointer to options "
-                "data structure!\n", LOG_LVL_NO);
+        logCtr ("\tCannot grab exit key combination: invalid pointer to options"
+                " data structure!", LOG_LVL_NO, True);
         return False;
     }
 
     if (grabWin == None)
     {
-        logCtr ("Cannot grab exit key combination: no window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("\tCannot grab exit key combination: no window specified!",
+                LOG_LVL_NO, False);
         return False;
     }
 
-    XGrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin, False,
+    XGrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin, True,
               GrabModeAsync, GrabModeAsync);
+    XSync (d, 0);
 
     if (getXErrState () == True)
     {
-        logCtr ("Cannot grab exit key combination: XGrabKey error!\n",
-                LOG_LVL_NO);
+        logCtr ("\tCannot grab exit key combination: XGrabKey error! (Another "
+                "program may had already grabbed such a combination)",
+                LOG_LVL_NO, True);
         return False;
     }
+
+    logCtr ("\tsuccess", LOG_LVL_1, True);
 
     XSelectInput (d, grabWin,  KeyPressMask);
     /*XSelectInput only throws badwindow which we've already checked*/
@@ -1171,36 +1210,49 @@ grabTranslationCtrlKey (Display    * d,
                         Window       grabWin,
                         XWCOptions * prgCfg)
 {
+
+    logCtr ("Trying to grab translation control key combination:", LOG_LVL_1,
+            False);
+
     if (d == NULL)
     {
-        logCtr ("Cannot grab translation control key combination: null pointer to X "
-                "connection!\n", LOG_LVL_NO);
+        logCtr ("\tCannot grab translation control key combination: null "
+                "pointer to X "
+                "connection!", LOG_LVL_NO, True);
         return False;
     }
 
     if (prgCfg == NULL)
     {
-        logCtr ("Cannot grab translation control key combination: invalid pointer to options "
-                "data structure!\n", LOG_LVL_NO);
+        logCtr ("\tCannot grab translation control key combination: invalid"
+                " pointer to options "
+                "data structure!", LOG_LVL_NO, True);
         return False;
     }
 
     if (grabWin == None)
     {
-        logCtr ("Cannot grab translation control key combination: no window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("\tCannot grab translation control key combination: no window "
+                "specified!",
+                LOG_LVL_NO, True);
         return False;
     }
 
-    XGrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask, grabWin, False,
+    XGrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask,
+              grabWin, False,
               GrabModeAsync, GrabModeAsync);
+    XSync (d, 0);
 
     if (getXErrState () == True)
     {
-        logCtr ("Cannot grab translation control key combination: XGrabKey error!\n",
-                LOG_LVL_NO);
+        logCtr ("\tCannot grab translation control key combination: XGrabKey"
+                " error! (Another program may had already grabbed such a"
+                " combination)",
+                LOG_LVL_NO, True);
         return False;
     }
+
+    logCtr ("\tsuccess", LOG_LVL_1, True);
 
     XSelectInput (d, grabWin,  KeyPressMask);
     /*XSelectInput only throws badwindow which we've already checked*/
@@ -1215,21 +1267,21 @@ ungrabExitKey (Display    * d,
     if (d == NULL)
     {
         logCtr ("Cannot ungrab exit key combination: null pointer to X "
-                "connection!\n", LOG_LVL_NO);
+                "connection!", LOG_LVL_NO, False);
         return;
     }
 
     if (prgCfg == NULL)
     {
         logCtr ("Cannot ungrab exit key combination: invalid pointer to options"
-                " data structure!\n", LOG_LVL_NO);
+                " data structure!", LOG_LVL_NO, False);
         return;
     }
 
     if (grabWin == None)
     {
-        logCtr ("Cannot ungrab exit key combination: no window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Cannot ungrab exit key combination: no window specified!",
+                LOG_LVL_NO, False);
         return;
     }
 
@@ -1237,8 +1289,8 @@ ungrabExitKey (Display    * d,
 
     if (getXErrState () == True)
     {
-        logCtr ("Cannot ungrab exit key combination: XUngrabKey error!\n",
-                LOG_LVL_NO);
+        logCtr ("Cannot ungrab exit key combination: XUngrabKey error!",
+                LOG_LVL_NO, False);
         return;
     }
 }
@@ -1250,31 +1302,32 @@ ungrabTranslationCtrlKey (Display    * d,
 {
     if (d == NULL)
     {
-        logCtr ("Cannot ungrab translation control key combination: null pointer to X "
-                "connection!\n", LOG_LVL_NO);
+        logCtr ("Cannot ungrab translation control key combination: null"
+                " pointer to X connection!", LOG_LVL_NO, False);
         return;
     }
 
     if (prgCfg == NULL)
     {
-        logCtr ("Cannot ungrab translation control key combination: invalid pointer to options"
-                " data structure!\n", LOG_LVL_NO);
+        logCtr ("Cannot ungrab translation control key combination: invalid"
+                " pointer to options data structure!", LOG_LVL_NO, False);
         return;
     }
 
     if (grabWin == None)
     {
-        logCtr ("Cannot ungrab translation control key combination: no window specified!\n",
-                LOG_LVL_NO);
+        logCtr ("Cannot ungrab translation control key combination: no window"
+                " specified!", LOG_LVL_NO, False);
         return;
     }
 
-    XUngrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask, grabWin);
+    XUngrabKey (d, prgCfg->translationCtrlKeyCode,
+                prgCfg->translationCtrlKeyMask, grabWin);
 
     if (getXErrState () == True)
     {
-        logCtr ("Cannot ungrab translation control key combination: XUngrabKey error!\n",
-                LOG_LVL_NO);
+        logCtr ("Cannot ungrab translation control key combination: XUngrabKey"
+                " error!", LOG_LVL_NO, False);
         return;
     }
 }
@@ -1285,39 +1338,40 @@ chkCompExt (Display * d)
     int  compositeErrorBase, compositeEventBase, xCompExtVerMin, xCompExtVerMaj;
     char buf[1024];
 
-    XSetErrorHandler (errorHandlerBasic);
+    logCtr ("Checking composite extension:", LOG_LVL_1, False);
 
     if (XCompositeQueryExtension (d, &compositeEventBase,
                                   &compositeErrorBase) == False)
     {
-        logCtr ("No composite extension found, aborting...\n", LOG_LVL_NO);
+        logCtr ("\tNo composite extension found, aborting!", LOG_LVL_NO, True);
         return False;
     }
     else if (! XCompositeQueryVersion (d, &xCompExtVerMaj, &xCompExtVerMin))
     {
-        logCtr ("X Server doesn't support such a version of the X Composite "
-                "Extension which is compatible with the client library\n",
-                LOG_LVL_NO);
+        logCtr ("\tX Server doesn't support such a version of the X Composite "
+                "Extension which is compatible with the client library",
+                LOG_LVL_NO, True);
         return False;
     }
     else if ( ( xCompExtVerMaj < 1 ) &&  ( xCompExtVerMin < 2 ) )
     {
-        logCtr ("Unsupported version of X composite extension (<0.2)\n",
-                LOG_LVL_NO);
+        logCtr ("\tUnsupported version of X composite extension (<0.2)",
+                LOG_LVL_NO, True);
         return False;
     }
     else
     {
-        snprintf (buf, sizeof (buf), "Composite extension ready, version %d.%d"
-                  "\n", xCompExtVerMaj, xCompExtVerMin);
-        logCtr (buf, LOG_LVL_1);
+        snprintf (buf, sizeof (buf), "\tversion %d.%d",
+                  xCompExtVerMaj, xCompExtVerMin);
+        logCtr (buf, LOG_LVL_1, True);
     }
     return True;
 }
 
 void
 logCtr (const char * msg,
-        int          lvl)
+        int          lvl,
+        Bool         sequenced)
 {
     if (msg == NULL)
     {
@@ -1333,7 +1387,14 @@ logCtr (const char * msg,
 
     if (LOG_LVL >= lvl)
     {
-        printf ("%s", msg);
+        if (sequenced == False)
+        {
+            printf ("\n%s\n", msg);
+        }
+        else
+        {
+            printf ("%s\n", msg);
+        }
     }
 }
 
@@ -1346,8 +1407,28 @@ getDefaultRootWindow (Display * d)
 
     if (w == None)
     {
-        logCtr ("Cannot get default root window of display\n", LOG_LVL_NO);
+        logCtr ("Cannot get default root window of display!",
+                LOG_LVL_NO, False);
     }
 
     return w;
+}
+
+Bool
+ifSingleInst (void)
+{
+    int pid_file = open (LOCK_FILE_PATH, O_CREAT | O_RDWR, 0666);
+    int rc = flock (pid_file, LOCK_EX | LOCK_NB);
+
+    if (rc != 0 && EWOULDBLOCK == errno)
+    {
+        char buf[1024];
+        snprintf (buf, 1024, "File %s seems to be already created and locked,\n"
+                  "assuming other instance of this program is running",
+                  LOCK_FILE_PATH);
+        logCtr (buf, LOG_LVL_NO, False);
+        return False;
+    }
+
+    return True;
 }
