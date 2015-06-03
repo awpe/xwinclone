@@ -4,7 +4,7 @@ Version 0.1:
 - [x] Add exit hotkey
 - [x] Show last valid frame if source window becomes unavailable,
  instead of throwing fatal error and killing process.
-- [ ] Add configuration file support
+- [x] Add configuration file support
 - [x] Make command promt arguments processing routine process any number of 
 arguments in any order
 - [ ] Add background image support
