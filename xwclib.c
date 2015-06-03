@@ -577,9 +577,9 @@ delArgs (arguments * args)
     if ( args->m_Args != NULL)
     {
         argument * arg;
-        for (int i = 0; arg = args->m_Args[i], i < args->m_ArgCnt; ++ i)
+        for (int i = 0; i < args->m_ArgCnt; ++ i)
         {
-            if (arg != NULL)
+            if ((arg = args->m_Args[i]) != NULL)
             {
                 if (arg->m_Value != NULL)
                 {
