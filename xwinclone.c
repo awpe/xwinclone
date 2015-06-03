@@ -313,40 +313,6 @@ main (int     argc,
                     break;
             }
         }
-
-        //
-        //        {
-        //            Atom WM_STATE;
-        //            Atom type = None;
-        //            int format;
-        //            unsigned long nitems, after;
-        //            unsigned char *data;
-        //
-        //            WM_STATE = XInternAtom (xDpy, "WM_STATE", True);
-        //
-        //            if (! WM_STATE)
-        //            {
-        //                printf ("cannot create atom WM_STATE\n");
-        //            }
-        //
-        //            XGetWindowProperty (xDpy, srcWin, WM_STATE, 0, 0, False, AnyPropertyType,
-        //                                &type, &format, &nitems, &after, &data);
-        //
-        //            if (type)
-        //            {
-        //                printf ("got type\n");
-        //            }
-        //            else
-        //            {
-        //                printf ("no type\n");
-        //            }
-        //            printf ("Number of items in property is %lu\n", nitems);
-        //            printf ("bytes after return is %lu\n", after);
-        //            if (data)
-        //            {
-        //                printf ("string: %s\n", data);
-        //            }
-        //        }
     }
 
     ungrabExitKey (xDpy, rootWin, cfg);
