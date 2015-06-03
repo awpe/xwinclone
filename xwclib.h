@@ -16,17 +16,18 @@ extern "C"
 
     typedef enum argNames_
     {
-        HELP       = 0,
-        FRAMERATE  = 1,
-        BGCOLOR    = 2,
-        AUTOCENTER = 3,
-        FOCUSTIME  = 4,
-        TOPOFFSET  = 5,
-        LOGLVL     = 6,
-        SOURCEID   = 7,
+        HELP          = 0,
+        FRAMERATE     = 1,
+        BGCOLOR       = 2,
+        AUTOCENTER    = 3,
+        FOCUSTIME     = 4,
+        TOPOFFSET     = 5,
+        LOGLVL        = 6,
+        SOURCEID      = 7,
+        DAEMON        = 8,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 8
+        OPTIONS_COUNT = 9
         /****************************************/
     } argNames;
 
@@ -74,10 +75,16 @@ extern "C"
                                         * its content (frames per second)*/
         const char      * exitKeyStr;  /**< string representing exit key 
                                         * (keysymdef.h)*/
+        const char      * translationCtrlKeyStr;  /**< string representing translation control key
+                                        * (keysymdef.h)*/
         KeyCode           exitKeyCode; /**< result of exit key string parsing*/
         int               exitKeyMask; /**< Exit key modifier according to X.h*/
+        KeyCode           translationCtrlKeyCode; /**< result of translation control key string parsing*/
+        int               translationCtrlKeyMask; /**< Translation control key modifier according to X.h*/        
         Window            srcWinId;    /**< Default window id to be used as 
                                         * source*/
+        int               isDaemon;    /**< If program considered to be run in 
+                                        * daemon mode*/
     } ;
 
     /** 
@@ -307,7 +314,7 @@ extern "C"
     /**
      * Registers exit key combination for a given window.
      * @param[in] d Pointer to Xlib's Display data struct.
-     * @param[in] WID Window xid of window where exit event will be grabed
+     * @param[in] WID Window xid of window where exit event will be grabbed
      * @param[in] prgCfg Data struct with program's configuration
      * @return Xlib's True on success, False otherwise
      */
@@ -315,16 +322,42 @@ extern "C"
     grabExitKey (Display    * d,
                  Window       WID,
                  XWCOptions * prgCfg);
+
+    /**
+     * Registers translation control key combination for a given window.
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] WID Window xid of window where translation control event will 
+     * be grabbed
+     * @param[in] prgCfg Data struct with program's configuration
+     * @return Xlib's True on success, False otherwise
+     */
+    Bool
+    grabTranslationCtrlKey (Display    * d,
+                            Window       WID,
+                            XWCOptions * prgCfg);
+    
     /**
      * Deregisters exit key combination for a given window.
      * @param[in] d Pointer to Xlib's Display data struct.
-     * @param[in] WID Window xid of window where exit event will be grabed
+     * @param[in] WID Window xid of window where exit event was grabbed
      * @param[in] prgCfg Data struct with program's configuration
      */
     void
     ungrabExitKey (Display    * d,
                    Window       grabWin,
                    XWCOptions * prgCfg);
+    
+    /**
+     * Deregisters translation control key combination for a given window.
+     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] WID Window xid of window where translation control event 
+     * was grabbed
+     * @param[in] prgCfg Data struct with program's configuration
+     */
+    void
+    ungrabTranslationCtrlKey (Display    * d,
+                              Window       grabWin,
+                              XWCOptions * prgCfg);
 
     /**
      * Checks if x server we have connection to has composite extension of 
@@ -355,6 +388,9 @@ extern "C"
     void
     logCtr (const char * msg, 
             int          lvl);
+    
+    Window
+    getDefaultRootWindow(Display * d);
 
 #ifdef	__cplusplus
 }

@@ -219,8 +219,11 @@ getActiveWindow (Display    * d,
         return None;
     }
 
-    logCtr ("Waiting for focus to be moved to source window\n\t", LOG_LVL_NO);
-    nanosleep (&prgCfg->focusDelay, NULL);
+    if (prgCfg->isDaemon == False)
+    {
+        logCtr ("Waiting for focus to be moved to source window\n\t", LOG_LVL_NO);
+        nanosleep (&prgCfg->focusDelay, NULL);
+    }
 
     if ((w = prgCfg->srcWinId) == None)
     {
@@ -707,6 +710,9 @@ addArg (arguments  * args,
         case HELP:
             break;
 
+        case DAEMON:
+            break;
+
         case AUTOCENTER:
             *( (int*) arg->m_Value )           = AUTOCENTERING;
             break;
@@ -778,7 +784,8 @@ printCurValues (arguments  * args)
                     break;
 
                 case ULONG:
-                    printf ("0x%lx\n", *( (unsigned long*) args->m_Args[i]->m_Value ));
+                    printf ("0x%lx\n",
+                            *( (unsigned long*) args->m_Args[i]->m_Value ));
                     break;
 
                 default:
@@ -789,7 +796,10 @@ printCurValues (arguments  * args)
         }
     }
 
-    printf ("\n\tpress %s to exit program\n\n", DEF_EXIT_KOMBINATION_STR);
+    printf ("\n\tpress %s to exit program\n\n", EXIT_STR);
+
+    printf ("\n\tuse %s combination for translation control\n\n",
+            TRANSLATION_CTRL_STR);
 }
 
 void
@@ -879,6 +889,10 @@ processArgs (Display    *  d,
 
         || addArg (args, True,  ULONG, SOURCEID,   "SOURCEID",   1, "-srcid")
         == False
+
+        || addArg (args, False, INT,   DAEMON,     "DAEMON",     2, "-d",
+                   "-daemon")
+        == False
         )
     {
         delArgs (args);
@@ -911,50 +925,52 @@ processArgs (Display    *  d,
                     args->m_Args[j]->m_IsSet = True;
                     argFound                 = True;
 
-                    switch (args->m_Args[j]->m_Type)
+                    if ( args->m_Args[j]->m_HasValue == True)
                     {
-                        case INT:
-                            *( (int*) args->m_Args[j]->m_Value ) =
+                        switch (args->m_Args[j]->m_Type)
+                        {
+                            case INT:
+                                *( (int*) args->m_Args[j]->m_Value ) =
                                     strtol (argArr[i + 1], &endPtr, 10);
 
-                            if (endPtr == argArr[i + 1])
-                            {
-                                snprintf (buf, sizeof (buf), "Error parsing "
-                                          "%s argument!\n\nTry:\n\n\t%s [-help "
-                                          "| -h | --help]\n\n",
-                                          args->m_Args[j]->m_NameStr,
-                                          PROGRAM_EXE_NAME_STR);
-                                logCtr (buf, LOG_LVL_NO);
-                                delArgs (args);
-                                return NULL;
-                            }
-                            break;
+                                if (endPtr == argArr[i + 1])
+                                {
+                                    snprintf (buf, sizeof (buf), "Error parsing "
+                                              "%s argument!\n\nTry:\n\n\t%s [-help "
+                                              "| -h | --help]\n\n",
+                                              args->m_Args[j]->m_NameStr,
+                                              PROGRAM_EXE_NAME_STR);
+                                    logCtr (buf, LOG_LVL_NO);
+                                    delArgs (args);
+                                    return NULL;
+                                }
+                                break;
 
-                        case ULONG:
-                            *( (unsigned long*) args->m_Args[j]->m_Value ) =
+                            case ULONG:
+                                *( (unsigned long*) args->m_Args[j]->m_Value ) =
                                     strtol (argArr[i + 1], &endPtr, 0);
 
-                            if (endPtr == argArr[i + 1])
-                            {
-                                snprintf (buf, sizeof (buf), "Error parsing "
-                                          "%s argument!\n\nTry:\n\n\t%s [-help "
-                                          "| -h | --help]\n\n",
-                                          args->m_Args[j]->m_NameStr,
-                                          PROGRAM_EXE_NAME_STR);
-                                logCtr (buf, LOG_LVL_NO);
-                                delArgs (args);
-                                return NULL;
-                            }
-                            break;
+                                if (endPtr == argArr[i + 1])
+                                {
+                                    snprintf (buf, sizeof (buf), "Error parsing "
+                                              "%s argument!\n\nTry:\n\n\t%s [-help "
+                                              "| -h | --help]\n\n",
+                                              args->m_Args[j]->m_NameStr,
+                                              PROGRAM_EXE_NAME_STR);
+                                    logCtr (buf, LOG_LVL_NO);
+                                    delArgs (args);
+                                    return NULL;
+                                }
+                                break;
 
-                        case C_STR:
-                            args->m_Args[j]->m_Value = (void*) argArr[i + 1];
-                            break;
+                            case C_STR:
+                                args->m_Args[j]->m_Value = (void*) argArr[i + 1];
+                                break;
 
-                        default:
-                            break;
+                            default:
+                                break;
+                        }
                     }
-
                     break;
                 }
             }
@@ -1000,17 +1016,19 @@ processArgs (Display    *  d,
 
     memset (&ret->bgColor, 0, sizeof (ret->bgColor ));
 
-    ret->focusDelay.tv_nsec = 0;
-    ret->focusDelay.tv_sec  = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
-    ret->frameDelay.tv_nsec = ( 1.00000001 / fr) * 1000000000L;
-    ret->frameDelay.tv_sec  = 0;
-    ret->autoCenter         = * ( ( int*) args->m_Args[AUTOCENTER]->m_Value );
-    ret->topOffset          = * ( ( int*) args->m_Args[TOPOFFSET]->m_Value );
-    ret->bgColorStr         = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    //ret->exitKey            = exitKey;
-    ret->exitKeyStr         = EXIT_KEY_STR;
-    ret->exitKeyMask        = EXIT_MASK;
-    ret->srcWinId           = srcid;
+    ret->focusDelay.tv_nsec     = 0;
+    ret->focusDelay.tv_sec      = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
+    ret->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
+    ret->frameDelay.tv_sec      = 0;
+    ret->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
+    ret->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
+    ret->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
+    ret->exitKeyStr             = EXIT_KEY;
+    ret->exitKeyMask            = EXIT_MASK;
+    ret->translationCtrlKeyStr  = TRANSLATION_CTRL_KEY;
+    ret->translationCtrlKeyMask = TRANSLATION_CTRL_MASK;
+    ret->srcWinId               = srcid;
+    ret->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
 
     if (( exitKeySym = XStringToKeysym (ret->exitKeyStr) ) == NoSymbol)
     {
@@ -1025,6 +1043,26 @@ processArgs (Display    *  d,
     if (! ( ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym) ))
     {
         snprintf (buf, sizeof (buf), "Unknown keycode %d\n", ret->exitKeyCode);
+        logCtr (buf, LOG_LVL_NO);
+        free (ret);
+        delArgs (args);
+        return NULL;
+    }
+
+    if (( exitKeySym = XStringToKeysym (ret->translationCtrlKeyStr) ) == NoSymbol)
+    {
+        snprintf (buf, sizeof (buf), "Error parsing exit key string (%s)\n",
+                  ret->translationCtrlKeyStr);
+        logCtr (buf, LOG_LVL_NO);
+        free (ret);
+        delArgs (args);
+        return NULL;
+    }
+
+    if (! ( ret->translationCtrlKeyCode = XKeysymToKeycode (d, exitKeySym) ))
+    {
+        snprintf (buf, sizeof (buf), "Unknown keycode %d\n",
+                  ret->translationCtrlKeyCode);
         logCtr (buf, LOG_LVL_NO);
         free (ret);
         delArgs (args);
@@ -1128,6 +1166,47 @@ grabExitKey (Display    * d,
     return True;
 }
 
+Bool
+grabTranslationCtrlKey (Display    * d,
+                        Window       grabWin,
+                        XWCOptions * prgCfg)
+{
+    if (d == NULL)
+    {
+        logCtr ("Cannot grab translation control key combination: null pointer to X "
+                "connection!\n", LOG_LVL_NO);
+        return False;
+    }
+
+    if (prgCfg == NULL)
+    {
+        logCtr ("Cannot grab translation control key combination: invalid pointer to options "
+                "data structure!\n", LOG_LVL_NO);
+        return False;
+    }
+
+    if (grabWin == None)
+    {
+        logCtr ("Cannot grab translation control key combination: no window specified!\n",
+                LOG_LVL_NO);
+        return False;
+    }
+
+    XGrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask, grabWin, False,
+              GrabModeAsync, GrabModeAsync);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot grab translation control key combination: XGrabKey error!\n",
+                LOG_LVL_NO);
+        return False;
+    }
+
+    XSelectInput (d, grabWin,  KeyPressMask);
+    /*XSelectInput only throws badwindow which we've already checked*/
+    return True;
+}
+
 void
 ungrabExitKey (Display    * d,
                Window       grabWin,
@@ -1159,6 +1238,42 @@ ungrabExitKey (Display    * d,
     if (getXErrState () == True)
     {
         logCtr ("Cannot ungrab exit key combination: XUngrabKey error!\n",
+                LOG_LVL_NO);
+        return;
+    }
+}
+
+void
+ungrabTranslationCtrlKey (Display    * d,
+                          Window       grabWin,
+                          XWCOptions * prgCfg)
+{
+    if (d == NULL)
+    {
+        logCtr ("Cannot ungrab translation control key combination: null pointer to X "
+                "connection!\n", LOG_LVL_NO);
+        return;
+    }
+
+    if (prgCfg == NULL)
+    {
+        logCtr ("Cannot ungrab translation control key combination: invalid pointer to options"
+                " data structure!\n", LOG_LVL_NO);
+        return;
+    }
+
+    if (grabWin == None)
+    {
+        logCtr ("Cannot ungrab translation control key combination: no window specified!\n",
+                LOG_LVL_NO);
+        return;
+    }
+
+    XUngrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask, grabWin);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot ungrab translation control key combination: XUngrabKey error!\n",
                 LOG_LVL_NO);
         return;
     }
@@ -1220,4 +1335,19 @@ logCtr (const char * msg,
     {
         printf ("%s", msg);
     }
+}
+
+Window
+getDefaultRootWindow (Display * d)
+{
+    Window w;
+
+    w = DefaultRootWindow (d);
+
+    if (w == None)
+    {
+        logCtr ("Cannot get default root window of display\n", LOG_LVL_NO);
+    }
+
+    return w;
 }
