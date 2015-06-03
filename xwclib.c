@@ -654,6 +654,7 @@ addArg (arguments  * args,
 
     if (arg == NULL)
     {
+        va_end (argStrList);
         return False;
     }
 
@@ -667,6 +668,7 @@ addArg (arguments  * args,
 
     if (arg->m_SynStrs == NULL)
     {
+        va_end (argStrList);
         return False;
     }
 
@@ -695,6 +697,7 @@ addArg (arguments  * args,
                 logCtr ("Error adding argument, bad type specified!\n",
                         LOG_LVL_NO);
                 free (arg->m_SynStrs);
+                va_end (argStrList);
                 return False;
         }
     }
@@ -735,8 +738,8 @@ addArg (arguments  * args,
         default:
             logCtr ("Unknown argument type detected while creating option!\n",
                     LOG_LVL_NO);
+            va_end (argStrList);
             return False;
-            break;
     }
 
     va_end (argStrList);
