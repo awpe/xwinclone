@@ -405,7 +405,8 @@ main (int     argc,
                             ungrabExitKey (xDpy, rootWin, cfg);
                         }
                         else  if (xEvent.xkey.keycode == cfg->translationCtrlKeyCode
-                                  && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0)
+                                  && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0
+                                  && cfg->isDaemon == True)
                         {
                             logCtr ("Grab window key combination catched"
                                     "!\n", LOG_LVL_NO);
@@ -437,7 +438,7 @@ main (int     argc,
         XUnmapWindow (xDpy, trgWin);
         XDestroyWindow (xDpy, trgWin);
         XSync (xDpy, 0);
-        if (exitKeyCombPressed == 1)
+        if (exitKeyCombPressed == 1 || cfg->isDaemon == 0)
         {
             break;
         }
