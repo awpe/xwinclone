@@ -13,8 +13,9 @@ extern "C" {
 #include <limits.h>
 #include <time.h>
 #include <stdarg.h>
+#include <errno.h>
     
-
+#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/select.h>
 
