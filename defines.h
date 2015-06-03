@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define XWINCLONE_VERSION_STR                        "0.1a"
+#define XWINCLONE_VERSION_STR                        "0.1b"
 
     /**************************************************************************/
     /*Program definitions*/
