@@ -23,6 +23,7 @@ checking source window state again
 - [ ] Clean code
 - [ ] Document program flow
 - [ ] Write dependencies list
+- [ ] Add singleton option
 
 Version 0.2:
 - [ ] Add tray support
