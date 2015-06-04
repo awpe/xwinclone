@@ -45,7 +45,7 @@ errorHandlerBasic (Display     * display,
 
     XGetErrorText (display, error->error_code, buf + 1, 1024);
     buf[0] = '\t';
-    logCtr (buf, LOG_LVL_NO, False);
+    logCtr (buf, LOG_LVL_NO, True);
 
     X_ERROR = True;
     return 1;
@@ -744,6 +744,10 @@ addArg (arguments  * args,
             arg->m_Value                       = (void*) DEFAULT_BG_COLOR;
             break;
 
+        case BGIMAGE:
+            arg->m_Value                       = (void*) DEFAULT_BGIMAGE_PATH;
+            break;
+
         case FRAMERATE:
             *( (int*) arg->m_Value )           = FRAMERATE_FPS;
             break;
@@ -882,7 +886,10 @@ processArgs (Display    *  d,
         return NULL;
     }
 
-    if (   addArg (args, True,  C_STR, BGCOLOR,    "BGCOLOR",    1, "-bg"   )
+    if (   addArg (args, True,  C_STR, BGCOLOR,    "BGCOLOR",    1, "-bgclr")
+        == False
+
+        || addArg (args, True,  C_STR, BGIMAGE,    "BGIMAGE",    1, "-bgimg")
         == False
 
         || addArg (args, True,  INT,   FRAMERATE,  "FRAMERATE",  1, "-fr"   )
@@ -955,7 +962,7 @@ processArgs (Display    *  d,
                     {
                         case INT:
                             *( (int*) args->m_Args[j]->m_Value ) =
-                                strtol (argArr[i + 1], &endPtr, 10);
+                                    strtol (argArr[i + 1], &endPtr, 10);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -972,7 +979,7 @@ processArgs (Display    *  d,
 
                         case ULONG:
                             *( (unsigned long*) args->m_Args[j]->m_Value ) =
-                                strtol (argArr[i + 1], &endPtr, 0);
+                                    strtol (argArr[i + 1], &endPtr, 0);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -1022,6 +1029,8 @@ processArgs (Display    *  d,
         delArgs (args);
         return NULL;
     }
+    
+    
 
     XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
 
@@ -1047,6 +1056,9 @@ processArgs (Display    *  d,
     ret->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
     ret->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
     ret->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
+    ret->bgImgFileStr           = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ret->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
+    ret->bgImgStatus            = False;
     ret->exitKeyStr             = EXIT_KEY;
     ret->exitKeyMask            = EXIT_MASK;
     ret->translationCtrlKeyStr  = TRANSLATION_CTRL_KEY;
