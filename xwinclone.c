@@ -13,15 +13,22 @@ main (int     argc,
     GC                     xGraphicsCtx;
     XVisualInfo            xVisInfo;
     Visual               * xVis;
-    Pixmap                 pm, srcWinCompPixmap;
+    Pixmap                 pm, srcWinCompPixmap, bgImgPm;
     XEvent                 xEvent;
+    Imlib_Image            imgSrc, imgScaled;
     char                   buf[1024], transCtrlCombPressed, exitKeyCombPressed;
     int                    retVal, trgWinLeftOffset, trgWinTopOffset;
+    unsigned int           bgImgWidth, bgImgHeight;
 
     retVal               = EXIT_SUCCESS;
     trgWinLeftOffset     = 0;
     trgWinTopOffset      = 0;
     exitKeyCombPressed   = 0;
+    bgImgPm              = 0;
+    bgImgWidth           = 0;
+    bgImgHeight          = 0;
+    imgScaled            = NULL;
+
 
     /*Make a program to be portable to all locales*/
     setlocale (LC_ALL, "");
@@ -107,7 +114,7 @@ main (int     argc,
                                      == cfg->translationCtrlKeyCode
 
                                      && (xEvent.xkey.state
-                                     ^ cfg->translationCtrlKeyMask) == 0
+                                         ^ cfg->translationCtrlKeyMask) == 0
 
                                      && cfg->isDaemon == True)
                             {
@@ -297,6 +304,114 @@ main (int     argc,
             return EXIT_FAILURE;
         }
 
+        if (cfg->bgImgFileSet == True)
+        {
+            logCtr ("Reading background image file:", LOG_LVL_NO, False);
+        }
+        else
+        {
+            logCtr ("Reading background image file:", LOG_LVL_1, False);
+        }
+
+        imgSrc = imlib_load_image (cfg->bgImgFileStr);
+
+        if (imgSrc == NULL)
+        {
+            snprintf (buf, sizeof (buf), "\tcannot load background image file"
+                      " '%s'!", cfg->bgImgFileStr);
+
+            if (cfg->bgImgFileSet == True)
+            {
+                logCtr (buf, LOG_LVL_NO, True);
+
+                ungrabExitKey (xDpy, rootWin, cfg);
+                ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
+                XUnmapWindow (xDpy, trgWin);
+                XDestroyWindow (xDpy, trgWin);
+                XSync (xDpy, 0);
+                XCloseDisplay (xDpy);
+                free (cfg);
+                return EXIT_FAILURE;
+            }
+            else
+            {
+                logCtr (buf, LOG_LVL_1, True);
+            }
+        }
+        else
+        {
+            imlib_context_set_image (imgSrc);
+            bgImgWidth  = imlib_image_get_width ();
+            bgImgHeight = imlib_image_get_height ();
+
+            if (   bgImgWidth  > rootWinAttr.width
+                || bgImgHeight > rootWinAttr.height)
+            {
+                float scaleFactor = (float) bgImgWidth / (float) bgImgHeight;
+
+                int newWidth  = rootWinAttr.width;
+                int newHeight = (float) newWidth / scaleFactor;
+
+                snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\theight:\t%d", newWidth, newHeight);
+                logCtr (buf, LOG_LVL_1, True);
+
+                imgScaled = imlib_create_cropped_scaled_image (0, 0, bgImgWidth, bgImgHeight, newWidth, newHeight);
+            }
+            else
+            {
+                imgScaled = imgSrc;
+            }
+
+            imlib_context_set_image (imgScaled);
+            bgImgWidth  = imlib_image_get_width ();
+            bgImgHeight = imlib_image_get_height ();
+
+            bgImgPm = XCreatePixmap (xDpy, rootWin, bgImgWidth, bgImgHeight,
+                                     srcWinAttr.depth);
+
+            imlib_context_set_display (xDpy);
+            imlib_context_set_visual (xVis);
+            imlib_context_set_colormap (trgWinSetAttr.colormap);
+            imlib_context_set_drawable (bgImgPm);
+
+            imlib_render_image_on_drawable (0, 0);
+
+            XSync (xDpy, 0);
+
+            imlib_free_image_and_decache ();
+
+            cfg->bgImgStatus = True;
+
+            if (cfg->bgImgFileSet == True)
+            {
+                logCtr ("\tsuccess", LOG_LVL_NO, True);
+            }
+            else
+            {
+                logCtr ("\tsuccess", LOG_LVL_1, True);
+            }
+
+            //            Window root_return;
+            //            int x_return, y_return;
+            //            unsigned int width_return, height_return;
+            //            unsigned int border_width_return;
+            //            unsigned int depth_return;
+            //
+            //            Status st = XGetGeometry (xDpy, bgImgPm, &root_return, &x_return, &y_return, &width_return,
+            //                                      &height_return, &border_width_return, &depth_return);
+            //
+            //            printf ("\nget geometry status = %d\n", st);
+            //            printf ("\nroot win = %lX\n", rootWin);
+            //            printf ("\nsrc win = %lX\n", srcWin);
+            //            printf ("\ntrg win = %lX\n", trgWin);
+            //
+            //            snprintf (buf, sizeof (buf), "Background image parameters:\n\tWidth:\t"
+            //                      "%d\n\tHeight:\t%d\n\tDepth:\t%u\n\troot win:\t%lX",
+            //                      bgImgWidth, bgImgHeight, depth_return, root_return);
+            //
+            //            logCtr (buf, LOG_LVL_1, False);
+
+        }
         printWindowInfo (xDpy, trgWin, &trgWinAttr);
 
         pm = XCreatePixmap (xDpy, rootWin, rootWinAttr.width,
@@ -305,6 +420,36 @@ main (int     argc,
         XSetForeground (xDpy, xGraphicsCtx, cfg->bgColor.pixel);
         XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
                         rootWinAttr.height);
+
+        //        Window root_return;
+        //        int x_return, y_return;
+        //        unsigned int width_return, height_return;
+        //        unsigned int border_width_return;
+        //        unsigned int depth_return;
+        //
+        //        Status st = XGetGeometry (xDpy, pm, &root_return, &x_return, &y_return, &width_return,
+        //                                  &height_return, &border_width_return, &depth_return);
+        //
+        //        printf ("\nget geometry status = %d\n", st);
+        //        printf ("\nroot win = %lX\n", rootWin);
+        //        printf ("\nsrc win = %lX\n", srcWin);
+        //        printf ("\ntrg win = %lX\n", trgWin);
+        //
+        //        snprintf (buf, sizeof (buf), "pm parameters:\n\tWidth:\t"
+        //                  "%d\n\tHeight:\t%d\n\tHotspot X:\t%d\n\tHotspot Y:\t%d\n\tDepth:\t%u\n\troot win:\t%lX",
+        //                  width_return, height_return, x_return, y_return, depth_return, root_return);
+        //
+        //        logCtr (buf, LOG_LVL_1, False);
+        //
+        //        printf ("\nbg img copying\n");
+
+        if (cfg->bgImgStatus == True)
+        {
+            XCopyArea (xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
+                       bgImgHeight, 0, 0);
+        }
+
+        XSync (xDpy, 0);
 
         if (getXErrState () == True)
         {
@@ -324,6 +469,20 @@ main (int     argc,
         XCompositeRedirectSubwindows (xDpy, srcWin, CompositeRedirectAutomatic);
         XSync (xDpy, 0);
         srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
+
+        //        st = XGetGeometry (xDpy, srcWinCompPixmap, &root_return, &x_return, &y_return, &width_return,
+        //                           &height_return, &border_width_return, &depth_return);
+        //
+        //        printf ("\nget geometry status = %d\n", st);
+        //        printf ("\nroot win = %lX\n", rootWin);
+        //        printf ("\nsrc win = %lX\n", srcWin);
+        //        printf ("\ntrg win = %lX\n", trgWin);
+        //
+        //        snprintf (buf, sizeof (buf), "srcWinCompPixmap parameters:\n\tWidth:\t"
+        //                  "%d\n\tHeight:\t%d\n\tHotspot X:\t%d\n\tHotspot Y:\t%d\n\tDepth:\t%u\n\troot win:\t%lX",
+        //                  width_return, height_return, x_return, y_return, depth_return, root_return);
+        //
+        //        logCtr (buf, LOG_LVL_1, False);
 
         if (getXErrState () == True)
         {
@@ -366,7 +525,7 @@ main (int     argc,
             {
                 trgWinLeftOffset = (trgWinAttr.width - srcWinAttr.width) / 2;
                 trgWinTopOffset  = (trgWinAttr.height - srcWinAttr.height +
-                    cfg->topOffset) / 2;
+                                    cfg->topOffset) / 2;
             }
 
             if (srcWinAttr.map_state == IsViewable)
@@ -381,6 +540,12 @@ main (int     argc,
 
                 XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
                                 rootWinAttr.height);
+
+                if (cfg->bgImgStatus == True)
+                {
+                    XCopyArea (xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
+                               bgImgHeight, 0, 0);
+                }
 
                 XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx,
                            0,                0 + cfg->topOffset,
@@ -426,7 +591,7 @@ main (int     argc,
                                  == cfg->translationCtrlKeyCode
 
                                  && (xEvent.xkey.state ^
-                                 cfg->translationCtrlKeyMask) == 0
+                                     cfg->translationCtrlKeyMask) == 0
 
                                  && cfg->isDaemon == True)
                         {
