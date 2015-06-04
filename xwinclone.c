@@ -457,6 +457,7 @@ main (int     argc,
             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
             XFreeGC (xDpy, xGraphicsCtx);
             XFreePixmap (xDpy, pm);
+            XFreePixmap (xDpy, bgImgPm);
             XUnmapWindow (xDpy, trgWin);
             XDestroyWindow (xDpy, trgWin);
             XSync (xDpy, 0);
@@ -495,6 +496,7 @@ main (int     argc,
             XFreeGC (xDpy, xGraphicsCtx);
             XFreePixmap (xDpy, pm);
             XFreePixmap (xDpy, srcWinCompPixmap);
+            XFreePixmap (xDpy, bgImgPm);
             XUnmapWindow (xDpy, trgWin);
             XDestroyWindow (xDpy, trgWin);
             XSync (xDpy, 0);
@@ -622,6 +624,7 @@ main (int     argc,
         XFreeGC (xDpy, xGraphicsCtx);
         XFreePixmap (xDpy, pm);
         XFreePixmap (xDpy, srcWinCompPixmap);
+        XFreePixmap (xDpy, bgImgPm);
         XUnmapWindow (xDpy, trgWin);
         XDestroyWindow (xDpy, trgWin);
         XSync (xDpy, 0);
