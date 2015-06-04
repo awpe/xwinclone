@@ -21,9 +21,10 @@ extern "C"
         SOURCEID      = 7,
         DAEMON        = 8,
         SINGLEINST    = 9,
+        BGIMAGE       = 10,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 10
+        OPTIONS_COUNT = 11
         /****************************************/
     } argNames;
 
@@ -65,6 +66,11 @@ extern "C"
         int               topOffset;   /**< Source window top offset (pixels)*/
         XColor            bgColor;     /**< Background color data*/
         const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
+        const char      * bgImgFileStr;/**< Background image file path*/
+        Bool              bgImgFileSet;/**< Shows if background image file path
+                                        *  was specified*/
+        Bool              bgImgStatus; /**< Shows if background image file has
+                                        *  been loaded to x server's pixmap*/
         struct timespec   focusDelay;  /**< how long to wait, before you focuse 
                                         * on window you want to be cloned*/
         struct timespec   frameDelay;  /**< how often should xwinclone refresh 
