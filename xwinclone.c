@@ -102,6 +102,24 @@ main (int     argc,
                     switch (xEvent.type)
                     {
                         case KeyPress:
+
+                            snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:\t%d"
+                                      "\n\tkey state:\t%d\n\texit key code:\t%d\n\texit key mask:\t%d"
+                                      "\n\ttrans key code:\t%d\n\ttrans key mask:%d"
+                                      "\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
+                                      "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:\t%d",
+                                      xEvent.xkey.keycode, xEvent.xkey.state,
+                                      cfg->exitKeyCode, cfg->exitKeyMask,
+                                      cfg->translationCtrlKeyCode,
+                                      cfg->translationCtrlKeyMask,
+                                      xEvent.xkey.state ^ cfg->exitKeyMask,
+                                      xEvent.xkey.state
+                                      ^ cfg->translationCtrlKeyMask
+                                      );
+                            logCtr (buf, LOG_LVL_1, False);
+
+                            logCtr ("Exit key sequence received!",
+                                    LOG_LVL_NO, False);
                             if (xEvent.xkey.keycode == cfg->exitKeyCode
                                 && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
                             {
@@ -588,6 +606,20 @@ main (int     argc,
                 switch (xEvent.type)
                 {
                     case KeyPress:
+                        snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:\t%d"
+                                  "\n\tkey state:\t%d\n\texit key code:\t%d\n\texit key mask:\t%d"
+                                  "\n\ttrans key code:\t%d\n\ttrans key mask:%d"
+                                  "\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
+                                  "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:\t%d",
+                                  xEvent.xkey.keycode, xEvent.xkey.state,
+                                  cfg->exitKeyCode, cfg->exitKeyMask,
+                                  cfg->translationCtrlKeyCode,
+                                  cfg->translationCtrlKeyMask,
+                                  xEvent.xkey.state ^ cfg->exitKeyMask,
+                                  xEvent.xkey.state
+                                  ^ cfg->translationCtrlKeyMask
+                                  );
+                        logCtr (buf, LOG_LVL_1, False);
                         if (xEvent.xkey.keycode == cfg->exitKeyCode
                             && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
                         {
