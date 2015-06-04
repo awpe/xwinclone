@@ -20,9 +20,12 @@ extern "C" {
 #include <sys/select.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/Xmu/WinUtil.h>
 #include <X11/Xatom.h>    
 #include <X11/extensions/Xcomposite.h>
+    
+#include <Imlib2.h>
 
 
 #ifdef	__cplusplus
