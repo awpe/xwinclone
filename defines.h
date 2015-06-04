@@ -28,9 +28,9 @@ extern "C" {
 #define EXIT_MASK                                    (ControlMask | ShiftMask)
 #define EXIT_STR                                     "CTRL + SHIFT + g"
 
-#define TRANSLATION_CTRL_KEY                         "g"
-#define TRANSLATION_CTRL_MASK                        ControlMask
-#define TRANSLATION_CTRL_STR                         "CTRL + g"
+#define TRANSLATION_CTRL_KEY                         "u"
+#define TRANSLATION_CTRL_MASK                        (ControlMask | ShiftMask)
+#define TRANSLATION_CTRL_STR                         "CTRL + Shift + u"
 
 #define WM_CLASS_PRG_NAME_STR                        "XWinClone"
 #define WM_CLASS_CLASS_NAME_STR                      "xwinclone"
