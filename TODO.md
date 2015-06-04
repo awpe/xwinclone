@@ -7,7 +7,11 @@ Version 0.1:
 - [ ] Add configuration file support
 - [x] Make command prompt arguments processing routine process any number of 
 arguments in any order
-- [ ] Add background image support
+- [x] Add background image support
+- [x] Add background image name selection option
+- [x] Add ability to scale background image
+- [ ] Make background image being scaled, add fill option
+- [x] Add ability to load jpeg images
 - [x] Repair top offset mechanism
 - [x] Add log level control option
 - [x] Add ability to specify id of source window from command line
@@ -34,6 +38,8 @@ checking source window state again
  but also for invalid pointer and access errors.
 
 Version 0.2:
+- [ ] Add routine for automatic conversion of background image from varios
+ formats to bitmap
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [ ] Set propriate logging levels by using all of them (0, 1, 2)
