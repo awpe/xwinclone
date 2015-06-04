@@ -356,15 +356,16 @@ main (int     argc,
                 logCtr (buf, LOG_LVL_1, True);
 
                 imgScaled = imlib_create_cropped_scaled_image (0, 0, bgImgWidth, bgImgHeight, newWidth, newHeight);
+                imlib_free_image_and_decache ();
+                imlib_context_set_image (imgScaled);
+                bgImgWidth  = imlib_image_get_width ();
+                bgImgHeight = imlib_image_get_height ();
             }
             else
             {
                 imgScaled = imgSrc;
             }
 
-            imlib_context_set_image (imgScaled);
-            bgImgWidth  = imlib_image_get_width ();
-            bgImgHeight = imlib_image_get_height ();
 
             bgImgPm = XCreatePixmap (xDpy, rootWin, bgImgWidth, bgImgHeight,
                                      srcWinAttr.depth);
@@ -457,7 +458,10 @@ main (int     argc,
             ungrabTranslationCtrlKey (xDpy, rootWin, cfg);
             XFreeGC (xDpy, xGraphicsCtx);
             XFreePixmap (xDpy, pm);
-            XFreePixmap (xDpy, bgImgPm);
+            if (bgImgPm != 0)
+            {
+                XFreePixmap (xDpy, bgImgPm);
+            }
             XUnmapWindow (xDpy, trgWin);
             XDestroyWindow (xDpy, trgWin);
             XSync (xDpy, 0);
@@ -496,7 +500,10 @@ main (int     argc,
             XFreeGC (xDpy, xGraphicsCtx);
             XFreePixmap (xDpy, pm);
             XFreePixmap (xDpy, srcWinCompPixmap);
-            XFreePixmap (xDpy, bgImgPm);
+            if (bgImgPm != 0)
+            {
+                XFreePixmap (xDpy, bgImgPm);
+            }
             XUnmapWindow (xDpy, trgWin);
             XDestroyWindow (xDpy, trgWin);
             XSync (xDpy, 0);
@@ -624,7 +631,10 @@ main (int     argc,
         XFreeGC (xDpy, xGraphicsCtx);
         XFreePixmap (xDpy, pm);
         XFreePixmap (xDpy, srcWinCompPixmap);
-        XFreePixmap (xDpy, bgImgPm);
+        if (bgImgPm != 0)
+        {
+            XFreePixmap (xDpy, bgImgPm);
+        }
         XUnmapWindow (xDpy, trgWin);
         XDestroyWindow (xDpy, trgWin);
         XSync (xDpy, 0);
