@@ -38,8 +38,9 @@ extern "C" {
 #define TOP_OFFSET                                   71 // in pixels
 #define PROGRAM_EXE_NAME_STR                         "xwinclone"
 #define BG_IMAGE_PATH                                "./"
-#define DEFAULT_LOG_LVL                              LOG_LVL_NO
+#define DEFAULT_LOG_LVL                              LOG_LVL_2
 #define LOCK_FILE_PATH                               "/tmp/xwinclone.pid"
+#define DEFAULT_BGIMAGE_PATH                         "e2e4.jpeg"
     /**************************************************************************/
 #ifdef	__cplusplus
 }
