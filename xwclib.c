@@ -3,7 +3,12 @@
 /*Global X_ERROR initialization*/
 Bool X_ERROR = False;
 
-imgLibCreateCrSc_t  imgLibCreateCrSc = &imlib_create_cropped_scaled_image;
+imgLibCreateCrSc_t imgLibCreateCrSc = &imlib_create_cropped_scaled_image;
+
+XCompRedirWin_t    XCompRedirWin    = &XCompositeRedirectWindow;
+XCompUnRedirWin_t    XCompUnRedirWin    = &XCompositeUnredirectWindow;
+XCompRedirSubWin_t XCompRedirSubWin = &XCompositeRedirectSubwindows;
+XCompUnRedirSubWin_t XCompUnRedirSubWin = &XCompositeUnredirectSubwindows;
 
 /*Global LOG_LVL initialization*/
 int LOG_LVL = DEFAULT_LOG_LVL;
@@ -198,40 +203,39 @@ getNamedWindow (Display * d,
 }
 
 Window
-getActiveWindow (Display    * d,
-                 XWCOptions * prgCfg)
+getActiveWindow (XWCOptions * ctx)
 {
     Window w;
 
-    if (d == NULL)
-    {
-        logCtr ("Error getting active window: No display specified!",
-                LOG_LVL_NO, False);
-        return None;
-    }
-
-    if (prgCfg == NULL)
+    if (ctx == NULL)
     {
         logCtr ("Error getting active window: No program options"
                 " data specified!", LOG_LVL_NO, False);
         return None;
     }
 
-    if (prgCfg->isDaemon == False)
+    if (ctx->xDpy == NULL)
+    {
+        logCtr ("Error getting active window: No display specified!",
+                LOG_LVL_NO, False);
+        return None;
+    }
+
+    if (ctx->isDaemon == False)
     {
         logCtr ("Waiting for focus to be moved to source window", LOG_LVL_NO,
                 False);
-        nanosleep (&prgCfg->focusDelay, NULL);
+        nanosleep (&ctx->focusDelay, NULL);
     }
 
-    if ((w = prgCfg->srcWinId) == None)
+    if ((w = ctx->srcWinId) == None)
     {
-        w = getFocusedWindow (d);
+        w = getFocusedWindow (ctx->xDpy);
     }
 
     if (     w == None
-        || ( w = getTopWindow (d, w)   ) == None
-        || ( w = getNamedWindow (d, w) ) == None )
+        || ( w = getTopWindow (ctx->xDpy, w)   ) == None
+        || ( w = getNamedWindow (ctx->xDpy, w) ) == None )
     {
         return None;
     }
@@ -544,46 +548,6 @@ setWindowClass (Display    * d,
     return False;
 }
 
-Bool
-parseColor (Display    * d,
-            XWCOptions * prgCfg,
-            Screen     * s)
-{
-    Colormap xClrMap = DefaultColormapOfScreen (s);
-    char     buf[1024];
-    /*
-     * Maybe this color string parsing must take place 
-     * while processing options...
-     */
-    snprintf (buf, sizeof (buf), "Parsing window background color string %s:"
-              , prgCfg->bgColorStr);
-    logCtr (buf, LOG_LVL_1, False);
-
-    char * bgClrStrTmp = (char*) malloc (8 * sizeof (char ));
-    bgClrStrTmp[0]     = '#';
-    bgClrStrTmp[7]     = '\0';
-    memcpy (bgClrStrTmp + 1, prgCfg->bgColorStr, 6);
-
-    if ( XParseColor (d, xClrMap, bgClrStrTmp, &prgCfg->bgColor) == 0
-        || XAllocColor (d, xClrMap, &prgCfg->bgColor) == 0)
-    {
-        logCtr ("\tError: XParseColor and/or XAllocColor error", LOG_LVL_NO,
-                True);
-        free (bgClrStrTmp);
-        return False;
-    }
-
-    free (bgClrStrTmp);
-
-    logCtr ("\tSuccess", LOG_LVL_1, True);
-
-    /* redundant information
-    printf ("Color parsing result: pixel=%ld, red=%d, green=%d, blue=%d\n",
-            xColor.pixel, xColor.red, xColor.green, xColor.blue);
-     */
-    return True;
-}
-
 void
 delArgs (arguments * args)
 {
@@ -865,17 +829,103 @@ printUsage (arguments  * args)
     printCurValues (args);
 }
 
-XWCOptions *
-processArgs (Display    *  d,
-             int           argCnt,
-             const char ** argArr)
+Bool
+parseColor (XWCOptions * cfg)
 {
-    KeySym          exitKeySym;
-    arguments     * args;
-    char          * endPtr;
-    int             nextArgOffset, i, j, k, fr;
-    unsigned long   srcid;
-    char            buf[2048];
+    Colormap            xClrMap;
+    char                bgClrStrTmp[8], buf[1024];
+
+    if (cfg == NULL)
+    {
+        logCtr ("Error parsing color: Null pointer to cfg struct received!",
+                LOG_LVL_NO, False);
+    }
+
+    snprintf (buf, sizeof (buf), "Parsing window background color string %s:",
+              cfg->bgColorStr);
+    logCtr (buf, LOG_LVL_1, False);
+
+    xClrMap            = DefaultColormapOfScreen (cfg->xScr);
+
+    bgClrStrTmp[0]     = '#';
+    bgClrStrTmp[7]     = '\0';
+
+    memcpy (bgClrStrTmp + 1, cfg->bgColorStr, 6);
+
+    if ( XParseColor (cfg->xDpy, xClrMap, bgClrStrTmp, &cfg->bgColor) == 0
+        || XAllocColor (cfg->xDpy, xClrMap, &cfg->bgColor) == 0)
+    {
+        logCtr ("\tError: XParseColor and/or XAllocColor error", LOG_LVL_NO,
+                True);
+        XCloseDisplay (cfg->xDpy);
+        free (cfg);
+        return False;
+    }
+
+    snprintf (buf, sizeof (buf), "\tColor parsing result: pixel=%ld, red=%d,"
+              " green=%d, blue=%d\n", cfg->bgColor.pixel, cfg->bgColor.red,
+              cfg->bgColor.green, cfg->bgColor.blue);
+
+    logCtr (buf, LOG_LVL_1, True);
+
+    logCtr ("\tSuccess", LOG_LVL_1, True);
+
+    return True;
+}
+
+XWCOptions *
+init (int           argCnt,
+      const char ** argArr)
+{
+    KeySym              exitKeySym;
+    arguments         * args;
+    char              * endPtr;
+    int                 nextArgOffset, i, j, k, fr;
+    unsigned long       srcid;
+    char                buf[2048];
+    XWCOptions        * ctx;
+
+    ctx = (XWCOptions*) malloc (sizeof (XWCOptions ));
+
+    if (ctx == NULL)
+    {
+        logCtr ("\tError allocating memory for options struct!", LOG_LVL_NO, True);
+        return NULL;
+    }
+
+    /*Make a program to be portable to all locales*/
+    setlocale (LC_ALL, "");
+
+    if (( ctx->xDpy = openDefaultDisplay () )  == NULL)
+    {
+        return NULL;
+    }
+
+    if (chkCompExt (ctx->xDpy) == False)
+    {
+        XCloseDisplay (ctx->xDpy);
+        return NULL;
+    }
+
+    if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
+    {
+        XCloseDisplay (ctx->xDpy);
+        return NULL;
+    }
+
+    XGetWindowAttributes (ctx->xDpy, ctx->rootWin, &ctx->rootWinAttr);
+
+    if (getXErrState () == True)
+    {
+        XCloseDisplay (ctx->xDpy);
+        return NULL;
+    }
+
+    if (( ctx->xScr = getScreenByWindowAttr (ctx, &ctx->rootWinAttr) ) == NULL)
+    {
+        XCloseDisplay (ctx->xDpy);
+        return EXIT_FAILURE;
+    }
 
     logCtr ("Processing arguments and building configuration:", LOG_LVL_1,
             False);
@@ -1026,6 +1076,75 @@ processArgs (Display    *  d,
         }
     }
 
+    /*boilerplate wa*/
+    LOG_LVL = * ((int*)           args->m_Args[LOGLVL]->m_Value);
+    fr      = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
+    srcid   = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
+
+    memset (&ctx->bgColor, 0, sizeof (ctx->bgColor ));
+
+    ctx->focusDelay.tv_nsec     = 0;
+    ctx->focusDelay.tv_sec      = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
+    ctx->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
+    ctx->frameDelay.tv_sec      = 0;
+    ctx->longDelay.tv_sec       = 0;
+    ctx->longDelay.tv_nsec      = LONG_WAIT * 1000000L;
+    ctx->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
+    ctx->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
+    ctx->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
+    ctx->bgImgFileStr           = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ctx->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
+    ctx->bgImgStatus            = False;
+    ctx->exitKeyStr             = EXIT_KEY;
+    ctx->exitKeyMask            = EXIT_MASK;
+    ctx->transCtrlKeyStr        = TRANSLATION_CTRL_KEY;
+    ctx->transCtrlKeyMask       = TRANSLATION_CTRL_MASK;
+    ctx->srcWinId               = srcid;
+    ctx->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
+    ctx->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
+
+    ctx->isSingleton            = ctx->isSingleton || ctx->isDaemon;
+
+    if (( exitKeySym = XStringToKeysym (ctx->exitKeyStr) ) == NoSymbol)
+    {
+        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
+                  ctx->exitKeyStr);
+        logCtr (buf, LOG_LVL_NO, True);
+        free (ctx);
+        delArgs (args);
+        return NULL;
+    }
+
+    if ((ctx->exitKeyCode = XKeysymToKeycode (ctx->xDpy, exitKeySym)) == 0)
+    {
+        snprintf (buf, sizeof (buf), "\tUnknown keycode %d", ctx->exitKeyCode);
+        logCtr (buf, LOG_LVL_NO, True);
+        free (ctx);
+        delArgs (args);
+        return NULL;
+    }
+
+    if (( exitKeySym = XStringToKeysym (ctx->transCtrlKeyStr) )
+        == NoSymbol)
+    {
+        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
+                  ctx->transCtrlKeyStr);
+        logCtr (buf, LOG_LVL_NO, True);
+        free (ctx);
+        delArgs (args);
+        return NULL;
+    }
+
+    if (( ctx->transCtrlKeyCode = XKeysymToKeycode (ctx->xDpy, exitKeySym) ) == 0)
+    {
+        snprintf (buf, sizeof (buf), "\tUnknown keycode %d",
+                  ctx->transCtrlKeyCode);
+        logCtr (buf, LOG_LVL_NO, True);
+        free (ctx);
+        delArgs (args);
+        return NULL;
+    }
+
     if (args->m_Args[HELP]->m_IsSet == True)
     {
         printUsage (args);
@@ -1033,83 +1152,24 @@ processArgs (Display    *  d,
         return NULL;
     }
 
-
-
-    XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
-
-    if (ret == NULL)
+    if (ctx->isSingleton == True && ifSingleInst () == False)
     {
-        logCtr ("\tError allocating memory for options struct!", LOG_LVL_NO,
-                True);
-        delArgs (args);
-        return NULL;
+        XCloseDisplay (ctx->xDpy);
+        free (ctx);
+        return EXIT_FAILURE;
     }
 
-    /*boilerplate wa*/
-    LOG_LVL = * ((int*)           args->m_Args[LOGLVL]->m_Value);
-    fr      = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
-    srcid   = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
-
-    memset (&ret->bgColor, 0, sizeof (ret->bgColor ));
-
-    ret->focusDelay.tv_nsec     = 0;
-    ret->focusDelay.tv_sec      = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
-    ret->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
-    ret->frameDelay.tv_sec      = 0;
-    ret->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
-    ret->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
-    ret->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    ret->bgImgFileStr           = (const char*) args->m_Args[BGIMAGE]->m_Value;
-    ret->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
-    ret->bgImgStatus            = False;
-    ret->exitKeyStr             = EXIT_KEY;
-    ret->exitKeyMask            = EXIT_MASK;
-    ret->translationCtrlKeyStr  = TRANSLATION_CTRL_KEY;
-    ret->translationCtrlKeyMask = TRANSLATION_CTRL_MASK;
-    ret->srcWinId               = srcid;
-    ret->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
-    ret->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
-
-    ret->isSingleton            = ret->isSingleton || ret->isDaemon;
-
-    if (( exitKeySym = XStringToKeysym (ret->exitKeyStr) ) == NoSymbol)
+    if (parseColor (ctx) == False)
     {
-        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
-                  ret->exitKeyStr);
-        logCtr (buf, LOG_LVL_NO, True);
-        free (ret);
-        delArgs (args);
-        return NULL;
+        XCloseDisplay (ctx->xDpy);
+        free (ctx);
+        return EXIT_FAILURE;
     }
 
-    if ((ret->exitKeyCode = XKeysymToKeycode (d, exitKeySym)) == 0)
+    if (grabKeys (ctx) == False)
     {
-        snprintf (buf, sizeof (buf), "\tUnknown keycode %d", ret->exitKeyCode);
-        logCtr (buf, LOG_LVL_NO, True);
-        free (ret);
-        delArgs (args);
-        return NULL;
-    }
-
-    if (( exitKeySym = XStringToKeysym (ret->translationCtrlKeyStr) )
-        == NoSymbol)
-    {
-        snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
-                  ret->translationCtrlKeyStr);
-        logCtr (buf, LOG_LVL_NO, True);
-        free (ret);
-        delArgs (args);
-        return NULL;
-    }
-
-    if (( ret->translationCtrlKeyCode = XKeysymToKeycode (d, exitKeySym) ) == 0)
-    {
-        snprintf (buf, sizeof (buf), "\tUnknown keycode %d",
-                  ret->translationCtrlKeyCode);
-        logCtr (buf, LOG_LVL_NO, True);
-        free (ret);
-        delArgs (args);
-        return NULL;
+        XCloseDisplay (ctx->xDpy);
+        return EXIT_FAILURE;
     }
 
     if (LOG_LVL > LOG_LVL_NO)
@@ -1120,31 +1180,39 @@ processArgs (Display    *  d,
     logCtr ("\tconfiguration successfully completed", LOG_LVL_1, True);
 
     delArgs (args);
-    return ret;
+    return ctx;
 }
 
 Screen *
-getScreenByWindowAttr (Display           * d,
+getScreenByWindowAttr (XWCOptions        * ctx,
                        XWindowAttributes * winAttr)
 {
     logCtr ("Getting screen using window attributes:", LOG_LVL_1, False);
-    if (d == NULL)
+
+    if (ctx == NULL)
     {
-        logCtr ("\tError getting screen by window attrinutes: "
-                "No display spicified", LOG_LVL_NO, True);
+        logCtr ("\tError getting screen by window attributes: "
+                "No display specified", LOG_LVL_NO, True);
+        return NULL;
+    }
+
+    if (ctx->xDpy == NULL)
+    {
+        logCtr ("\tError getting screen by window attributes: "
+                "No display specified", LOG_LVL_NO, True);
         return NULL;
     }
 
     if (winAttr == NULL)
     {
-        logCtr ("\tError getting screen by window attrinutes: "
-                "No window attributes struct spicified", LOG_LVL_NO, True);
+        logCtr ("\tError getting screen by window attributes: "
+                "No window attributes struct specified", LOG_LVL_NO, True);
         return NULL;
     }
 
     if (winAttr->screen == NULL)
     {
-        logCtr ("\tError getting screen by window attrinutes: No valid screen "
+        logCtr ("\tError getting screen by window attributes: No valid screen "
                 "pointer found in  window attributes struct", LOG_LVL_NO, True);
         return NULL;
     }
@@ -1175,132 +1243,102 @@ getRootWinOfScr (Screen * s)
 }
 
 Bool
-grabExitKey (Display    * d,
-             Window       grabWin,
-             XWCOptions * prgCfg)
+grabKeys (XWCOptions * ctx)
 {
-    logCtr ("Trying to grab exit key combination:", LOG_LVL_1, False);
-    if (d == NULL)
+    logCtr ("Trying to grab key combinations:", LOG_LVL_1, False);
+
+    if (ctx == NULL)
     {
-        logCtr ("\tCannot grab exit key combination: null pointer to X "
+        logCtr ("\tCannot grab key combinations: null pointer to program"
+                " context!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    if (ctx->xDpy == NULL)
+    {
+        logCtr ("\tCannot grab key combinations: null pointer to X "
                 "connection!", LOG_LVL_NO, True);
         return False;
     }
 
-    if (prgCfg == NULL)
+    if (ctx->rootWin == None)
     {
-        logCtr ("\tCannot grab exit key combination: invalid pointer to options"
-                " data structure!", LOG_LVL_NO, True);
-        return False;
-    }
-
-    if (grabWin == None)
-    {
-        logCtr ("\tCannot grab exit key combination: no window specified!",
-                LOG_LVL_NO, False);
-        return False;
-    }
-
-    XGrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin, True,
-              GrabModeAsync, GrabModeAsync);
-    XSync (d, 0);
-
-    if (getXErrState () == True)
-    {
-        logCtr ("\tCannot grab exit key combination: XGrabKey error! (Another "
-                "program may had already grabbed such a combination)",
+        logCtr ("\tCannot grab key combinations: no root window specified!",
                 LOG_LVL_NO, True);
         return False;
     }
 
-    logCtr ("\tsuccess", LOG_LVL_1, True);
+    logCtr ("\tTrying to grab exit key combination:", LOG_LVL_1, False);
 
-    XSelectInput (d, grabWin,  KeyPressMask);
-    /*XSelectInput only throws badwindow which we've already checked*/
-    return True;
-}
+    XGrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootWin, True,
+              GrabModeAsync, GrabModeAsync);
 
-Bool
-grabTranslationCtrlKey (Display    * d,
-                        Window       grabWin,
-                        XWCOptions * prgCfg)
-{
+    XSync (ctx->xDpy, 0);
 
-    logCtr ("Trying to grab translation control key combination:", LOG_LVL_1,
+    if (getXErrState () == True)
+    {
+        logCtr ("\t\tCannot grab exit key combination: XGrabKey error! (Another"
+                " program may had already grabbed such a combination)",
+                LOG_LVL_NO, True);
+        return False;
+    }
+
+    logCtr ("\t\tsuccess", LOG_LVL_1, True);
+
+
+    logCtr ("\tTrying to grab translation control key combination:", LOG_LVL_1,
             False);
 
-    if (d == NULL)
-    {
-        logCtr ("\tCannot grab translation control key combination: null "
-                "pointer to X "
-                "connection!", LOG_LVL_NO, True);
-        return False;
-    }
-
-    if (prgCfg == NULL)
-    {
-        logCtr ("\tCannot grab translation control key combination: invalid"
-                " pointer to options "
-                "data structure!", LOG_LVL_NO, True);
-        return False;
-    }
-
-    if (grabWin == None)
-    {
-        logCtr ("\tCannot grab translation control key combination: no window "
-                "specified!",
-                LOG_LVL_NO, True);
-        return False;
-    }
-
-    XGrabKey (d, prgCfg->translationCtrlKeyCode, prgCfg->translationCtrlKeyMask,
-              grabWin, False,
+    XGrabKey (ctx->xDpy, ctx->transCtrlKeyCode, ctx->transCtrlKeyMask,
+              ctx->rootWin, True,
               GrabModeAsync, GrabModeAsync);
-    XSync (d, 0);
+
+    XSync (ctx->xDpy, 0);
 
     if (getXErrState () == True)
     {
-        logCtr ("\tCannot grab translation control key combination: XGrabKey"
+        ungrabKeys (ctx);
+        logCtr ("\t\tCannot grab translation control key combination: XGrabKey"
                 " error! (Another program may had already grabbed such a"
-                " combination)",
-                LOG_LVL_NO, True);
+                " combination)", LOG_LVL_NO, True);
         return False;
     }
 
-    logCtr ("\tsuccess", LOG_LVL_1, True);
+    logCtr ("\t\tsuccess", LOG_LVL_1, True);
 
-    XSelectInput (d, grabWin,  KeyPressMask);
-    /*XSelectInput only throws badwindow which we've already checked*/
+    XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
+    /*XSelectInput only throws BadWindow which we've already checked*/
+
     return True;
 }
 
 void
-ungrabExitKey (Display    * d,
-               Window       grabWin,
-               XWCOptions * prgCfg)
+ungrabKeys (XWCOptions * ctx)
 {
-    if (d == NULL)
+
+    if (ctx == NULL)
     {
-        logCtr ("Cannot ungrab exit key combination: null pointer to X "
+        logCtr ("Cannot ungrab key combinations: invalid pointer to program"
+                " context!", LOG_LVL_NO, False);
+        return;
+    }
+
+    if (ctx->xDpy == NULL)
+    {
+        logCtr ("Cannot ungrab key combinations: null pointer to X "
                 "connection!", LOG_LVL_NO, False);
         return;
     }
 
-    if (prgCfg == NULL)
-    {
-        logCtr ("Cannot ungrab exit key combination: invalid pointer to options"
-                " data structure!", LOG_LVL_NO, False);
-        return;
-    }
 
-    if (grabWin == None)
+    if (ctx->rootWin == None)
     {
-        logCtr ("Cannot ungrab exit key combination: no window specified!",
+        logCtr ("Cannot ungrab key combinations: no window specified!",
                 LOG_LVL_NO, False);
         return;
     }
 
-    XUngrabKey (d, prgCfg->exitKeyCode, prgCfg->exitKeyMask, grabWin);
+    XUngrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootWin);
 
     if (getXErrState () == True)
     {
@@ -1308,36 +1346,9 @@ ungrabExitKey (Display    * d,
                 LOG_LVL_NO, False);
         return;
     }
-}
 
-void
-ungrabTranslationCtrlKey (Display    * d,
-                          Window       grabWin,
-                          XWCOptions * prgCfg)
-{
-    if (d == NULL)
-    {
-        logCtr ("Cannot ungrab translation control key combination: null"
-                " pointer to X connection!", LOG_LVL_NO, False);
-        return;
-    }
-
-    if (prgCfg == NULL)
-    {
-        logCtr ("Cannot ungrab translation control key combination: invalid"
-                " pointer to options data structure!", LOG_LVL_NO, False);
-        return;
-    }
-
-    if (grabWin == None)
-    {
-        logCtr ("Cannot ungrab translation control key combination: no window"
-                " specified!", LOG_LVL_NO, False);
-        return;
-    }
-
-    XUngrabKey (d, prgCfg->translationCtrlKeyCode,
-                prgCfg->translationCtrlKeyMask, grabWin);
+    XUngrabKey (ctx->xDpy, ctx->transCtrlKeyCode, ctx->transCtrlKeyMask,
+                ctx->rootWin);
 
     if (getXErrState () == True)
     {
@@ -1449,49 +1460,48 @@ ifSingleInst (void)
 }
 
 int
-getPressedComb (Display    * xDpy,
-                XWCOptions * cfg)
+getPressedComb (XWCOptions * ctx)
 {
     XEvent xEvent;
     char buf[1024];
-    while (XPending (xDpy) != 0)
+    while (XPending (ctx->xDpy) != 0)
     {
-        XNextEvent (xDpy, &xEvent);
+        XNextEvent (ctx->xDpy, &xEvent);
         switch (xEvent.type)
         {
             case KeyPress:
+
                 snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:\t%d"
                           "\n\tkey state:\t%d\n\texit key code:\t%d\n\texit key mask:\t%d"
                           "\n\ttrans key code:\t%d\n\ttrans key mask:%d"
                           "\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
                           "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:\t%d",
                           xEvent.xkey.keycode, xEvent.xkey.state,
-                          cfg->exitKeyCode, cfg->exitKeyMask,
-                          cfg->translationCtrlKeyCode,
-                          cfg->translationCtrlKeyMask,
-                          xEvent.xkey.state ^ cfg->exitKeyMask,
-                          xEvent.xkey.state
-                          ^ cfg->translationCtrlKeyMask
-                          );
+                          ctx->exitKeyCode, ctx->exitKeyMask,
+                          ctx->transCtrlKeyCode,
+                          ctx->transCtrlKeyMask,
+                          xEvent.xkey.state ^ ctx->exitKeyMask,
+                          xEvent.xkey.state ^ ctx->transCtrlKeyMask);
                 logCtr (buf, LOG_LVL_1, False);
-                if (xEvent.xkey.keycode == cfg->exitKeyCode
-                    && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
+
+                if (xEvent.xkey.keycode == ctx->exitKeyCode
+                    && (xEvent.xkey.state ^ ctx->exitKeyMask) == 0)
                 {
                     logCtr ("Exit key sequence received!", LOG_LVL_NO, False);
                     return EXIT_COMBINATION;
                 }
                 else if (xEvent.xkey.keycode
-                         == cfg->translationCtrlKeyCode
-                         && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0
-                         && cfg->isDaemon == True)
+                         == ctx->transCtrlKeyCode
+                         && (xEvent.xkey.state ^ ctx->transCtrlKeyMask) == 0
+                         && ctx->isDaemon == True)
                 {
                     logCtr ("Grab window key sequence received!", LOG_LVL_NO, False);
                     return TRANSLATION_COMBINATION;
                 }
                 else
                 {
-                    XAllowEvents (xDpy, ReplayKeyboard, xEvent.xkey.time);
-                    XFlush (xDpy);
+                    XAllowEvents (ctx->xDpy, ReplayKeyboard, xEvent.xkey.time);
+                    XFlush (ctx->xDpy);
                 }
                 break;
             default:
@@ -1534,19 +1544,17 @@ printDrawableInfo (Display  * xDpy,
 }
 
 Bool
-bgImgPrepare (Display           * xDpy,
-              XWCOptions        * cfg,
+bgImgPrepare (XWCOptions        * ctx,
               Pixmap            * bgImgPm,
               unsigned int      * bgImgWidth,
               unsigned int      * bgImgHeight,
               Window              bgImgRootWin,
-              XWindowAttributes * bgImgRootWinAttr,
-              XWindowAttributes * rootWinAttr)
+              XWindowAttributes * bgImgRootWinAttr)
 {
     Imlib_Image imgSrc, imgScaled;
     char buf[1024];
 
-    if (cfg->bgImgFileSet == True)
+    if (ctx->bgImgFileSet == True)
     {
         logCtr ("Reading background image file:", LOG_LVL_NO, False);
     }
@@ -1555,14 +1563,14 @@ bgImgPrepare (Display           * xDpy,
         logCtr ("Reading background image file:", LOG_LVL_1, False);
     }
 
-    imgSrc = imlib_load_image (cfg->bgImgFileStr);
+    imgSrc = imlib_load_image (ctx->bgImgFileStr);
 
     if (imgSrc == NULL)
     {
         snprintf (buf, sizeof (buf), "\tcannot load background image file"
-                  " '%s'!", cfg->bgImgFileStr);
+                  " '%s'!", ctx->bgImgFileStr);
 
-        if (cfg->bgImgFileSet == True)
+        if (ctx->bgImgFileSet == True)
         {
             logCtr (buf, LOG_LVL_NO, True);
             return False;
@@ -1578,12 +1586,12 @@ bgImgPrepare (Display           * xDpy,
         *bgImgWidth  = imlib_image_get_width ();
         *bgImgHeight = imlib_image_get_height ();
 
-        if (   *bgImgWidth  > rootWinAttr->width
-            || *bgImgHeight > rootWinAttr->height)
+        if (   *bgImgWidth  > ctx->rootWinAttr.width
+            || *bgImgHeight > ctx->rootWinAttr.height)
         {
             float scaleFactor = (float) *bgImgWidth / (float) *bgImgHeight;
 
-            int newWidth  = rootWinAttr->width;
+            int newWidth  = ctx->rootWinAttr.width;
             int newHeight = (float) newWidth / scaleFactor;
 
             snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\theight:\t%d", newWidth, newHeight);
@@ -1603,23 +1611,23 @@ bgImgPrepare (Display           * xDpy,
         }
 
 
-        *bgImgPm = XCreatePixmap (xDpy, bgImgRootWin, *bgImgWidth, *bgImgHeight,
+        *bgImgPm = XCreatePixmap (ctx->xDpy, bgImgRootWin, *bgImgWidth, *bgImgHeight,
                                   bgImgRootWinAttr->depth);
 
-        imlib_context_set_display (xDpy);
+        imlib_context_set_display (ctx->xDpy);
         imlib_context_set_visual (bgImgRootWinAttr->visual);
         imlib_context_set_colormap (bgImgRootWinAttr->colormap);
         imlib_context_set_drawable (*bgImgPm);
 
         imlib_render_image_on_drawable (0, 0);
 
-        XSync (xDpy, 0);
+        XSync (ctx->xDpy, 0);
 
         //imlib_free_image_and_decache ();
         imlib_free_image ();
-        cfg->bgImgStatus = True;
+        ctx->bgImgStatus = True;
 
-        if (cfg->bgImgFileSet == True)
+        if (ctx->bgImgFileSet == True)
         {
             logCtr ("\tsuccess", LOG_LVL_NO, True);
         }
