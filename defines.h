@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#define XWINCLONE_VERSION_STR                        "0.1e"
+#define XWINCLONE_VERSION_STR                        "0.1f"
 
     /**************************************************************************/
     /*Program definitions*/
@@ -25,7 +25,7 @@ extern "C"
 #define _POSIX_C_SOURCE                              200112L
 #define FRAMERATE_FPS                                30  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
-#define TIME_TO_WAIT_FOR_SRCWIN_TO_BECOME_VISIBLE_MS 500 //ms
+#define LONG_WAIT                                    500 //ms
 #define DEFAULT_BG_COLOR                             "000000" //rgb color
 
 #define EXIT_KEY                                     "g"
