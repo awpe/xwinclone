@@ -9,12 +9,31 @@ extern "C"
 #include "defines.h"
 #include "headers.h"
 
-
+    /****************************************/
     /*Redefine imlib2 functions*/
+    /****************************************/
     typedef
     Imlib_Image (*imgLibCreateCrSc_t)(int, int, int, int, int, int) ;
+    /****************************************/
+
 
     /****************************************/
+    /*Redefine Xlib functions*/
+    /****************************************/
+    typedef void (*XCompRedirWin_t)(Display *, Window, int) ;
+    extern XCompRedirWin_t XCompRedirWin;
+
+    typedef void (*XCompUnRedirWin_t)(Display *, Window, int) ;
+    extern XCompUnRedirWin_t XCompUnRedirWin;
+
+    typedef void (*XCompRedirSubWin_t)(Display *, Window, int) ;
+    extern XCompRedirSubWin_t XCompRedirSubWin;
+
+    typedef void (*XCompUnRedirSubWin_t)(Display *, Window, int) ;
+    extern XCompUnRedirSubWin_t XCompUnRedirSubWin;
+
+    /****************************************/
+
 
     typedef enum argNames_
     {
@@ -82,17 +101,19 @@ extern "C"
                                         * on window you want to be cloned*/
         struct timespec   frameDelay;  /**< how often should xwinclone refresh 
                                         * its content (frames per second)*/
+        struct timespec   longDelay;   /**< Used for waiting in case of
+                                        *  unmapped windows*/
         const char      * exitKeyStr;  /**< string representing exit key 
                                         * (keysymdef.h)*/
-        const char      * translationCtrlKeyStr;  /**< string representing
+        const char      * transCtrlKeyStr;  /**< string representing
                                                    *  translation control key
                                         * (keysymdef.h)*/
         KeyCode           exitKeyCode; /**< result of exit key string parsing*/
         int               exitKeyMask; /**< Exit key modifier according to X.h*/
-        KeyCode           translationCtrlKeyCode; /**< result of translation
+        KeyCode           transCtrlKeyCode; /**< result of translation
                                                    *  control key string
                                                    *  parsing*/
-        int               translationCtrlKeyMask; /**< Translation control key
+        int               transCtrlKeyMask; /**< Translation control key
                                                    *  modifier according to
                                                    *  X.h*/
         Window            srcWinId;    /**< Default window id to be used as 
@@ -104,6 +125,8 @@ extern "C"
                                         *  daemon mode*/
         Display         * xDpy;
         Screen          * xScr;
+        XWindowAttributes rootWinAttr;
+        Window            rootWin;
     } ;
 
     /** 
@@ -221,14 +244,13 @@ extern "C"
     /**
      * Tries to get currently active window. Uses different approaches to get
      * proper active window xid that can be used to aquire window's image.
-     * @param[in] d Pointer to Xlib's Display data struct.
+     * @param[in] ctx Pointer to XWCOptions struct
      * @return Window XID or 0 (Xlib's `None` macro) if no active window found
      * or error occured.
      * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
      */
     Window
-    getActiveWindow (Display    * d,
-                     XWCOptions * prgCfg);
+    getActiveWindow (XWCOptions * ctx);
 
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
@@ -310,9 +332,8 @@ extern "C"
      * @todo Add some heuristics to argument processing.
      */
     XWCOptions *
-    processArgs (Display    *  d,
-                 int           argCnt,
-                 const char ** argArr);
+    init (int           argCnt,
+          const char ** argArr);
 
     /**
      * Extracts pointer to screen where window belongs.
@@ -321,7 +342,7 @@ extern "C"
      * @return Pointer to Xlib's Screen structure or NULL in case of error.
      */
     Screen *
-    getScreenByWindowAttr (Display           * d,
+    getScreenByWindowAttr (XWCOptions        * ctx,
                            XWindowAttributes * winAttr);
 
     /**
@@ -341,22 +362,7 @@ extern "C"
      * @return Xlib's True on success, False otherwise
      */
     Bool
-    grabExitKey (Display    * d,
-                 Window       WID,
-                 XWCOptions * prgCfg);
-
-    /**
-     * Registers translation control key combination for a given window.
-     * @param[in] d Pointer to Xlib's Display data struct.
-     * @param[in] WID Window xid of window where translation control event will 
-     * be grabbed
-     * @param[in] prgCfg Data struct with program's configuration
-     * @return Xlib's True on success, False otherwise
-     */
-    Bool
-    grabTranslationCtrlKey (Display    * d,
-                            Window       WID,
-                            XWCOptions * prgCfg);
+    grabKeys (XWCOptions * prgCfg);
 
     /**
      * Deregisters exit key combination for a given window.
@@ -365,21 +371,7 @@ extern "C"
      * @param[in] prgCfg Data struct with program's configuration
      */
     void
-    ungrabExitKey (Display    * d,
-                   Window       grabWin,
-                   XWCOptions * prgCfg);
-
-    /**
-     * Deregisters translation control key combination for a given window.
-     * @param[in] d Pointer to Xlib's Display data struct.
-     * @param[in] WID Window xid of window where translation control event 
-     * was grabbed
-     * @param[in] prgCfg Data struct with program's configuration
-     */
-    void
-    ungrabTranslationCtrlKey (Display    * d,
-                              Window       grabWin,
-                              XWCOptions * prgCfg);
+    ungrabKeys (XWCOptions * prgCfg);
 
     /**
      * Checks if x server we have connection to has composite extension of 
@@ -389,18 +381,6 @@ extern "C"
      */
     Bool
     chkCompExt (Display * d);
-
-    /**
-     * Tries to parse color string and allocate color struct.
-     * @param[in] d Pointer to Xlib's Display data struct.
-     * @param[in] prgCfg Data struct with program's configuration 
-     * @param[in] s Pointer to Xlib's Screen data struct
-     * @return Xlib's True on success, False otherwise
-     */
-    Bool
-    parseColor (Display    * d,
-                XWCOptions * prgCfg,
-                Screen     * s);
 
     /**
      * Processes log messages according to current logging level.
@@ -427,8 +407,7 @@ extern "C"
     ifSingleInst (void);
 
     int
-    getPressedComb (Display    * xDpy,
-                    XWCOptions * cfg);
+    getPressedComb (XWCOptions * cfg);
 
     Bool
     getVisualOfScr (Screen      * xScr,
@@ -436,18 +415,19 @@ extern "C"
                     XVisualInfo * xVisInfo);
 
     Bool
-    bgImgPrepare (Display           * xDpy,
-                  XWCOptions        * cfg,
+    bgImgPrepare (XWCOptions        * ctx,
                   Pixmap            * bgImgPm,
                   unsigned int      * bgImgWidth,
                   unsigned int      * bgImgHeight,
                   Window              bgImgRootWin,
-                  XWindowAttributes * bgImgRootWinAttr,
-                  XWindowAttributes * rootWinAttr);
+                  XWindowAttributes * bgImgRootWinAttr);
 
     void
     printDrawableInfo (Display  * xDpy,
                        Drawable   drw);
+
+    Bool
+    parseColor (XWCOptions * cfg);
 
 #ifdef	__cplusplus
 }
