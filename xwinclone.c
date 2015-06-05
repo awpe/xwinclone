@@ -4,109 +4,72 @@ int
 main (int     argc,
       char ** argv)
 {
-    XWCOptions           * cfg;
-    Display              * xDpy;
-    Screen               * xScr;
-    Window                 srcWin, defaultRootWin, rootWinOfSrc, trgWin;
-    XWindowAttributes      srcWinAttr, trgWinAttr, rootWinAttr;
+    /**************************************************************************/
+    /*Variables declaration*/
+    /**************************************************************************/
+    XWCOptions           * ctx;
+    Screen               * srcScreen;
+    Window                 srcWin, rootWinOfSrc, trgWin;
+    XWindowAttributes      srcWinAttr, trgWinAttr;
     XSetWindowAttributes   trgWinSetAttr;
     GC                     xGraphicsCtx;
     XVisualInfo            xVisInfo;
     Visual               * xVis;
-    Pixmap                 pm, srcWinCompPixmap, bgImgPm;
+    Pixmap                 pm, srcWinCompPm, bgImgPm, srcWinCompPmOld;
     char                   buf[1024];
-    int                    retVal, trgWinLeftOffset, trgWinTopOffset, pressedKey;
+    int                    retVal, trgWinLeftOff, trgWinTOff, pressedKey;
     unsigned int           bgImgWidth, bgImgHeight;
+    /**************************************************************************/
 
+
+    /**************************************************************************/
+    /*Variables initialization*/
+    /**************************************************************************/
     retVal               = EXIT_SUCCESS;
-    trgWinLeftOffset     = 0;
-    trgWinTopOffset      = 0;
+    trgWinLeftOff     = 0;
+    trgWinTOff        = 0;
     bgImgPm              = 0;
     bgImgWidth           = 0;
     bgImgHeight          = 0;
     pressedKey           = NO_KEY_PRESSED;
+    /**************************************************************************/
 
-    /*Make a program to be portable to all locales*/
-    setlocale (LC_ALL, "");
 
+    /**************************************************************************/
+    /*Print program version*/
+    /**************************************************************************/
     printVersion ();
+    /**************************************************************************/
 
-    if (( xDpy = openDefaultDisplay () )  == NULL)
+
+    /**************************************************************************/
+    /*Initialize program context*/
+    /**************************************************************************/
+    if ((ctx = init (argc, (const char **) argv)) == NULL)
     {
         return EXIT_FAILURE;
     }
+    /**************************************************************************/
 
-    if (chkCompExt (xDpy) == False)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
 
-    if ((defaultRootWin = getDefaultRootWindow (xDpy)) == None)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    XGetWindowAttributes (xDpy, defaultRootWin, &rootWinAttr);
-
-    if (getXErrState () == True)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    if (( xScr = getScreenByWindowAttr (xDpy, &rootWinAttr) ) == NULL)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    if (( cfg = processArgs (xDpy, argc, (const char **) argv) ) == NULL)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    if (parseColor (xDpy, cfg, xScr) == False)
-    {
-        XCloseDisplay (xDpy);
-        free (cfg);
-        return EXIT_FAILURE;
-    }
-
-    if (grabExitKey (xDpy, defaultRootWin, cfg) == False)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    if (grabTranslationCtrlKey (xDpy, defaultRootWin, cfg) == False)
-    {
-        XCloseDisplay (xDpy);
-        return EXIT_FAILURE;
-    }
-
-    if (cfg->isSingleton == True && ifSingleInst () == False)
-    {
-        XCloseDisplay (xDpy);
-        free (cfg);
-        return EXIT_FAILURE;
-    }
-
+    /**************************************************************************/
+    /*Program cycle*/
+    /**************************************************************************/
     while (pressedKey != EXIT_COMBINATION)
     {
-        if (cfg->isDaemon == True)
+        /**********************************************************************/
+        /*Wait for user input if in daemon mode*/
+        /**********************************************************************/
+        if (ctx->isDaemon == True)
         {
             snprintf (buf, sizeof (buf), "Move focus to desired window and"
-                      " press %s to start translation",
-                      cfg->translationCtrlKeyStr);
+                      " press %s to start translation", ctx->transCtrlKeyStr);
 
             logCtr (buf, LOG_LVL_NO, False);
 
-            while ((pressedKey = getPressedComb (xDpy, cfg)) == NO_KEY_PRESSED)
+            while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
             {
-                nanosleep (&cfg->frameDelay, NULL);
+                nanosleep (&ctx->frameDelay, NULL);
             }
 
             if (pressedKey == EXIT_COMBINATION)
@@ -114,97 +77,101 @@ main (int     argc,
                 break;
             }
         }
+        /**********************************************************************/
 
-        if (( srcWin = getActiveWindow (xDpy, cfg) ) == None)
+
+        /**********************************************************************/
+        /*Get source window and its attributes*/
+        /**********************************************************************/
+        if ((srcWin = getActiveWindow (ctx)) == None)
         {
-            XCloseDisplay (xDpy);
-            free (cfg);
+            XCloseDisplay (ctx->xDpy);
+            free (ctx);
             return EXIT_FAILURE;
         }
 
-        XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
+        XGetWindowAttributes (ctx->xDpy, srcWin, &srcWinAttr);
 
         if (getXErrState () == True)
         {
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        printWindowInfo (xDpy, srcWin, &srcWinAttr);
+        printWindowInfo (ctx->xDpy, srcWin, &srcWinAttr);
+        /**********************************************************************/
 
-        if (( xScr = getScreenByWindowAttr (xDpy, &srcWinAttr) ) == NULL)
+
+        /**********************************************************************/
+        /*Check if source window screen is still the same*/
+        /**********************************************************************/
+        if ((srcScreen = getScreenByWindowAttr (ctx, &srcWinAttr)) == NULL)
         {
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        if (parseColor (xDpy, cfg, xScr) == False)
+        if (srcScreen != ctx->xScr)
         {
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
-        }
+            ctx->xScr = srcScreen;
 
-        if (( rootWinOfSrc = getRootWinOfScr (xScr) ) == None)
-        {
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
-        }
-
-        if (rootWinOfSrc != defaultRootWin)
-        {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-
-            defaultRootWin = rootWinOfSrc;
-
-            XGetWindowAttributes (xDpy, defaultRootWin, &rootWinAttr);
-
-            if (getXErrState () == True)
+            if (parseColor (ctx) == False)
             {
-                XCloseDisplay (xDpy);
-                free (cfg);
-                return EXIT_FAILURE;
+                retVal = EXIT_FAILURE;
+                break;
             }
 
-            if (grabExitKey (xDpy, defaultRootWin, cfg) == False)
+            if (( rootWinOfSrc = getRootWinOfScr (ctx->xScr) ) == None)
             {
-                XCloseDisplay (xDpy);
-                free (cfg);
-                return EXIT_FAILURE;
+                retVal = EXIT_FAILURE;
+                break;
             }
 
-            if (grabTranslationCtrlKey (xDpy, defaultRootWin, cfg) == False)
+            if (rootWinOfSrc != ctx->rootWin)
             {
-                ungrabExitKey (xDpy, defaultRootWin, cfg);
-                XCloseDisplay (xDpy);
-                free (cfg);
-                return EXIT_FAILURE;
+                ungrabKeys (ctx);
+
+                ctx->rootWin = rootWinOfSrc;
+
+                XGetWindowAttributes (ctx->xDpy, ctx->rootWin,
+                                      &ctx->rootWinAttr);
+
+                if (getXErrState () == True)
+                {
+                    retVal = EXIT_FAILURE;
+                    break;
+                }
+
+                if (grabKeys (ctx) == False)
+                {
+                    retVal = EXIT_FAILURE;
+                    break;
+                }
             }
         }
+        /**********************************************************************/
 
+
+        /**********************************************************************/
+        /*Create translation window*/
+        /**********************************************************************/
         logCtr ("Creating translation window:", LOG_LVL_NO, False);
 
-        if (getVisualOfScr (xScr, srcWinAttr.depth, &xVisInfo) == False)
+        if (getVisualOfScr (ctx->xScr, srcWinAttr.depth, &xVisInfo) == False)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
             logCtr ("\tError: no such visual", LOG_LVL_NO, False);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            retVal = EXIT_FAILURE;
+            break;
         }
 
         xVis                           = xVisInfo.visual;
-        trgWinSetAttr.colormap         = XCreateColormap (xDpy, srcWin, xVis, AllocNone);
-        trgWinSetAttr.background_pixel = cfg->bgColor.pixel;
+        trgWinSetAttr.colormap         = XCreateColormap (ctx->xDpy, srcWin,
+                                                          xVis, AllocNone);
+        trgWinSetAttr.background_pixel = ctx->bgColor.pixel;
         trgWinSetAttr.border_pixel     = 0;
         trgWinSetAttr.bit_gravity      = NorthWestGravity;
 
-        trgWin = XCreateWindow (xDpy, defaultRootWin, 0, 0, srcWinAttr.width,
+        trgWin = XCreateWindow (ctx->xDpy, ctx->rootWin, 0, 0, srcWinAttr.width,
                                 srcWinAttr.height, 0, srcWinAttr.depth,
                                 InputOutput, xVis, CWBackPixel | CWColormap
                                 | CWBorderPixel | CWBitGravity, &trgWinSetAttr);
@@ -212,237 +179,266 @@ main (int     argc,
         if (getXErrState () == True)
         {
             logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
             if (trgWin != None)
             {
-                XDestroyWindow (xDpy, trgWin);
-                XSync (xDpy, 0);
+                XDestroyWindow (ctx->xDpy, trgWin);
             }
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        if (setWinTitlebar (xDpy, trgWin, WM_CLASS_PRG_NAME_STR) == False)
+        if (setWinTitlebar (ctx->xDpy, trgWin, WM_CLASS_PRG_NAME_STR) == False)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        if (setWindowClass (xDpy, trgWin, WM_CLASS_PRG_NAME_STR,
+        if (setWindowClass (ctx->xDpy, trgWin, WM_CLASS_PRG_NAME_STR,
                             WM_CLASS_CLASS_NAME_STR ) == False)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        XMapWindow (xDpy, trgWin);
-        XSync (xDpy, 0);
+        XMapWindow (ctx->xDpy, trgWin);
+        XSync (ctx->xDpy, 0);
 
         if (getXErrState () == True)
         {
             logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XUnmapWindow (xDpy, trgWin);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        logCtr ("\tsuccess", LOG_LVL_NO, True);
-
-        XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
+        XGetWindowAttributes (ctx->xDpy, trgWin, &trgWinAttr);
 
         if (getXErrState () == True)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XUnmapWindow (xDpy, trgWin);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        printWindowInfo (xDpy, trgWin, &trgWinAttr);
+        printWindowInfo (ctx->xDpy, trgWin, &trgWinAttr);
 
-        if (bgImgPrepare (xDpy, cfg, &bgImgPm, &bgImgWidth, &bgImgHeight,
-                          trgWin, &trgWinAttr, &rootWinAttr) == False)
+        XSync (ctx->xDpy, 0);
+
+        logCtr ("\tsuccess", LOG_LVL_NO, True);
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Prepare temporary pixmap*/
+        /**********************************************************************/
+        pm = XCreatePixmap (ctx->xDpy, trgWin, ctx->rootWinAttr.width,
+                            ctx->rootWinAttr.height, srcWinAttr.depth);
+        xGraphicsCtx = XCreateGC (ctx->xDpy, pm, 0, NULL);
+        XSetForeground (ctx->xDpy, xGraphicsCtx, ctx->bgColor.pixel);
+        XFillRectangle (ctx->xDpy, pm, xGraphicsCtx, 0, 0,
+                        ctx->rootWinAttr.width, ctx->rootWinAttr.height);
+
+        XSync (ctx->xDpy, 0);
+
+        if (getXErrState () == True)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XUnmapWindow (xDpy, trgWin);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XFreeGC (ctx->xDpy, xGraphicsCtx);
+            XFreePixmap (ctx->xDpy, pm);
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Prepare background image*/
+        /**********************************************************************/
+        if (bgImgPrepare (ctx, &bgImgPm, &bgImgWidth, &bgImgHeight, trgWin,
+                          &trgWinAttr) == False)
+        {
+            XFreeGC (ctx->xDpy, xGraphicsCtx);
+            XFreePixmap (ctx->xDpy, pm);
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
 
-        pm = XCreatePixmap (xDpy, defaultRootWin, rootWinAttr.width,
-                            rootWinAttr.height, srcWinAttr.depth);
-        xGraphicsCtx = XCreateGC (xDpy, pm, 0, NULL);
-        XSetForeground (xDpy, xGraphicsCtx, cfg->bgColor.pixel);
-        XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
-                        rootWinAttr.height);
-
-        if (cfg->bgImgStatus == True)
+        if (ctx->bgImgStatus == True)
         {
-            XCopyArea (xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
+            XCopyArea (ctx->xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
                        bgImgHeight, 0, 0);
         }
 
-        XSync (xDpy, 0);
+        XSync (ctx->xDpy, 0);
 
         if (getXErrState () == True)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XFreeGC (xDpy, xGraphicsCtx);
-            XFreePixmap (xDpy, pm);
+            XFreeGC (ctx->xDpy, xGraphicsCtx);
+            XFreePixmap (ctx->xDpy, pm);
             if (bgImgPm != 0)
             {
-                XFreePixmap (xDpy, bgImgPm);
+                XFreePixmap (ctx->xDpy, bgImgPm);
             }
-            XUnmapWindow (xDpy, trgWin);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
+        /**********************************************************************/
 
-        XCompositeRedirectWindow (xDpy, srcWin, CompositeRedirectAutomatic);
-        XCompositeRedirectSubwindows (xDpy, srcWin, CompositeRedirectAutomatic);
-        XSync (xDpy, 0);
-        srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
+
+        /**********************************************************************/
+        /*Redirect source window to pixmap and check it*/
+        /**********************************************************************/
+        XCompRedirWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+        XCompRedirSubWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+        XSync (ctx->xDpy, 0);
+        srcWinCompPm = XCompositeNameWindowPixmap (ctx->xDpy, srcWin);
+
+        XSync (ctx->xDpy, 0);
 
         if (getXErrState () == True)
         {
-            ungrabExitKey (xDpy, defaultRootWin, cfg);
-            ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-            XCompositeUnredirectWindow (xDpy, srcWin, CompositeRedirectAutomatic);
-            XCompositeUnredirectSubwindows (xDpy, srcWin, CompositeRedirectAutomatic);
-            XFreeGC (xDpy, xGraphicsCtx);
-            XFreePixmap (xDpy, pm);
-            XFreePixmap (xDpy, srcWinCompPixmap);
+            XCompUnRedirWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+            XCompUnRedirSubWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+            XFreeGC (ctx->xDpy, xGraphicsCtx);
+            XFreePixmap (ctx->xDpy, pm);
+            XFreePixmap (ctx->xDpy, srcWinCompPm);
             if (bgImgPm != 0)
             {
-                XFreePixmap (xDpy, bgImgPm);
+                XFreePixmap (ctx->xDpy, bgImgPm);
             }
-            XUnmapWindow (xDpy, trgWin);
-            XDestroyWindow (xDpy, trgWin);
-            XSync (xDpy, 0);
-            XCloseDisplay (xDpy);
-            free (cfg);
-            return EXIT_FAILURE;
+            XUnmapWindow (ctx->xDpy, trgWin);
+            XDestroyWindow (ctx->xDpy, trgWin);
+            retVal = EXIT_FAILURE;
+            break;
         }
+        /**********************************************************************/
 
-        while ((pressedKey = getPressedComb (xDpy, cfg)) == NO_KEY_PRESSED)
+
+        /**********************************************************************/
+        /*Start drawing frames */
+        /**********************************************************************/
+        while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
         {
-            nanosleep (&cfg->frameDelay, NULL);
+            nanosleep (&ctx->frameDelay, NULL);
 
-            XGetWindowAttributes (xDpy, trgWin, &trgWinAttr);
-            if (getXErrState () == True)
-            {
-                retVal = EXIT_FAILURE;
-                break;
-            }
-
-            XGetWindowAttributes (xDpy, srcWin, &srcWinAttr);
-            if (getXErrState () == True)
-            {
-                retVal = EXIT_FAILURE;
-                break;
-            }
-
-            if (cfg->autoCenter == True)
-            {
-                trgWinLeftOffset = (trgWinAttr.width - srcWinAttr.width) / 2;
-                trgWinTopOffset  = (trgWinAttr.height - srcWinAttr.height +
-                    cfg->topOffset) / 2;
-            }
+            XGetWindowAttributes (ctx->xDpy, trgWin, &trgWinAttr);
+            XGetWindowAttributes (ctx->xDpy, srcWin, &srcWinAttr);
 
             if (srcWinAttr.map_state == IsViewable)
             {
-                XSync (xDpy, 0);
-                XFreePixmap (xDpy, srcWinCompPixmap);
-                srcWinCompPixmap = XCompositeNameWindowPixmap (xDpy, srcWin);
+                srcWinCompPmOld = srcWinCompPm;
+
+                srcWinCompPm = XCompositeNameWindowPixmap (ctx->xDpy, srcWin);
+                XSync (ctx->xDpy, 0);
+                XGetWindowAttributes (ctx->xDpy, srcWin, &srcWinAttr);
+
                 if (getXErrState () == True)
                 {
+                    if (srcWinAttr.map_state != IsViewable)
+                    {
+                        srcWinCompPm = None;
+                        logCtr ("Spurious error: An attempt to remap window"
+                                " during pixmap creation!", LOG_LVL_1, False);
+                        nanosleep (&ctx->longDelay, NULL);
+                        continue;
+                    }
                     retVal = EXIT_FAILURE;
                     break;
                 }
 
-                XFillRectangle (xDpy, pm, xGraphicsCtx, 0, 0, rootWinAttr.width,
-                                rootWinAttr.height);
-
-                if (cfg->bgImgStatus == True)
+                if (srcWinCompPmOld != None)
                 {
-                    XCopyArea (xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
-                               bgImgHeight, 0, 0);
+                    XFreePixmap (ctx->xDpy, srcWinCompPmOld);
                 }
 
-                XCopyArea (xDpy, srcWinCompPixmap, pm, xGraphicsCtx,
-                           0,                0 + cfg->topOffset,
-                           srcWinAttr.width, srcWinAttr.height - cfg->topOffset,
-                           trgWinLeftOffset, trgWinTopOffset);
+                XFillRectangle (ctx->xDpy, pm, xGraphicsCtx, 0, 0,
+                                ctx->rootWinAttr.width,
+                                ctx->rootWinAttr.height);
 
-                if (getXErrState () == True)
+                if (ctx->bgImgStatus == True)
                 {
-                    retVal = EXIT_FAILURE;
-                    break;
+                    XCopyArea (ctx->xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0,
+                               bgImgWidth, bgImgHeight, 0, 0);
                 }
+
+                if (ctx->autoCenter == True)
+                {
+                    trgWinLeftOff = (trgWinAttr.width - srcWinAttr.width) / 2;
+                    trgWinTOff  = (trgWinAttr.height - srcWinAttr.height +
+                        ctx->topOffset) / 2;
+                }
+
+                XCopyArea (ctx->xDpy, srcWinCompPm, pm, xGraphicsCtx,
+                           0,                0 + ctx->topOffset,
+                           srcWinAttr.width, srcWinAttr.height - ctx->topOffset,
+                           trgWinLeftOff, trgWinTOff);
             }
 
             if (trgWinAttr.map_state == IsViewable)
             {
-                XCopyArea (xDpy, pm, trgWin, xGraphicsCtx, 0, 0, trgWinAttr.width, trgWinAttr.height, 0, 0);
+                XCopyArea (ctx->xDpy, pm, trgWin, xGraphicsCtx, 0, 0,
+                           trgWinAttr.width, trgWinAttr.height, 0, 0);
+            }
 
-                if (getXErrState () == True)
-                {
-                    retVal = EXIT_FAILURE;
-                    break;
-                }
+            if (   trgWinAttr.map_state != IsViewable
+                || srcWinAttr.map_state != IsViewable)
+            {
+                nanosleep (&ctx->longDelay, NULL);
+            }
+
+            if (getXErrState () == True)
+            {
+                retVal = EXIT_FAILURE;
+                break;
             }
         }
+        /**********************************************************************/
 
-        XCompositeUnredirectWindow (xDpy, srcWin, CompositeRedirectAutomatic);
-        XCompositeUnredirectSubwindows (xDpy, srcWin, CompositeRedirectAutomatic);
-        XFreeGC (xDpy, xGraphicsCtx);
-        XFreePixmap (xDpy, pm);
-        XFreePixmap (xDpy, srcWinCompPixmap);
+
+        /**********************************************************************/
+        /*Clear old data*/
+        /**********************************************************************/
+        XCompUnRedirWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+        XCompUnRedirSubWin (ctx->xDpy, srcWin, CompositeRedirectAutomatic);
+        XFreeGC (ctx->xDpy, xGraphicsCtx);
+        XFreePixmap (ctx->xDpy, pm);
+        if (srcWinCompPm != None)
+        {
+            XFreePixmap (ctx->xDpy, srcWinCompPm);
+        }
         if (bgImgPm != 0)
         {
-            XFreePixmap (xDpy, bgImgPm);
+            XFreePixmap (ctx->xDpy, bgImgPm);
         }
-        XUnmapWindow (xDpy, trgWin);
-        XDestroyWindow (xDpy, trgWin);
-        XSync (xDpy, 0);
-        if (pressedKey == EXIT_COMBINATION || cfg->isDaemon == 0)
+        XUnmapWindow (ctx->xDpy, trgWin);
+        XDestroyWindow (ctx->xDpy, trgWin);
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Check exit conditions*/
+        /**********************************************************************/
+        if (   pressedKey    == EXIT_COMBINATION
+            || ctx->isDaemon == 0
+            || retVal        == EXIT_FAILURE)
         {
             break;
         }
+        /**********************************************************************/
     }
-    ungrabExitKey (xDpy, defaultRootWin, cfg);
-    ungrabTranslationCtrlKey (xDpy, defaultRootWin, cfg);
-    XCloseDisplay (xDpy);
-    free (cfg);
+
+    ungrabKeys (ctx);
+    XCloseDisplay (ctx->xDpy);
+    free (ctx);
 
     return retVal;
 }
