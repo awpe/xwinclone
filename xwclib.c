@@ -916,7 +916,7 @@ init (int           argCnt,
     }
     
     const char ** argArr = argArrT + 1;
-    argCnt++;
+    argCnt--;
 
     ctx->rootWin = rootWinId;
 
