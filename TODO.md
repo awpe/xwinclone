@@ -18,14 +18,14 @@ arguments in any order
 - [x] Try to acquire source window pixmap only in case it is in visible state
 - [x] Add daemon option
 - [ ] Send mouse clicks from target window to source window on same coordinates
-- [ ] Redraw target window with fewer FPS in case of source window being 
+- [x] Redraw target window with fewer FPS in case of source window being 
 unmapped
-- [ ] If source window was unmapped, make program to wait longer, before 
+- [x] If source window was unmapped, make program to wait longer, before 
 checking source window state again
 - [ ] Add comments to the new part of argument processing routine
 - [ ] Add comments to everything
-- [ ] Clean code
-- [ ] Document program flow
+- [x] Clean code
+- [x] Document program flow
 - [ ] Write dependencies list
 - [x] Add singleton option
 - [x] Fix error with grabbing same keys from multiple applications
@@ -34,12 +34,10 @@ checking source window state again
 - [ ] Add option to select PID file path
 - [ ] Add verbose for resource-clearing routines
 - [ ] Add option to control writing of log info into specified file
-- [ ] add more complex checking of Display pointers, not only for NULL pointer,
- but also for invalid pointer and access errors.
 
 Version 0.2:
-- [ ] Add routine for automatic conversion of background image from varios
- formats to bitmap
+- [ ] Add routine for automatic conversion of background image from various
+ formats to pixmap
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [ ] Set propriate logging levels by using all of them (0, 1, 2)
