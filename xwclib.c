@@ -3,6 +3,8 @@
 /*Global X_ERROR initialization*/
 Bool X_ERROR = False;
 
+imgLibCreateCrSc_t  imgLibCreateCrSc = &imlib_create_cropped_scaled_image;
+
 /*Global LOG_LVL initialization*/
 int LOG_LVL = DEFAULT_LOG_LVL;
 
@@ -13,10 +15,11 @@ openDefaultDisplay (void)
     logCtr ("connecting to X server:", LOG_LVL_1, False);
     if (( d = XOpenDisplay (NULL) ) == NULL)
     {
-        logCtr ("\tfail to connect to X server", LOG_LVL_NO, False);
+        logCtr ("\tfail to connect to X server", LOG_LVL_NO, True);
         return NULL;
     }
     logCtr ("\tsuccess", LOG_LVL_1, True);
+    XSetErrorHandler (errorHandlerBasic);
     return d;
 }
 
@@ -962,7 +965,7 @@ processArgs (Display    *  d,
                     {
                         case INT:
                             *( (int*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 10);
+                                strtol (argArr[i + 1], &endPtr, 10);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -979,7 +982,7 @@ processArgs (Display    *  d,
 
                         case ULONG:
                             *( (unsigned long*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 0);
+                                strtol (argArr[i + 1], &endPtr, 0);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -1029,8 +1032,8 @@ processArgs (Display    *  d,
         delArgs (args);
         return NULL;
     }
-    
-    
+
+
 
     XWCOptions * ret = (XWCOptions*) malloc (sizeof (XWCOptions ));
 
@@ -1442,5 +1445,188 @@ ifSingleInst (void)
         return False;
     }
 
+    return True;
+}
+
+int
+getPressedComb (Display    * xDpy,
+                XWCOptions * cfg)
+{
+    XEvent xEvent;
+    char buf[1024];
+    while (XPending (xDpy) != 0)
+    {
+        XNextEvent (xDpy, &xEvent);
+        switch (xEvent.type)
+        {
+            case KeyPress:
+                snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:\t%d"
+                          "\n\tkey state:\t%d\n\texit key code:\t%d\n\texit key mask:\t%d"
+                          "\n\ttrans key code:\t%d\n\ttrans key mask:%d"
+                          "\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
+                          "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:\t%d",
+                          xEvent.xkey.keycode, xEvent.xkey.state,
+                          cfg->exitKeyCode, cfg->exitKeyMask,
+                          cfg->translationCtrlKeyCode,
+                          cfg->translationCtrlKeyMask,
+                          xEvent.xkey.state ^ cfg->exitKeyMask,
+                          xEvent.xkey.state
+                          ^ cfg->translationCtrlKeyMask
+                          );
+                logCtr (buf, LOG_LVL_1, False);
+                if (xEvent.xkey.keycode == cfg->exitKeyCode
+                    && (xEvent.xkey.state ^ cfg->exitKeyMask) == 0)
+                {
+                    logCtr ("Exit key sequence received!", LOG_LVL_NO, False);
+                    return EXIT_COMBINATION;
+                }
+                else if (xEvent.xkey.keycode
+                         == cfg->translationCtrlKeyCode
+                         && (xEvent.xkey.state ^ cfg->translationCtrlKeyMask) == 0
+                         && cfg->isDaemon == True)
+                {
+                    logCtr ("Grab window key sequence received!", LOG_LVL_NO, False);
+                    return TRANSLATION_COMBINATION;
+                }
+                else
+                {
+                    XAllowEvents (xDpy, ReplayKeyboard, xEvent.xkey.time);
+                    XFlush (xDpy);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    return NO_KEY_PRESSED;
+}
+
+Bool
+getVisualOfScr (Screen      * xScr,
+                int           depth,
+                XVisualInfo * xVisInfo)
+{
+    Display * xDpy = xScr->display;
+    int xScrId = XScreenNumberOfScreen (xScr);
+    int res = XMatchVisualInfo (xDpy, xScrId, depth, TrueColor, xVisInfo);
+    return res != 0;
+}
+
+void
+printDrawableInfo (Display  * xDpy,
+                   Drawable   drw)
+{
+    Window       root_return;
+    int          x_return, y_return;
+    unsigned int width_return, height_return, border_width_return, depth_return;
+    char         buf[1024];
+
+    Status st = XGetGeometry (xDpy, drw, &root_return, &x_return, &y_return, &width_return,
+                              &height_return, &border_width_return, &depth_return);
+
+    printf ("\nget geometry status = %d\n", st);
+
+    snprintf (buf, sizeof (buf), "Background image parameters:\n\tWidth:\t"
+              "%d\n\tHeight:\t%d\n\tDepth:\t%u\n\troot win:\t%lX",
+              width_return, height_return, depth_return, root_return);
+
+    logCtr (buf, LOG_LVL_1, False);
+}
+
+Bool
+bgImgPrepare (Display           * xDpy,
+              XWCOptions        * cfg,
+              Pixmap            * bgImgPm,
+              unsigned int      * bgImgWidth,
+              unsigned int      * bgImgHeight,
+              Window              bgImgRootWin,
+              XWindowAttributes * bgImgRootWinAttr,
+              XWindowAttributes * rootWinAttr)
+{
+    Imlib_Image imgSrc, imgScaled;
+    char buf[1024];
+
+    if (cfg->bgImgFileSet == True)
+    {
+        logCtr ("Reading background image file:", LOG_LVL_NO, False);
+    }
+    else
+    {
+        logCtr ("Reading background image file:", LOG_LVL_1, False);
+    }
+
+    imgSrc = imlib_load_image (cfg->bgImgFileStr);
+
+    if (imgSrc == NULL)
+    {
+        snprintf (buf, sizeof (buf), "\tcannot load background image file"
+                  " '%s'!", cfg->bgImgFileStr);
+
+        if (cfg->bgImgFileSet == True)
+        {
+            logCtr (buf, LOG_LVL_NO, True);
+            return False;
+        }
+        else
+        {
+            logCtr (buf, LOG_LVL_1, True);
+        }
+    }
+    else
+    {
+        imlib_context_set_image (imgSrc);
+        *bgImgWidth  = imlib_image_get_width ();
+        *bgImgHeight = imlib_image_get_height ();
+
+        if (   *bgImgWidth  > rootWinAttr->width
+            || *bgImgHeight > rootWinAttr->height)
+        {
+            float scaleFactor = (float) *bgImgWidth / (float) *bgImgHeight;
+
+            int newWidth  = rootWinAttr->width;
+            int newHeight = (float) newWidth / scaleFactor;
+
+            snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\theight:\t%d", newWidth, newHeight);
+            logCtr (buf, LOG_LVL_1, True);
+
+            imgScaled = imgLibCreateCrSc (0, 0, *bgImgWidth, *bgImgHeight,
+                                          newWidth, newHeight);
+            //imlib_free_image_and_decache ();
+            imlib_free_image ();
+            imlib_context_set_image (imgScaled);
+            *bgImgWidth  = imlib_image_get_width ();
+            *bgImgHeight = imlib_image_get_height ();
+        }
+        else
+        {
+            imgScaled = imgSrc;
+        }
+
+
+        *bgImgPm = XCreatePixmap (xDpy, bgImgRootWin, *bgImgWidth, *bgImgHeight,
+                                  bgImgRootWinAttr->depth);
+
+        imlib_context_set_display (xDpy);
+        imlib_context_set_visual (bgImgRootWinAttr->visual);
+        imlib_context_set_colormap (bgImgRootWinAttr->colormap);
+        imlib_context_set_drawable (*bgImgPm);
+
+        imlib_render_image_on_drawable (0, 0);
+
+        XSync (xDpy, 0);
+
+        //imlib_free_image_and_decache ();
+        imlib_free_image ();
+        cfg->bgImgStatus = True;
+
+        if (cfg->bgImgFileSet == True)
+        {
+            logCtr ("\tsuccess", LOG_LVL_NO, True);
+        }
+        else
+        {
+            logCtr ("\tsuccess", LOG_LVL_1, True);
+        }
+    }
     return True;
 }

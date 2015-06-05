@@ -2,13 +2,17 @@
 #define	DEFINES_H
 
 #ifdef	__cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define XWINCLONE_VERSION_STR                        "0.1e"
 
     /**************************************************************************/
     /*Program definitions*/
+#define NO_KEY_PRESSED                               0
+#define TRANSLATION_COMBINATION                      1
+#define EXIT_COMBINATION                             2
 #define STR_EQUAL                                    0
 #define INT_CONV_OK                                  0
 #define LOG_LVL_NO                                   0

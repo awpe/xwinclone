@@ -9,6 +9,13 @@ extern "C"
 #include "defines.h"
 #include "headers.h"
 
+
+    /*Redefine imlib2 functions*/
+    typedef
+    Imlib_Image (*imgLibCreateCrSc_t)(int, int, int, int, int, int) ;
+
+    /****************************************/
+
     typedef enum argNames_
     {
         HELP          = 0,
@@ -56,7 +63,7 @@ extern "C"
      * type definition `XWCOptions` instead.
      * @sa options
      */
-    struct _XWCOptions
+    struct XWCOptions_
     {
         int               autoCenter;  /**< whether to enable autocentering of 
                                         * source window int the xwinclone window 
@@ -66,8 +73,8 @@ extern "C"
         int               topOffset;   /**< Source window top offset (pixels)*/
         XColor            bgColor;     /**< Background color data*/
         const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
-        const char      * bgImgFileStr;/**< Background image file path*/
-        Bool              bgImgFileSet;/**< Shows if background image file path
+        const char      * bgImgFileStr; /**< Background image file path*/
+        Bool              bgImgFileSet; /**< Shows if background image file path
                                         *  was specified*/
         Bool              bgImgStatus; /**< Shows if background image file has
                                         *  been loaded to x server's pixmap*/
@@ -95,6 +102,8 @@ extern "C"
         int               isSingleton; /**< Allow only one instance of program
                                         *  to be run, automatically set in
                                         *  daemon mode*/
+        Display         * xDpy;
+        Screen          * xScr;
     } ;
 
     /** 
@@ -121,7 +130,7 @@ extern "C"
      * @var XWCOptions.srcWinId 
      * Field 'srcWinId' defines window id to be used instead of focused
      */
-    typedef struct _XWCOptions XWCOptions;
+    typedef struct XWCOptions_ XWCOptions;
 
     /** @var Bool X_ERROR
     @brief Contains the last Xlib's error code. 
@@ -416,6 +425,29 @@ extern "C"
      */
     Bool
     ifSingleInst (void);
+
+    int
+    getPressedComb (Display    * xDpy,
+                    XWCOptions * cfg);
+
+    Bool
+    getVisualOfScr (Screen      * xScr,
+                    int           depth,
+                    XVisualInfo * xVisInfo);
+
+    Bool
+    bgImgPrepare (Display           * xDpy,
+                  XWCOptions        * cfg,
+                  Pixmap            * bgImgPm,
+                  unsigned int      * bgImgWidth,
+                  unsigned int      * bgImgHeight,
+                  Window              bgImgRootWin,
+                  XWindowAttributes * bgImgRootWinAttr,
+                  XWindowAttributes * rootWinAttr);
+
+    void
+    printDrawableInfo (Display  * xDpy,
+                       Drawable   drw);
 
 #ifdef	__cplusplus
 }
