@@ -875,7 +875,7 @@ parseColor (XWCOptions * cfg)
 
 XWCOptions *
 init (int           argCnt,
-      const char ** argArr)
+      const char ** argArrT)
 {
     KeySym              exitKeySym;
     arguments         * args;
@@ -907,11 +907,26 @@ init (int           argCnt,
         return NULL;
     }
 
-    if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
+    long long int rootWinId = strtol (argArrT[1], &endPtr, 0);
+
+    if (endPtr == argArrT[1])
     {
         XCloseDisplay (ctx->xDpy);
         return NULL;
     }
+    
+    const char ** argArr = argArrT + 1;
+    argCnt++;
+
+    ctx->rootWin = rootWinId;
+
+    /*
+        if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
+        {
+            XCloseDisplay (ctx->xDpy);
+            return NULL;
+        }
+     */
 
     XGetWindowAttributes (ctx->xDpy, ctx->rootWin, &ctx->rootWinAttr);
 
