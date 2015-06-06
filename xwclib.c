@@ -3,12 +3,12 @@
 /*Global X_ERROR initialization*/
 Bool X_ERROR = False;
 
-imgLibCreateCrSc_t imgLibCreateCrSc = &imlib_create_cropped_scaled_image;
+imgLibCreateCrSc_t   imgLibCreateCrSc = & imlib_create_cropped_scaled_image;
 
-XCompRedirWin_t    XCompRedirWin    = &XCompositeRedirectWindow;
-XCompUnRedirWin_t    XCompUnRedirWin    = &XCompositeUnredirectWindow;
-XCompRedirSubWin_t XCompRedirSubWin = &XCompositeRedirectSubwindows;
-XCompUnRedirSubWin_t XCompUnRedirSubWin = &XCompositeUnredirectSubwindows;
+XCompRedirWin_t      redirWin         = & XCompositeRedirectWindow;
+XCompUnRedirWin_t    unRedirWin       = & XCompositeUnredirectWindow;
+XCompRedirSubWin_t   redirSubWin      = & XCompositeRedirectSubwindows;
+XCompUnRedirSubWin_t unRedirSubWin    = & XCompositeUnredirectSubwindows;
 
 /*Global LOG_LVL initialization*/
 int LOG_LVL = DEFAULT_LOG_LVL;
@@ -203,7 +203,7 @@ getNamedWindow (Display * d,
 }
 
 Window
-getActiveWindow (XWCOptions * ctx)
+getActiveWindow (XWCContext * ctx)
 {
     Window w;
 
@@ -228,7 +228,7 @@ getActiveWindow (XWCOptions * ctx)
         nanosleep (&ctx->focusDelay, NULL);
     }
 
-    if ((w = ctx->srcWinId) == None)
+    if ((w = ctx->srcWin) == None)
     {
         w = getFocusedWindow (ctx->xDpy);
     }
@@ -830,7 +830,7 @@ printUsage (arguments  * args)
 }
 
 Bool
-parseColor (XWCOptions * cfg)
+parseColor (XWCContext * cfg)
 {
     Colormap            xClrMap;
     char                bgClrStrTmp[8], buf[1024];
@@ -873,9 +873,9 @@ parseColor (XWCOptions * cfg)
     return True;
 }
 
-XWCOptions *
+XWCContext *
 init (int           argCnt,
-      const char ** argArrT)
+      const char ** argArr)
 {
     KeySym              exitKeySym;
     arguments         * args;
@@ -883,13 +883,14 @@ init (int           argCnt,
     int                 nextArgOffset, i, j, k, fr;
     unsigned long       srcid;
     char                buf[2048];
-    XWCOptions        * ctx;
+    XWCContext        * ctx;
 
-    ctx = (XWCOptions*) malloc (sizeof (XWCOptions ));
+    ctx = (XWCContext*) malloc (sizeof (XWCContext ));
 
     if (ctx == NULL)
     {
-        logCtr ("\tError allocating memory for options struct!", LOG_LVL_NO, True);
+        logCtr ("\tError allocating memory for options struct!", LOG_LVL_NO,
+                True);
         return NULL;
     }
 
@@ -907,26 +908,11 @@ init (int           argCnt,
         return NULL;
     }
 
-    long long int rootWinId = strtol (argArrT[1], &endPtr, 0);
-
-    if (endPtr == argArrT[1])
+    if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
     {
         XCloseDisplay (ctx->xDpy);
         return NULL;
     }
-    
-    const char ** argArr = argArrT + 1;
-    argCnt--;
-
-    ctx->rootWin = rootWinId;
-
-    /*
-        if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
-        {
-            XCloseDisplay (ctx->xDpy);
-            return NULL;
-        }
-     */
 
     XGetWindowAttributes (ctx->xDpy, ctx->rootWin, &ctx->rootWinAttr);
 
@@ -1113,8 +1099,8 @@ init (int           argCnt,
     ctx->exitKeyStr             = EXIT_KEY;
     ctx->exitKeyMask            = EXIT_MASK;
     ctx->transCtrlKeyStr        = TRANSLATION_CTRL_KEY;
-    ctx->transCtrlKeyMask       = TRANSLATION_CTRL_MASK;
-    ctx->srcWinId               = srcid;
+    ctx->cloneKeyMask       = TRANSLATION_CTRL_MASK;
+    ctx->srcWin                 = srcid;
     ctx->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
     ctx->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
 
@@ -1150,10 +1136,10 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (( ctx->transCtrlKeyCode = XKeysymToKeycode (ctx->xDpy, exitKeySym) ) == 0)
+    if (( ctx->cloneKeyCode = XKeysymToKeycode (ctx->xDpy, exitKeySym) ) == 0)
     {
         snprintf (buf, sizeof (buf), "\tUnknown keycode %d",
-                  ctx->transCtrlKeyCode);
+                  ctx->cloneKeyCode);
         logCtr (buf, LOG_LVL_NO, True);
         free (ctx);
         delArgs (args);
@@ -1187,6 +1173,9 @@ init (int           argCnt,
         return EXIT_FAILURE;
     }
 
+    //XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
+    /*XSelectInput only throws BadWindow which we've already checked*/
+
     if (LOG_LVL > LOG_LVL_NO)
     {
         printCurValues (args);
@@ -1199,7 +1188,7 @@ init (int           argCnt,
 }
 
 Screen *
-getScreenByWindowAttr (XWCOptions        * ctx,
+getScreenByWindowAttr (XWCContext        * ctx,
                        XWindowAttributes * winAttr)
 {
     logCtr ("Getting screen using window attributes:", LOG_LVL_1, False);
@@ -1258,7 +1247,7 @@ getRootWinOfScr (Screen * s)
 }
 
 Bool
-grabKeys (XWCOptions * ctx)
+grabKeys (XWCContext * ctx)
 {
     logCtr ("Trying to grab key combinations:", LOG_LVL_1, False);
 
@@ -1304,7 +1293,7 @@ grabKeys (XWCOptions * ctx)
     logCtr ("\tTrying to grab translation control key combination:", LOG_LVL_1,
             False);
 
-    XGrabKey (ctx->xDpy, ctx->transCtrlKeyCode, ctx->transCtrlKeyMask,
+    XGrabKey (ctx->xDpy, ctx->cloneKeyCode, ctx->cloneKeyMask,
               ctx->rootWin, True,
               GrabModeAsync, GrabModeAsync);
 
@@ -1321,14 +1310,11 @@ grabKeys (XWCOptions * ctx)
 
     logCtr ("\t\tsuccess", LOG_LVL_1, True);
 
-    XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
-    /*XSelectInput only throws BadWindow which we've already checked*/
-
     return True;
 }
 
 void
-ungrabKeys (XWCOptions * ctx)
+ungrabKeys (XWCContext * ctx)
 {
 
     if (ctx == NULL)
@@ -1362,7 +1348,7 @@ ungrabKeys (XWCOptions * ctx)
         return;
     }
 
-    XUngrabKey (ctx->xDpy, ctx->transCtrlKeyCode, ctx->transCtrlKeyMask,
+    XUngrabKey (ctx->xDpy, ctx->cloneKeyCode, ctx->cloneKeyMask,
                 ctx->rootWin);
 
     if (getXErrState () == True)
@@ -1475,28 +1461,112 @@ ifSingleInst (void)
 }
 
 int
-getPressedComb (XWCOptions * ctx)
+getPressedComb (XWCContext * ctx)
 {
     XEvent xEvent;
+/*
+    Bool   res;
+    Window rRetW, chRetW;
+    int rX, rY;
+    int trgX, trgY;
+    unsigned int mask_return;
+*/
     char buf[1024];
     while (XPending (ctx->xDpy) != 0)
     {
         XNextEvent (ctx->xDpy, &xEvent);
         switch (xEvent.type)
         {
-            case KeyPress:
 
-                snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:\t%d"
-                          "\n\tkey state:\t%d\n\texit key code:\t%d\n\texit key mask:\t%d"
-                          "\n\ttrans key code:\t%d\n\ttrans key mask:%d"
-                          "\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
-                          "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:\t%d",
-                          xEvent.xkey.keycode, xEvent.xkey.state,
+                /*
+                                //printf ("Btn: %d\n", xEvent.xbutton.button);
+                                if (xEvent.xbutton.button != Button1)
+                                {
+                                    continue;
+                                }
+
+                                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
+                                                     &rX, &rY, &trgX, &trgY, &mask_return);
+                                if (res == False)
+                                {
+                                    logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
+                                            False);
+                                    continue;
+                                }
+
+                                memset (&xEvent, 0x00, sizeof (xEvent));
+
+                                xEvent.xbutton.button      = Button1;
+                                xEvent.xbutton.same_screen = True;
+                                xEvent.xbutton.root        = ctx->rootWin;
+                                xEvent.xbutton.subwindow   = None;
+                                xEvent.xbutton.window      = ctx->srcWin;
+                                xEvent.xbutton.x           = trgX;
+                                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
+
+
+
+                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, 0xfff, &xEvent) == 0) fprintf (stderr, "Error\n");
+
+                                XFlush (ctx->xDpy);
+
+                                nanosleep (&ctx->longDelay, NULL);
+
+                                xEvent.type          = ButtonRelease;
+                                xEvent.xbutton.state = 0x100;
+
+                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, ButtonReleaseMask, &xEvent) == 0) fprintf (stderr, "Error\n");
+
+                                XFlush (ctx->xDpy);
+                 */
+
+     
+                /*
+                                //printf ("Btn: %d\n", xEvent.xbutton.button);
+                                if (xEvent.xbutton.button != Button1)
+                                {
+                                    continue;
+                                }
+
+                                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
+                                                     &rX, &rY, &trgX, &trgY, &mask_return);
+                                if (res == False)
+                                {
+                                    logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
+                                            False);
+                                    continue;
+                                }
+
+                                memset (&xEvent, 0x00, sizeof (xEvent));
+
+                                xEvent.type                = ButtonPress;
+                                xEvent.xbutton.button      = Button1;
+                                xEvent.xbutton.same_screen = True;
+                                xEvent.xbutton.root        = ctx->rootWin;
+                                xEvent.xbutton.subwindow   = None;
+                                xEvent.xbutton.window      = ctx->srcWin;
+                                xEvent.xbutton.x           = trgX;
+                                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
+
+
+                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, ButtonPressMask, &xEvent) == 0) fprintf (stderr, "Error\n");
+
+                                XFlush (ctx->xDpy);
+                 */
+
+   
+            case KeyPress:
+                snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:"
+                          "\t%d\n\tkey state:\t%d\n\texit key code:\t%d\n\texit"
+                          " key mask:\t%d\n\ttrans key code:\t%d\n\ttrans key "
+                          "mask:%d\n\txEvent.xkey.state ^ cfg->exitKeyMask:\t%d"
+                          "\n\txEvent.xkey.state ^ cfg->translationCtrlKeyMask:"
+                          "\t%d", xEvent.xkey.keycode, xEvent.xkey.state,
                           ctx->exitKeyCode, ctx->exitKeyMask,
-                          ctx->transCtrlKeyCode,
-                          ctx->transCtrlKeyMask,
+                          ctx->cloneKeyCode,
+                          ctx->cloneKeyMask,
                           xEvent.xkey.state ^ ctx->exitKeyMask,
-                          xEvent.xkey.state ^ ctx->transCtrlKeyMask);
+                          xEvent.xkey.state ^ ctx->cloneKeyMask);
                 logCtr (buf, LOG_LVL_1, False);
 
                 if (xEvent.xkey.keycode == ctx->exitKeyCode
@@ -1506,11 +1576,12 @@ getPressedComb (XWCOptions * ctx)
                     return EXIT_COMBINATION;
                 }
                 else if (xEvent.xkey.keycode
-                         == ctx->transCtrlKeyCode
-                         && (xEvent.xkey.state ^ ctx->transCtrlKeyMask) == 0
+                         == ctx->cloneKeyCode
+                         && (xEvent.xkey.state ^ ctx->cloneKeyMask) == 0
                          && ctx->isDaemon == True)
                 {
-                    logCtr ("Grab window key sequence received!", LOG_LVL_NO, False);
+                    logCtr ("Grab window key sequence received!", LOG_LVL_NO,
+                            False);
                     return TRANSLATION_COMBINATION;
                 }
                 else
@@ -1519,6 +1590,7 @@ getPressedComb (XWCOptions * ctx)
                     XFlush (ctx->xDpy);
                 }
                 break;
+
             default:
                 break;
         }
@@ -1526,14 +1598,86 @@ getPressedComb (XWCOptions * ctx)
     return NO_KEY_PRESSED;
 }
 
-Bool
-getVisualOfScr (Screen      * xScr,
-                int           depth,
-                XVisualInfo * xVisInfo)
+Colormap
+createColormap (XWCContext * ctx,
+                Visual     * xVis)
 {
-    Display * xDpy = xScr->display;
-    int xScrId = XScreenNumberOfScreen (xScr);
-    int res = XMatchVisualInfo (xDpy, xScrId, depth, TrueColor, xVisInfo);
+    return XCreateColormap (ctx->xDpy, ctx->srcWin, xVis, AllocNone);
+}
+
+Window
+createWindow (XWCContext           * ctx,
+              Visual               * xVis,
+              long long int          mask,
+              XSetWindowAttributes * attr)
+{
+    Window w;
+    w = XCreateWindow (ctx->xDpy, ctx->rootWin, 0, 0, ctx->srcWinAttr.width,
+                       ctx->srcWinAttr.height, 0, ctx->srcWinAttr.depth,
+                       InputOutput, xVis, mask, attr);
+    return w;
+}
+
+Bool
+createTrgWindow (XWCContext * ctx)
+{
+    XSetWindowAttributes  * trgWinSetAttr;
+    XVisualInfo             xVisInfo;
+    long long int           mask;
+
+    if (getVisOfScr (ctx, &xVisInfo) == False)
+    {
+        logCtr ("\tError: no such visual", LOG_LVL_NO, False);
+        return False;
+    }
+    void * bp = malloc (sizeof (XSetWindowAttributes));
+
+    if (bp == NULL)
+    {
+        logCtr ("\tError: cannot allocate memory for XSetWindowAttributes",
+                LOG_LVL_NO, False);
+        return False;
+    }
+
+    trgWinSetAttr = (XSetWindowAttributes*) bp;
+
+    trgWinSetAttr->colormap         = createColormap (ctx, xVisInfo.visual);
+    trgWinSetAttr->background_pixel = ctx->bgColor.pixel;
+    trgWinSetAttr->border_pixel     = 0;
+    trgWinSetAttr->bit_gravity      = NorthWestGravity;
+    //trgWinSetAttr->event_mask       = ButtonPressMask | ButtonReleaseMask;
+    mask                           = CWBackPixel | CWColormap | CWBorderPixel |
+        CWBitGravity ;
+
+    ctx->trgWin = createWindow (ctx, xVisInfo.visual, mask, trgWinSetAttr);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
+        if (ctx->trgWin != None)
+        {
+            XDestroyWindow (ctx->xDpy, ctx->trgWin);
+        }
+        return None;
+    }
+
+    if (setWinTitlebar (ctx->xDpy, ctx->trgWin, WM_CLASS_PRG_NAME_STR) == False
+        || setWindowClass (ctx->xDpy, ctx->trgWin, WM_CLASS_PRG_NAME_STR,
+                           WM_CLASS_CLASS_NAME_STR) == False )
+    {
+        return False;
+    }
+    free (trgWinSetAttr);
+    return True;
+}
+
+Bool
+getVisOfScr (XWCContext  * ctx,
+             XVisualInfo * xVisInfo)
+{
+    int xScrId = XScreenNumberOfScreen (ctx->xScr);
+    int res = XMatchVisualInfo (ctx->xDpy, xScrId, ctx->srcWinAttr.depth,
+                                TrueColor, xVisInfo);
     return res != 0;
 }
 
@@ -1541,25 +1685,29 @@ void
 printDrawableInfo (Display  * xDpy,
                    Drawable   drw)
 {
-    Window       root_return;
-    int          x_return, y_return;
-    unsigned int width_return, height_return, border_width_return, depth_return;
+    Window       r;
+    Status       st;
+    int          x, y;
+    unsigned int w, h, b, d;
     char         buf[1024];
 
-    Status st = XGetGeometry (xDpy, drw, &root_return, &x_return, &y_return, &width_return,
-                              &height_return, &border_width_return, &depth_return);
+    st = XGetGeometry (xDpy, drw, &r, &x, &y, &w, &h, &b, &d);
 
-    printf ("\nget geometry status = %d\n", st);
+    if (st == 0 )
+    {
+        logCtr ("XGetGeometry: Cannot get parameters of specified drawable!",
+                LOG_LVL_NO, False);
+        return;
+    }
 
-    snprintf (buf, sizeof (buf), "Background image parameters:\n\tWidth:\t"
-              "%d\n\tHeight:\t%d\n\tDepth:\t%u\n\troot win:\t%lX",
-              width_return, height_return, depth_return, root_return);
+    snprintf (buf, sizeof (buf), "Drawble information:\n\tWidth:\t"
+              "%d\n\tHeight:\t%d\n\tDepth:\t%u\n\troot win:\t%lX", w, h, d, r);
 
     logCtr (buf, LOG_LVL_1, False);
 }
 
 Bool
-bgImgPrepare (XWCOptions        * ctx,
+bgImgPrepare (XWCContext        * ctx,
               Pixmap            * bgImgPm,
               unsigned int      * bgImgWidth,
               unsigned int      * bgImgHeight,
@@ -1602,14 +1750,15 @@ bgImgPrepare (XWCOptions        * ctx,
         *bgImgHeight = imlib_image_get_height ();
 
         if (   *bgImgWidth  > ctx->rootWinAttr.width
-            || *bgImgHeight > ctx->rootWinAttr.height)
+            || * bgImgHeight > ctx->rootWinAttr.height)
         {
             float scaleFactor = (float) *bgImgWidth / (float) *bgImgHeight;
 
             int newWidth  = ctx->rootWinAttr.width;
             int newHeight = (float) newWidth / scaleFactor;
 
-            snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\theight:\t%d", newWidth, newHeight);
+            snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\t"
+                      "height:\t%d", newWidth, newHeight);
             logCtr (buf, LOG_LVL_1, True);
 
             imgScaled = imgLibCreateCrSc (0, 0, *bgImgWidth, *bgImgHeight,
@@ -1626,8 +1775,8 @@ bgImgPrepare (XWCOptions        * ctx,
         }
 
 
-        *bgImgPm = XCreatePixmap (ctx->xDpy, bgImgRootWin, *bgImgWidth, *bgImgHeight,
-                                  bgImgRootWinAttr->depth);
+        *bgImgPm = XCreatePixmap (ctx->xDpy, bgImgRootWin, *bgImgWidth,
+                                  *bgImgHeight, bgImgRootWinAttr->depth);
 
         imlib_context_set_display (ctx->xDpy);
         imlib_context_set_visual (bgImgRootWinAttr->visual);
@@ -1653,3 +1802,4 @@ bgImgPrepare (XWCOptions        * ctx,
     }
     return True;
 }
+

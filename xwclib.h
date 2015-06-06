@@ -21,16 +21,16 @@ extern "C"
     /*Redefine Xlib functions*/
     /****************************************/
     typedef void (*XCompRedirWin_t)(Display *, Window, int) ;
-    extern XCompRedirWin_t XCompRedirWin;
+    extern XCompRedirWin_t redirWin;
 
     typedef void (*XCompUnRedirWin_t)(Display *, Window, int) ;
-    extern XCompUnRedirWin_t XCompUnRedirWin;
+    extern XCompUnRedirWin_t unRedirWin;
 
     typedef void (*XCompRedirSubWin_t)(Display *, Window, int) ;
-    extern XCompRedirSubWin_t XCompRedirSubWin;
+    extern XCompRedirSubWin_t redirSubWin;
 
     typedef void (*XCompUnRedirSubWin_t)(Display *, Window, int) ;
-    extern XCompUnRedirSubWin_t XCompUnRedirSubWin;
+    extern XCompUnRedirSubWin_t unRedirSubWin;
 
     /****************************************/
 
@@ -82,7 +82,7 @@ extern "C"
      * type definition `XWCOptions` instead.
      * @sa options
      */
-    struct XWCOptions_
+    struct XWCContext_
     {
         int               autoCenter;  /**< whether to enable autocentering of 
                                         * source window int the xwinclone window 
@@ -110,14 +110,12 @@ extern "C"
                                         * (keysymdef.h)*/
         KeyCode           exitKeyCode; /**< result of exit key string parsing*/
         int               exitKeyMask; /**< Exit key modifier according to X.h*/
-        KeyCode           transCtrlKeyCode; /**< result of translation
+        KeyCode           cloneKeyCode; /**< result of translation
                                                    *  control key string
                                                    *  parsing*/
-        int               transCtrlKeyMask; /**< Translation control key
+        int               cloneKeyMask; /**< Translation control key
                                                    *  modifier according to
                                                    *  X.h*/
-        Window            srcWinId;    /**< Default window id to be used as 
-                                        * source*/
         int               isDaemon;    /**< If program considered to be run in 
                                         * daemon mode*/
         int               isSingleton; /**< Allow only one instance of program
@@ -125,8 +123,14 @@ extern "C"
                                         *  daemon mode*/
         Display         * xDpy;
         Screen          * xScr;
-        XWindowAttributes rootWinAttr;
         Window            rootWin;
+        XWindowAttributes rootWinAttr;
+        Window            srcWin; /**< Default window id to be used as 
+                                        * source*/
+        XWindowAttributes srcWinAttr;
+        Window            trgWin;
+        XWindowAttributes trgWinAttr;
+
     } ;
 
     /** 
@@ -153,7 +157,7 @@ extern "C"
      * @var XWCOptions.srcWinId 
      * Field 'srcWinId' defines window id to be used instead of focused
      */
-    typedef struct XWCOptions_ XWCOptions;
+    typedef struct XWCContext_ XWCContext;
 
     /** @var Bool X_ERROR
     @brief Contains the last Xlib's error code. 
@@ -250,7 +254,7 @@ extern "C"
      * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
      */
     Window
-    getActiveWindow (XWCOptions * ctx);
+    getActiveWindow (XWCContext * ctx);
 
     /**
      * Prints window name as reported to window manager (ICCC WM_NAME).
@@ -331,7 +335,7 @@ extern "C"
      * @return Pointer to `XWCOptions` or NULL in case of error.
      * @todo Add some heuristics to argument processing.
      */
-    XWCOptions *
+    XWCContext *
     init (int           argCnt,
           const char ** argArr);
 
@@ -342,7 +346,7 @@ extern "C"
      * @return Pointer to Xlib's Screen structure or NULL in case of error.
      */
     Screen *
-    getScreenByWindowAttr (XWCOptions        * ctx,
+    getScreenByWindowAttr (XWCContext        * ctx,
                            XWindowAttributes * winAttr);
 
     /**
@@ -362,7 +366,7 @@ extern "C"
      * @return Xlib's True on success, False otherwise
      */
     Bool
-    grabKeys (XWCOptions * prgCfg);
+    grabKeys (XWCContext * prgCfg);
 
     /**
      * Deregisters exit key combination for a given window.
@@ -371,7 +375,7 @@ extern "C"
      * @param[in] prgCfg Data struct with program's configuration
      */
     void
-    ungrabKeys (XWCOptions * prgCfg);
+    ungrabKeys (XWCContext * prgCfg);
 
     /**
      * Checks if x server we have connection to has composite extension of 
@@ -407,15 +411,17 @@ extern "C"
     ifSingleInst (void);
 
     int
-    getPressedComb (XWCOptions * cfg);
+    getPressedComb (XWCContext * cfg);
 
     Bool
-    getVisualOfScr (Screen      * xScr,
-                    int           depth,
-                    XVisualInfo * xVisInfo);
+    getVisOfScr (XWCContext  * ctx,
+                 XVisualInfo * xVisInfo);
 
     Bool
-    bgImgPrepare (XWCOptions        * ctx,
+    createTrgWindow (XWCContext * ctx);
+
+    Bool
+    bgImgPrepare (XWCContext        * ctx,
                   Pixmap            * bgImgPm,
                   unsigned int      * bgImgWidth,
                   unsigned int      * bgImgHeight,
@@ -427,7 +433,7 @@ extern "C"
                        Drawable   drw);
 
     Bool
-    parseColor (XWCOptions * cfg);
+    parseColor (XWCContext * cfg);
 
 #ifdef	__cplusplus
 }
