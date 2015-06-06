@@ -162,7 +162,7 @@ main (int     argc,
         }
 
         XMapWindow (ctx->xDpy, ctx->trgWin);
-        
+
         if (getXErrState () == True)
         {
             logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
@@ -233,8 +233,6 @@ main (int     argc,
                        bgImgHeight, 0, 0);
         }
 
-        XSync (ctx->xDpy, 0);
-
         if (getXErrState () == True)
         {
             XFreeGC (ctx->xDpy, xGraphicsCtx);
@@ -256,7 +254,6 @@ main (int     argc,
         /**********************************************************************/
         redirWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
         redirSubWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-        XSync (ctx->xDpy, 0);
         srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcWin);
 
         if (getXErrState () == True)
@@ -277,74 +274,17 @@ main (int     argc,
         }
         /**********************************************************************/
 
-        
+
         /**********************************************************************/
         /*Start drawing frames */
         /**********************************************************************/
         while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
         {
             nanosleep (&ctx->frameDelay, NULL);
-            printf ("works1\n");
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
+
             XGetWindowAttributes (ctx->xDpy, ctx->trgWin, &ctx->trgWinAttr);
-            nanosleep (&ctx->frameDelay, NULL);
-            printf ("works2\n");
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
             XGetWindowAttributes (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
-            nanosleep (&ctx->frameDelay, NULL);
-            printf ("works3\n");
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
-            nanosleep (&ctx->frameDelay, NULL);
+
             trgWinW = ctx->trgWinAttr.width;
             srcWinW = ctx->srcWinAttr.width;
             trgWinH = ctx->trgWinAttr.height;
@@ -353,19 +293,9 @@ main (int     argc,
             if (ctx->srcWinAttr.map_state == IsViewable)
             {
                 srcWinPmOld = srcWinPm;
-                printf ("works4\n");
-
-
                 srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcWin);
-                nanosleep (&ctx->frameDelay, NULL);
-                printf ("works5\n");
-
                 XSync (ctx->xDpy, 0);
-                printf ("works6\n");
-
                 XGetWindowAttributes (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
-                nanosleep (&ctx->frameDelay, NULL);
-                printf ("works7\n");
 
                 if (getXErrState () == True)
                 {
@@ -381,9 +311,6 @@ main (int     argc,
                     continue;
                 }
 
-                nanosleep (&ctx->frameDelay, NULL);
-                printf ("works8\n");
-
                 if (srcWinPmOld != None)
                 {
                     XFreePixmap (ctx->xDpy, srcWinPmOld);
@@ -392,15 +319,13 @@ main (int     argc,
                 XFillRectangle (ctx->xDpy, pm, xGraphicsCtx, 0, 0,
                                 ctx->rootWinAttr.width,
                                 ctx->rootWinAttr.height);
-                nanosleep (&ctx->frameDelay, NULL);
-                printf ("works9\n");
+
                 if (ctx->bgImgStatus == True)
                 {
                     XCopyArea (ctx->xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0,
                                bgImgWidth, bgImgHeight, 0, 0);
                 }
-                nanosleep (&ctx->frameDelay, NULL);
-                printf ("works10\n");
+
                 if (ctx->autoCenter == True)
                 {
                     trgWinLeftOff = trgWinW - srcWinW;
@@ -453,9 +378,8 @@ main (int     argc,
             XFreePixmap (ctx->xDpy, bgImgPm);
         }
         XUnmapWindow (ctx->xDpy, ctx->trgWin);
-        XSync (ctx->xDpy, 0);
         XDestroyWindow (ctx->xDpy, ctx->trgWin);
-        XSync (ctx->xDpy, 0);
+        ctx->srcWin = None;
         /**********************************************************************/
 
 

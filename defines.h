@@ -23,9 +23,9 @@ extern "C"
     /**************************************************************************/
     /*Options*/
 #define _POSIX_C_SOURCE                              200112L
-#define FRAMERATE_FPS                                10  //fps
+#define FRAMERATE_FPS                                120  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
-#define LONG_WAIT                                    500 //ms
+#define LONG_WAIT                                    100 //ms
 #define DEFAULT_BG_COLOR                             "000000" //rgb color
 
 #define EXIT_KEY                                     "g"

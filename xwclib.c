@@ -1464,97 +1464,82 @@ int
 getPressedComb (XWCContext * ctx)
 {
     XEvent xEvent;
-/*
     Bool   res;
     Window rRetW, chRetW;
     int rX, rY;
     int trgX, trgY;
     unsigned int mask_return;
-*/
     char buf[1024];
+
     while (XPending (ctx->xDpy) != 0)
     {
         XNextEvent (ctx->xDpy, &xEvent);
         switch (xEvent.type)
         {
 
-                /*
-                                //printf ("Btn: %d\n", xEvent.xbutton.button);
-                                if (xEvent.xbutton.button != Button1)
-                                {
-                                    continue;
-                                }
+            case ButtonPress:
 
-                                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
-                                                     &rX, &rY, &trgX, &trgY, &mask_return);
-                                if (res == False)
-                                {
-                                    logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
-                                            False);
-                                    continue;
-                                }
+                if (xEvent.xbutton.button != Button1)
+                {
+                    continue;
+                }
 
-                                memset (&xEvent, 0x00, sizeof (xEvent));
+                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
+                                     &rX, &rY, &trgX, &trgY, &mask_return);
+                if (res == False)
+                {
+                    logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
+                            False);
+                    continue;
+                }
 
-                                xEvent.xbutton.button      = Button1;
-                                xEvent.xbutton.same_screen = True;
-                                xEvent.xbutton.root        = ctx->rootWin;
-                                xEvent.xbutton.subwindow   = None;
-                                xEvent.xbutton.window      = ctx->srcWin;
-                                xEvent.xbutton.x           = trgX;
-                                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
+                memset (&xEvent, 0x00, sizeof (xEvent));
 
+                xEvent.type = ButtonPress;
+                xEvent.xbutton.send_event = False;
+                xEvent.xbutton.display = ctx->xDpy;
+                xEvent.xbutton.window = ctx->srcWin;
+                xEvent.xbutton.root = ctx->rootWin;
+                xEvent.xbutton.subwindow = None;
+                xEvent.xbutton.time = CurrentTime;
+                xEvent.xbutton.x           = trgX;
+                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
+                xEvent.xbutton.x_root = rX;
+                xEvent.xbutton.y_root = rY;
+                xEvent.xbutton.state = 0;
+                xEvent.xbutton.button = Button1;
+                xEvent.xbutton.same_screen = False;
 
+                XWarpPointer (ctx->xDpy, ctx->trgWin, ctx->srcWin, 0, 0, 0, 0,
+                              xEvent.xbutton.x, xEvent.xbutton.y);
+                XSync (ctx->xDpy, 0);
+                nanosleep (&ctx->longDelay, NULL);
 
-                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, 0xfff, &xEvent) == 0) fprintf (stderr, "Error\n");
+                xEvent.type = ButtonPress;
+                if (XSendEvent (ctx->xDpy, ctx->srcWin, False, ButtonPressMask,
+                                &xEvent) == 0)
+                {
+                    printf ("Error\n");
+                }
+                XSync (ctx->xDpy, 0);
 
-                                XFlush (ctx->xDpy);
+                nanosleep (&ctx->frameDelay, NULL);
 
-                                nanosleep (&ctx->longDelay, NULL);
-
-                                xEvent.type          = ButtonRelease;
-                                xEvent.xbutton.state = 0x100;
-
-                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, ButtonReleaseMask, &xEvent) == 0) fprintf (stderr, "Error\n");
-
-                                XFlush (ctx->xDpy);
-                 */
-
-     
-                /*
-                                //printf ("Btn: %d\n", xEvent.xbutton.button);
-                                if (xEvent.xbutton.button != Button1)
-                                {
-                                    continue;
-                                }
-
-                                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
-                                                     &rX, &rY, &trgX, &trgY, &mask_return);
-                                if (res == False)
-                                {
-                                    logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
-                                            False);
-                                    continue;
-                                }
-
-                                memset (&xEvent, 0x00, sizeof (xEvent));
-
-                                xEvent.type                = ButtonPress;
-                                xEvent.xbutton.button      = Button1;
-                                xEvent.xbutton.same_screen = True;
-                                xEvent.xbutton.root        = ctx->rootWin;
-                                xEvent.xbutton.subwindow   = None;
-                                xEvent.xbutton.window      = ctx->srcWin;
-                                xEvent.xbutton.x           = trgX;
-                                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
+                xEvent.type = ButtonRelease;
+                if (XSendEvent (ctx->xDpy, ctx->srcWin, False,
+                                ButtonReleaseMask, &xEvent) == 0)
+                {
+                    printf ("Error\n");
+                }
+                XSync (ctx->xDpy, 0);
 
 
-                                if (XSendEvent (ctx->xDpy, ctx->srcWin, True, ButtonPressMask, &xEvent) == 0) fprintf (stderr, "Error\n");
+                XWarpPointer (ctx->xDpy, ctx->srcWin, ctx->trgWin, 0, 0, 0, 0,
+                              trgX, trgY);
+                XSync (ctx->xDpy, 0);
+                return NO_KEY_PRESSED;
+                break;
 
-                                XFlush (ctx->xDpy);
-                 */
-
-   
             case KeyPress:
                 snprintf (buf, sizeof (buf), "Got key combination\n\tkeycode:"
                           "\t%d\n\tkey state:\t%d\n\texit key code:\t%d\n\texit"
@@ -1586,8 +1571,8 @@ getPressedComb (XWCContext * ctx)
                 }
                 else
                 {
-                    XAllowEvents (ctx->xDpy, ReplayKeyboard, xEvent.xkey.time);
-                    XFlush (ctx->xDpy);
+                    //XAllowEvents (ctx->xDpy, ReplayKeyboard, xEvent.xkey.time);
+                    //XFlush (ctx->xDpy);
                 }
                 break;
 
@@ -1645,9 +1630,9 @@ createTrgWindow (XWCContext * ctx)
     trgWinSetAttr->background_pixel = ctx->bgColor.pixel;
     trgWinSetAttr->border_pixel     = 0;
     trgWinSetAttr->bit_gravity      = NorthWestGravity;
-    //trgWinSetAttr->event_mask       = ButtonPressMask | ButtonReleaseMask;
-    mask                           = CWBackPixel | CWColormap | CWBorderPixel |
-        CWBitGravity ;
+    trgWinSetAttr->event_mask       = ButtonPressMask;
+    mask                            = CWBackPixel | CWColormap | CWBorderPixel |
+        CWBitGravity | CWEventMask;
 
     ctx->trgWin = createWindow (ctx, xVisInfo.visual, mask, trgWinSetAttr);
 
