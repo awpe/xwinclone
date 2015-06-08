@@ -1500,7 +1500,12 @@ mvPtr (XWCContext * ctx, int x, int y, int screen)
     int ret;
 
     ret = 0;
-    ret = XWarpPointer (ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    //ret = XWarpPointer (ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    
+    ret = XIWarpPointer( ctx->xDpy, 14, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    ret = XIWarpPointer( ctx->xDpy, 2, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    //ret = XIWarpPointer( ctx->xDpy, 15, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    
     XFlush (ctx->xDpy);
 
     return ret == 0;

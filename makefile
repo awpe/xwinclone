@@ -6,7 +6,7 @@ CFLAGS  = -Wall -pedantic -std=c11 -O2 -Werror
 
 ODIR    = obj
 
-LIBS    = -lX11 -lXmu -lXcomposite -lImlib2
+LIBS    = -lX11 -lXmu -lXcomposite -lImlib2 -lXi
 
 DEPS    = defines.h headers.h xwclib.h
 
