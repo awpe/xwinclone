@@ -48,6 +48,8 @@ extern "C"
 #define DEFAULT_LOG_LVL                              LOG_LVL_2
 #define LOCK_FILE_PATH                               "/tmp/xwinclone.pid"
 #define DEFAULT_BGIMAGE_PATH                         "2e2e4.jpeg"
+#define FIRST_POINTER_ID 14
+#define SECOND_POINTER_ID 2
     /**************************************************************************/
 #ifdef	__cplusplus
 }
