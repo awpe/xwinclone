@@ -25,7 +25,7 @@ extern "C"
     /**************************************************************************/
     /*Options*/
 #define _POSIX_C_SOURCE                              200112L
-#define FRAMERATE_FPS                                120  //fps
+#define FRAMERATE_FPS                                30  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
 #define LONG_WAIT                                    500000000L //500ms
 #define MOUSE_BTN_DELAY                              10000000L //10ms
@@ -45,7 +45,7 @@ extern "C"
 #define TOP_OFFSET                                   0 // in pixels
 #define PROGRAM_EXE_NAME_STR                         "xwinclone"
 #define BG_IMAGE_PATH                                "./"
-#define DEFAULT_LOG_LVL                              LOG_LVL_2
+#define DEFAULT_LOG_LVL                              LOG_LVL_1
 #define LOCK_FILE_PATH                               "/tmp/xwinclone.pid"
 #define DEFAULT_BGIMAGE_PATH                         "2e2e4.jpeg"
 #define FIRST_POINTER_ID 14

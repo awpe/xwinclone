@@ -1184,11 +1184,13 @@ init (int           argCnt,
         return NULL;
     }
 
+/*
     if (grabKeys (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
         return NULL;
     }
+*/
 
     //XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
     /*XSelectInput only throws BadWindow which we've already checked*/
@@ -1266,7 +1268,7 @@ getRootWinOfScr (Screen * s)
 Bool
 grabKeys (XWCContext * ctx)
 {
-    logCtr ("Trying to grab key combinations:", LOG_LVL_1, False);
+    logCtr ("Trying to grab key combinations:", LOG_LVL_2, False);
 
     if (ctx == NULL)
     {
@@ -1289,7 +1291,7 @@ grabKeys (XWCContext * ctx)
         return False;
     }
 
-    logCtr ("\tTrying to grab exit key combination:", LOG_LVL_1, False);
+    logCtr ("\tTrying to grab exit key combination:", LOG_LVL_2, False);
 
     XGrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootW, True,
               GrabModeAsync, GrabModeAsync);
@@ -1304,10 +1306,10 @@ grabKeys (XWCContext * ctx)
         return False;
     }
 
-    logCtr ("\t\tsuccess", LOG_LVL_1, True);
+    logCtr ("\t\tsuccess", LOG_LVL_2, True);
 
 
-    logCtr ("\tTrying to grab translation control key combination:", LOG_LVL_1,
+    logCtr ("\tTrying to grab translation control key combination:", LOG_LVL_2,
             False);
 
     XGrabKey (ctx->xDpy, ctx->cloneKeyCode, ctx->cloneKeyMask,
@@ -1325,7 +1327,7 @@ grabKeys (XWCContext * ctx)
         return False;
     }
 
-    logCtr ("\t\tsuccess", LOG_LVL_1, True);
+    logCtr ("\t\tsuccess", LOG_LVL_2, True);
 
     return True;
 }
