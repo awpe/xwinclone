@@ -205,20 +205,18 @@ getNamedWindow (Display * d,
 Window
 getActiveWindow (XWCContext * ctx)
 {
-    Window w;
-
     if (ctx == NULL)
     {
         logCtr ("Error getting active window: No program options"
                 " data specified!", LOG_LVL_NO, False);
-        return None;
+        return False;
     }
 
     if (ctx->xDpy == NULL)
     {
         logCtr ("Error getting active window: No display specified!",
                 LOG_LVL_NO, False);
-        return None;
+        return False;
     }
 
     if (ctx->isDaemon == False)
@@ -228,19 +226,28 @@ getActiveWindow (XWCContext * ctx)
         nanosleep (&ctx->focusDelay, NULL);
     }
 
-    if ((w = ctx->srcWin) == None)
+    if (ctx->srcW == None)
     {
-        w = getFocusedWindow (ctx->xDpy);
+        ctx->srcW = getFocusedWindow (ctx->xDpy);
     }
 
-    if (     w == None
-        || ( w = getTopWindow (ctx->xDpy, w)   ) == None
-        || ( w = getNamedWindow (ctx->xDpy, w) ) == None )
+    if (     ctx->srcW                                          == None
+        || ( ctx->srcW = getTopWindow (ctx->xDpy, ctx->srcW)   ) == None
+        || ( ctx->srcW = getNamedWindow (ctx->xDpy, ctx->srcW) ) == None )
     {
-        return None;
+        return False;
     }
 
-    return w;
+    XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+
+    if (getXErrState () == True)
+    {
+        return False;
+    }
+
+    printWindowInfo (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+
+    return True;
 }
 
 void
@@ -711,6 +718,10 @@ addArg (arguments  * args,
             arg->m_Value                       = (void*) DEFAULT_BG_COLOR;
             break;
 
+        case LCKFPATH:
+            arg->m_Value                       = (void*) LOCK_FILE_PATH;
+            break;
+
         case BGIMAGE:
             arg->m_Value                       = (void*) DEFAULT_BGIMAGE_PATH;
             break;
@@ -908,13 +919,13 @@ init (int           argCnt,
         return NULL;
     }
 
-    if ((ctx->rootWin = getDefaultRootWindow (ctx->xDpy)) == None)
+    if ((ctx->rootW = getDefaultRootWindow (ctx->xDpy)) == None)
     {
         XCloseDisplay (ctx->xDpy);
         return NULL;
     }
 
-    XGetWindowAttributes (ctx->xDpy, ctx->rootWin, &ctx->rootWinAttr);
+    XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
 
     if (getXErrState () == True)
     {
@@ -922,10 +933,10 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (( ctx->xScr = getScreenByWindowAttr (ctx, &ctx->rootWinAttr) ) == NULL)
+    if (( ctx->xScr = getScreenByWindowAttr (ctx, &ctx->rootWAttr) ) == NULL)
     {
         XCloseDisplay (ctx->xDpy);
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     logCtr ("Processing arguments and building configuration:", LOG_LVL_1,
@@ -940,40 +951,43 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (   addArg (args, True,  C_STR, BGCOLOR,    "BGCOLOR",    1, "-bgclr")
+    if (   addArg (args, True,  C_STR, BGCOLOR,    "BGCOLOR",      1, "-bgclr")
         == False
 
-        || addArg (args, True,  C_STR, BGIMAGE,    "BGIMAGE",    1, "-bgimg")
+        || addArg (args, True,  C_STR, BGIMAGE,    "BGIMAGE",      1, "-bgimg")
         == False
 
-        || addArg (args, True,  INT,   FRAMERATE,  "FRAMERATE",  1, "-fr"   )
+        || addArg (args, True,  INT,   FRAMERATE,  "FRAMERATE",    1, "-fr"   )
         == False
 
-        || addArg (args, True,  INT,   FOCUSTIME,  "FOCUSTIME",  1, "-ft"   )
+        || addArg (args, True,  INT,   FOCUSTIME,  "FOCUSTIME",    1, "-ft"   )
         == False
 
-        || addArg (args, True,  INT,   TOPOFFSET,  "TOPOFFSET",  1, "-toff" )
+        || addArg (args, True,  INT,   TOPOFFSET,  "TOPOFFSET",    1, "-toff" )
         == False
 
-        || addArg (args, False, C_STR, HELP,       "HELP",       3, "-h",
+        || addArg (args, False, C_STR, HELP,       "HELP",         3, "-h",
                    "-help",
                    "--help")
         == False
 
-        || addArg (args, True,  INT,   AUTOCENTER, "AUTOCENTER", 1, "-ac"   )
+        || addArg (args, True,  INT,   AUTOCENTER, "AUTOCENTER",   1, "-ac"   )
         == False
 
-        || addArg (args, True,  INT,   LOGLVL,     "LOGLEVEL",   1, "-ll"   )
+        || addArg (args, True,  INT,   LOGLVL,     "LOGLEVEL",     1, "-ll"   )
         == False
 
-        || addArg (args, True,  ULONG, SOURCEID,   "SOURCEID",   1, "-srcid")
+        || addArg (args, True,  ULONG, SOURCEID,   "SOURCEID",     1, "-srcid")
         == False
 
-        || addArg (args, False, INT,   SINGLEINST, "SINGLEINST", 2, "-si",
+        || addArg (args, True,  C_STR, LCKFPATH,   "LOCKFILEPATH", 1, "-lckf")
+        == False
+
+        || addArg (args, False, INT,   SINGLEINST, "SINGLEINST",   2, "-si",
                    "-single")
         == False
 
-        || addArg (args, False, INT,   DAEMON,     "DAEMON",     2, "-d",
+        || addArg (args, False, INT,   DAEMON,     "DAEMON",       2, "-d",
                    "-daemon")
         == False
         )
@@ -1089,20 +1103,23 @@ init (int           argCnt,
     ctx->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
     ctx->frameDelay.tv_sec      = 0;
     ctx->longDelay.tv_sec       = 0;
-    ctx->longDelay.tv_nsec      = LONG_WAIT * 1000000L;
+    ctx->longDelay.tv_nsec      = LONG_WAIT;
     ctx->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
     ctx->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
     ctx->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    ctx->bgImgFileStr           = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ctx->bgImgFilePath          = (const char*) args->m_Args[BGIMAGE]->m_Value;
     ctx->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
     ctx->bgImgStatus            = False;
     ctx->exitKeyStr             = EXIT_KEY;
     ctx->exitKeyMask            = EXIT_MASK;
     ctx->transCtrlKeyStr        = TRANSLATION_CTRL_KEY;
-    ctx->cloneKeyMask       = TRANSLATION_CTRL_MASK;
-    ctx->srcWin                 = srcid;
+    ctx->cloneKeyMask           = TRANSLATION_CTRL_MASK;
+    ctx->srcW                   = srcid;
     ctx->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
+    ctx->lckFPath               = args->m_Args[LCKFPATH]->m_Value;
     ctx->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
+    ctx->clickDelay.tv_sec      = 0;
+    ctx->clickDelay.tv_nsec     = MOUSE_BTN_DELAY;
 
     ctx->isSingleton            = ctx->isSingleton || ctx->isDaemon;
 
@@ -1153,24 +1170,24 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (ctx->isSingleton == True && ifSingleInst () == False)
+    if (ctx->isSingleton == True && ifSingleInst (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
         free (ctx);
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     if (parseColor (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
         free (ctx);
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     if (grabKeys (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
-        return EXIT_FAILURE;
+        return NULL;
     }
 
     //XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
@@ -1265,7 +1282,7 @@ grabKeys (XWCContext * ctx)
         return False;
     }
 
-    if (ctx->rootWin == None)
+    if (ctx->rootW == None)
     {
         logCtr ("\tCannot grab key combinations: no root window specified!",
                 LOG_LVL_NO, True);
@@ -1274,7 +1291,7 @@ grabKeys (XWCContext * ctx)
 
     logCtr ("\tTrying to grab exit key combination:", LOG_LVL_1, False);
 
-    XGrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootWin, True,
+    XGrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootW, True,
               GrabModeAsync, GrabModeAsync);
 
     XSync (ctx->xDpy, 0);
@@ -1294,7 +1311,7 @@ grabKeys (XWCContext * ctx)
             False);
 
     XGrabKey (ctx->xDpy, ctx->cloneKeyCode, ctx->cloneKeyMask,
-              ctx->rootWin, True,
+              ctx->rootW, True,
               GrabModeAsync, GrabModeAsync);
 
     XSync (ctx->xDpy, 0);
@@ -1332,14 +1349,14 @@ ungrabKeys (XWCContext * ctx)
     }
 
 
-    if (ctx->rootWin == None)
+    if (ctx->rootW == None)
     {
         logCtr ("Cannot ungrab key combinations: no window specified!",
                 LOG_LVL_NO, False);
         return;
     }
 
-    XUngrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootWin);
+    XUngrabKey (ctx->xDpy, ctx->exitKeyCode, ctx->exitKeyMask, ctx->rootW);
 
     if (getXErrState () == True)
     {
@@ -1349,7 +1366,7 @@ ungrabKeys (XWCContext * ctx)
     }
 
     XUngrabKey (ctx->xDpy, ctx->cloneKeyCode, ctx->cloneKeyMask,
-                ctx->rootWin);
+                ctx->rootW);
 
     if (getXErrState () == True)
     {
@@ -1442,17 +1459,34 @@ getDefaultRootWindow (Display * d)
 }
 
 Bool
-ifSingleInst (void)
+ifSingleInst (XWCContext * ctx)
 {
-    int pid_file = open (LOCK_FILE_PATH, O_CREAT | O_RDWR, 0666);
-    int rc = flock (pid_file, LOCK_EX | LOCK_NB);
+    char buf[1024];
+    int  rc;
+
+    logCtr ("Creating lock file:", LOG_LVL_1, False);
+
+    if (ctx == NULL)
+    {
+        logCtr ("\tError: null pointer to context!", LOG_LVL_NO, True);
+    }
+
+    ctx->lckFD = open (ctx->lckFPath, O_CREAT | O_RDWR, 0666);
+
+    if (ctx == NULL)
+    {
+        snprintf (buf, sizeof (buf), "\tError: cannot create lock file %s!",
+                  ctx->lckFPath);
+        logCtr (buf, LOG_LVL_NO, True);
+    }
+
+    rc = flock (ctx->lckFD, LOCK_EX | LOCK_NB);
 
     if (rc != 0 && EWOULDBLOCK == errno)
     {
-        char buf[1024];
-        snprintf (buf, 1024, "File %s seems to be already created and locked,\n"
-                  "assuming other instance of this program is running",
-                  LOCK_FILE_PATH);
+        snprintf (buf, sizeof (buf), "File %s seems to be already created and"
+                  " locked,\nassuming other instance of this program is"
+                  " running", ctx->lckFPath);
         logCtr (buf, LOG_LVL_NO, False);
         return False;
     }
@@ -1461,31 +1495,383 @@ ifSingleInst (void)
 }
 
 int
+mvPtr (XWCContext * ctx, int x, int y, int screen)
+{
+    int ret;
+
+    ret = 0;
+    ret = XWarpPointer (ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    XFlush (ctx->xDpy);
+
+    return ret == 0;
+}
+
+int
+mvPtrWRel (XWCContext * ctx, Window window, int x, int y)
+{
+    Window n;
+    int    rX, rY;
+
+    XTranslateCoordinates (ctx->xDpy, window, ctx->rootW, x, y, &rX, &rY, &n);
+
+    return mvPtr (ctx, rX, rY, XScreenNumberOfScreen (ctx->xScr));
+}
+
+unsigned char *
+getWPrprtByAtom (XWCContext * ctx, Window window, Atom atom, long *nitems,
+                 Atom *type, int *size)
+{
+    /*From documenetation examples*/
+    Atom            actual_type;
+    int             actual_format;
+    unsigned long   nitems_;
+    unsigned long   bytes_after;
+    unsigned char * prop;
+    int             status;
+    char            buf[1024];
+
+    status = XGetWindowProperty (ctx->xDpy, window, atom, 0, (~ 0L),
+                                 False, AnyPropertyType, &actual_type,
+                                 &actual_format, &nitems_, &bytes_after,
+                                 &prop);
+
+    if (getXErrState () == True)
+    {
+        snprintf (buf, sizeof (buf), "Cannot get window property by atom!");
+        logCtr (buf, LOG_LVL_NO, False);
+        return NULL;
+    }
+
+    if (status != Success)
+    {
+        logCtr ("XGetWindowProperty failed!", LOG_LVL_NO, False);
+        return NULL;
+    }
+
+    if (nitems != NULL)
+    {
+        *nitems = nitems_;
+    }
+
+    if (type != NULL)
+    {
+        *type = actual_type;
+    }
+
+    if (size != NULL)
+    {
+        *size = actual_format;
+    }
+
+    return prop;
+}
+
+int
+findWClient (XWCContext * ctx, Window window, Window *window_ret,
+             int direction)
+{
+    Window       dummy, parent, *children;
+    unsigned int nchildren, i;
+    Atom         atom_wmstate;
+    int          done, ret;
+    long         items;
+    char         buf[1024];
+
+    atom_wmstate = XInternAtom (ctx->xDpy, "WM_STATE", False);
+    done         = False;
+    children     = NULL;
+
+    while (done == False)
+    {
+        if (window == None)
+        {
+            return False;
+        }
+
+        getWPrprtByAtom (ctx, window, atom_wmstate, &items, NULL, NULL);
+
+        if (items == 0)
+        {
+            /* This window doesn't have WM_STATE property, keep searching. */
+            XQueryTree (ctx->xDpy, window, &dummy, &parent, &children, &nchildren);
+
+            if (direction == FIND_PARENTS)
+            {
+                if (children != NULL)
+                {
+                    XFree (children);
+                }
+                window = parent;
+            }
+            else if (direction == FIND_CHILDREN)
+            {
+                done = True;
+
+                for (i = 0; i < nchildren; ++i)
+                {
+                    ret = findWClient (ctx, children[i], &window, direction);
+
+                    if (ret == True)
+                    {
+                        *window_ret = window;
+                        break;
+                    }
+                }
+
+                if (nchildren == 0)
+                {
+                    return False;
+                }
+
+                if (children != NULL)
+                {
+                    XFree (children);
+                }
+            }
+            else
+            {
+                snprintf (buf, sizeof (buf), "Invalid findWClient direction"
+                          " (%d)\n", direction);
+                logCtr (buf, LOG_LVL_NO, False);
+
+                *window_ret = 0;
+
+                if (children != NULL)
+                {
+                    XFree (children);
+                }
+
+                return False;
+            }
+        }
+        else
+        {
+            *window_ret = window;
+            done = True;
+        }
+    }
+    return True;
+}
+
+int
+getMouseLoc (XWCContext * ctx,
+             int        * xR,
+             int        * yR,
+             int        * scrNumR,
+             Window     * wR)
+{
+    int          ret, x, y, screen_num, dummy_int;
+    Window       window;
+    Window       root;
+    unsigned int dummy_uint;
+    //char         buf[1024];
+
+    ret         = False;
+    window      = None;
+    root        = None;
+
+    ret = XQueryPointer (ctx->xDpy, ctx->rootW, &root, &window, &x, &y,
+                         &dummy_int, &dummy_int, &dummy_uint);
+    if (ret == True)
+    {
+        screen_num = XScreenNumberOfScreen (ctx->xScr);
+    }
+    else
+    {
+        logCtr ("Cannot get mouse location", LOG_LVL_NO, False);
+        return False;
+    }
+
+    if (wR != NULL)
+    {
+        /* Find the client window if we are not root. */
+        if (window != root && window != 0)
+        {
+            int findret;
+            Window client = 0;
+
+            /* Search up the stack for a client window for this window */
+            findret = findWClient (ctx, window, &client, FIND_PARENTS);
+            if (findret == False)
+            {
+                /* If no client found, search down the stack */
+                findret = findWClient (ctx, window, &client, FIND_CHILDREN);
+            }
+
+            //fprintf (stderr, "%lX, %lX, %lX, %X\n", window, root, client, findret);
+
+            if (findret == True)
+            {
+                window = client;
+            }
+        }
+        else
+        {
+            window = root;
+        }
+    }
+
+    //printf ("mouseloc root: %lX\n", root);
+    //printf ("mouseloc window: %lX\n", window);
+
+    if (ret == True)
+    {
+        if (xR != NULL)
+        {
+            *xR = x;
+        }
+        if (yR != NULL)
+        {
+            *yR = y;
+        }
+        if (scrNumR != NULL)
+        {
+            *scrNumR = screen_num;
+        }
+        if (wR != NULL)
+        {
+            *wR = window;
+        }
+    }
+
+    return ret;
+}
+
+unsigned int
+getInSt (XWCContext * ctx)
+{
+    Window       dummy;
+    int          rX, rY, wX, wY;
+    unsigned int mask;
+
+    XQueryPointer (ctx->xDpy, ctx->rootW, &dummy, &dummy, &rX, &rY, &wX, &wY, &mask);
+
+    return mask;
+}
+
+int
+mouseBtnCtrl (XWCContext * ctx, int button, int is_press)
+{
+    int          res;
+    int          screen;
+    XButtonEvent xbpe;
+    Window       z;
+
+    memset (&xbpe, 0, sizeof (xbpe));
+
+    z = ctx->srcW;
+
+    getMouseLoc (ctx, &xbpe.x_root, &xbpe.y_root, &screen, &z);
+
+    //printf ("\tmouse is in %d, %d relative to root\n", xbpe.x_root, xbpe.y_root);
+
+    xbpe.window      = ctx->srcW;
+    xbpe.button      = button;
+    xbpe.display     = ctx->xDpy;
+    xbpe.root        = ctx->rootW;
+    xbpe.same_screen = True;
+    xbpe.state       = getInSt (ctx);
+    xbpe.subwindow   = None;
+    xbpe.time        = CurrentTime;
+    xbpe.type        = (is_press ? ButtonPress : ButtonRelease);
+
+    XTranslateCoordinates (ctx->xDpy, ctx->rootW, ctx->srcW, xbpe.x_root,
+                           xbpe.y_root, &xbpe.x, &xbpe.y, &xbpe.subwindow);
+
+    //printf ("\t1relative to source it is %d, %d\n", xbpe.x, xbpe.y);
+
+    //printf ("\t1src is %lX, subw is %lX\n", ctx->srcW, xbpe.subwindow);
+
+    if (xbpe.subwindow != None)
+    {
+        XTranslateCoordinates (ctx->xDpy, ctx->rootW, xbpe.subwindow,
+                               xbpe.x_root, xbpe.y_root, &xbpe.x, &xbpe.y, &xbpe.subwindow);
+
+        //printf ("\t1relative to source it is %d, %d\n", xbpe.x, xbpe.y);
+
+        //printf ("\t1src is %lX, subw is %lX\n", ctx->srcW, xbpe.subwindow);
+    }
+
+    if (is_press == False)
+    {
+        xbpe.state |= Button1MotionMask;
+    }
+
+    res = XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonPressMask,
+                      (XEvent *) & xbpe);
+    XFlush (ctx->xDpy);
+
+    if (res == 0 || getXErrState () == True)
+    {
+        logCtr ("Error sending click event", LOG_LVL_NO, False);
+        return False;
+    }
+
+    return True;
+}
+
+int
+setMouseUp (XWCContext * ctx,
+            int          button)
+{
+    return mouseBtnCtrl (ctx, button, False);
+}
+
+int
+setMouseDown (XWCContext * ctx,
+              int          button)
+{
+    return mouseBtnCtrl (ctx, button, True);
+}
+
+int
+clickW (XWCContext * ctx,
+        int          button)
+{
+    int ret;
+
+    ret = setMouseDown (ctx, button);
+
+    if (ret != True)
+    {
+        logCtr ("Click failed!", LOG_LVL_NO, False);
+        return ret;
+    }
+
+    nanosleep (&ctx->clickDelay, NULL);
+
+    ret = setMouseUp (ctx, button);
+
+    return ret;
+}
+
+int
 getPressedComb (XWCContext * ctx)
 {
-    XEvent xEvent;
-    Bool   res;
-    Window rRetW, chRetW;
-    int rX, rY;
-    int trgX, trgY;
+    XEvent       xEvent;
+    Bool         res;
+    Window       rRetW, chRetW;
+    int          rX, rY, trgX, trgY;
     unsigned int mask_return;
-    char buf[1024];
+    char         buf[1024];
 
     while (XPending (ctx->xDpy) != 0)
     {
         XNextEvent (ctx->xDpy, &xEvent);
         switch (xEvent.type)
         {
-
-            case ButtonPress:
+            case ButtonRelease:
 
                 if (xEvent.xbutton.button != Button1)
                 {
                     continue;
                 }
 
-                res = XQueryPointer (ctx->xDpy, ctx->trgWin, &rRetW, &chRetW,
+                logCtr ("Got click!", LOG_LVL_2, False);
+
+                res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, &chRetW,
                                      &rX, &rY, &trgX, &trgY, &mask_return);
+
                 if (res == False)
                 {
                     logCtr ("Error getting pointer coordinates!\n", LOG_LVL_NO,
@@ -1493,50 +1879,12 @@ getPressedComb (XWCContext * ctx)
                     continue;
                 }
 
-                memset (&xEvent, 0x00, sizeof (xEvent));
+                mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
 
-                xEvent.type = ButtonPress;
-                xEvent.xbutton.send_event = False;
-                xEvent.xbutton.display = ctx->xDpy;
-                xEvent.xbutton.window = ctx->srcWin;
-                xEvent.xbutton.root = ctx->rootWin;
-                xEvent.xbutton.subwindow = None;
-                xEvent.xbutton.time = CurrentTime;
-                xEvent.xbutton.x           = trgX;
-                xEvent.xbutton.y           = trgY + (ctx->topOffset / 2);
-                xEvent.xbutton.x_root = rX;
-                xEvent.xbutton.y_root = rY;
-                xEvent.xbutton.state = 0;
-                xEvent.xbutton.button = Button1;
-                xEvent.xbutton.same_screen = False;
+                clickW (ctx, Button1);
 
-                XWarpPointer (ctx->xDpy, ctx->trgWin, ctx->srcWin, 0, 0, 0, 0,
-                              xEvent.xbutton.x, xEvent.xbutton.y);
-                XSync (ctx->xDpy, 0);
-                nanosleep (&ctx->longDelay, NULL);
+                mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
 
-                xEvent.type = ButtonPress;
-                if (XSendEvent (ctx->xDpy, ctx->srcWin, False, ButtonPressMask,
-                                &xEvent) == 0)
-                {
-                    printf ("Error\n");
-                }
-                XSync (ctx->xDpy, 0);
-
-                nanosleep (&ctx->frameDelay, NULL);
-
-                xEvent.type = ButtonRelease;
-                if (XSendEvent (ctx->xDpy, ctx->srcWin, False,
-                                ButtonReleaseMask, &xEvent) == 0)
-                {
-                    printf ("Error\n");
-                }
-                XSync (ctx->xDpy, 0);
-
-
-                XWarpPointer (ctx->xDpy, ctx->srcWin, ctx->trgWin, 0, 0, 0, 0,
-                              trgX, trgY);
-                XSync (ctx->xDpy, 0);
                 return NO_KEY_PRESSED;
                 break;
 
@@ -1552,7 +1900,7 @@ getPressedComb (XWCContext * ctx)
                           ctx->cloneKeyMask,
                           xEvent.xkey.state ^ ctx->exitKeyMask,
                           xEvent.xkey.state ^ ctx->cloneKeyMask);
-                logCtr (buf, LOG_LVL_1, False);
+                logCtr (buf, LOG_LVL_2, False);
 
                 if (xEvent.xkey.keycode == ctx->exitKeyCode
                     && (xEvent.xkey.state ^ ctx->exitKeyMask) == 0)
@@ -1567,12 +1915,12 @@ getPressedComb (XWCContext * ctx)
                 {
                     logCtr ("Grab window key sequence received!", LOG_LVL_NO,
                             False);
-                    return TRANSLATION_COMBINATION;
+                    return TRANSLATION_COMB;
                 }
                 else
                 {
-                    //XAllowEvents (ctx->xDpy, ReplayKeyboard, xEvent.xkey.time);
-                    //XFlush (ctx->xDpy);
+                    XAllowEvents (ctx->xDpy, ReplayKeyboard, xEvent.xkey.time);
+                    XFlush (ctx->xDpy);
                 }
                 break;
 
@@ -1587,7 +1935,7 @@ Colormap
 createColormap (XWCContext * ctx,
                 Visual     * xVis)
 {
-    return XCreateColormap (ctx->xDpy, ctx->srcWin, xVis, AllocNone);
+    return XCreateColormap (ctx->xDpy, ctx->srcW, xVis, AllocNone);
 }
 
 Window
@@ -1597,8 +1945,8 @@ createWindow (XWCContext           * ctx,
               XSetWindowAttributes * attr)
 {
     Window w;
-    w = XCreateWindow (ctx->xDpy, ctx->rootWin, 0, 0, ctx->srcWinAttr.width,
-                       ctx->srcWinAttr.height, 0, ctx->srcWinAttr.depth,
+    w = XCreateWindow (ctx->xDpy, ctx->rootW, 0, 0, ctx->srcWAttr.width,
+                       ctx->srcWAttr.height, 0, ctx->srcWAttr.depth,
                        InputOutput, xVis, mask, attr);
     return w;
 }
@@ -1606,53 +1954,64 @@ createWindow (XWCContext           * ctx,
 Bool
 createTrgWindow (XWCContext * ctx)
 {
-    XSetWindowAttributes  * trgWinSetAttr;
-    XVisualInfo             xVisInfo;
-    long long int           mask;
+    XSetWindowAttributes  trgWinSetAttr;
+    XVisualInfo           xVisInfo;
+    long long int         mask;
+
+    logCtr ("Creating translation window:", LOG_LVL_1, False);
 
     if (getVisOfScr (ctx, &xVisInfo) == False)
     {
         logCtr ("\tError: no such visual", LOG_LVL_NO, False);
         return False;
     }
-    void * bp = malloc (sizeof (XSetWindowAttributes));
 
-    if (bp == NULL)
-    {
-        logCtr ("\tError: cannot allocate memory for XSetWindowAttributes",
-                LOG_LVL_NO, False);
-        return False;
-    }
-
-    trgWinSetAttr = (XSetWindowAttributes*) bp;
-
-    trgWinSetAttr->colormap         = createColormap (ctx, xVisInfo.visual);
-    trgWinSetAttr->background_pixel = ctx->bgColor.pixel;
-    trgWinSetAttr->border_pixel     = 0;
-    trgWinSetAttr->bit_gravity      = NorthWestGravity;
-    trgWinSetAttr->event_mask       = ButtonPressMask;
-    mask                            = CWBackPixel | CWColormap | CWBorderPixel |
+    trgWinSetAttr.colormap         = createColormap (ctx, xVisInfo.visual);
+    trgWinSetAttr.background_pixel = ctx->bgColor.pixel;
+    trgWinSetAttr.border_pixel     = 0;
+    trgWinSetAttr.bit_gravity      = NorthWestGravity;
+    trgWinSetAttr.event_mask       = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
+    mask                           = CWBackPixel | CWColormap | CWBorderPixel |
         CWBitGravity | CWEventMask;
 
-    ctx->trgWin = createWindow (ctx, xVisInfo.visual, mask, trgWinSetAttr);
+    ctx->trgW = createWindow (ctx, xVisInfo.visual, mask, &trgWinSetAttr);
 
     if (getXErrState () == True)
     {
         logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
-        if (ctx->trgWin != None)
+        if (ctx->trgW != None)
         {
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
+            XDestroyWindow (ctx->xDpy, ctx->trgW);
         }
         return None;
     }
 
-    if (setWinTitlebar (ctx->xDpy, ctx->trgWin, WM_CLASS_PRG_NAME_STR) == False
-        || setWindowClass (ctx->xDpy, ctx->trgWin, WM_CLASS_PRG_NAME_STR,
+    if (setWinTitlebar (ctx->xDpy, ctx->trgW, WM_CLASS_PRG_NAME_STR) == False
+        || setWindowClass (ctx->xDpy, ctx->trgW, WM_CLASS_PRG_NAME_STR,
                            WM_CLASS_CLASS_NAME_STR) == False )
     {
         return False;
     }
-    free (trgWinSetAttr);
+
+    XMapWindow (ctx->xDpy, ctx->trgW);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
+        return False;
+    }
+
+    XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
+
+    if (getXErrState () == True)
+    {
+        return False;
+    }
+
+    printWindowInfo (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
+
+    logCtr ("\tsuccess", LOG_LVL_1, True);
+
     return True;
 }
 
@@ -1661,7 +2020,7 @@ getVisOfScr (XWCContext  * ctx,
              XVisualInfo * xVisInfo)
 {
     int xScrId = XScreenNumberOfScreen (ctx->xScr);
-    int res = XMatchVisualInfo (ctx->xDpy, xScrId, ctx->srcWinAttr.depth,
+    int res = XMatchVisualInfo (ctx->xDpy, xScrId, ctx->srcWAttr.depth,
                                 TrueColor, xVisInfo);
     return res != 0;
 }
@@ -1695,9 +2054,7 @@ Bool
 bgImgPrepare (XWCContext        * ctx,
               Pixmap            * bgImgPm,
               unsigned int      * bgImgWidth,
-              unsigned int      * bgImgHeight,
-              Window              bgImgRootWin,
-              XWindowAttributes * bgImgRootWinAttr)
+              unsigned int      * bgImgHeight)
 {
     Imlib_Image imgSrc, imgScaled;
     char buf[1024];
@@ -1711,12 +2068,12 @@ bgImgPrepare (XWCContext        * ctx,
         logCtr ("Reading background image file:", LOG_LVL_1, False);
     }
 
-    imgSrc = imlib_load_image (ctx->bgImgFileStr);
+    imgSrc = imlib_load_image (ctx->bgImgFilePath);
 
     if (imgSrc == NULL)
     {
         snprintf (buf, sizeof (buf), "\tcannot load background image file"
-                  " '%s'!", ctx->bgImgFileStr);
+                  " '%s'!", ctx->bgImgFilePath);
 
         if (ctx->bgImgFileSet == True)
         {
@@ -1734,12 +2091,12 @@ bgImgPrepare (XWCContext        * ctx,
         *bgImgWidth  = imlib_image_get_width ();
         *bgImgHeight = imlib_image_get_height ();
 
-        if (   *bgImgWidth  > ctx->rootWinAttr.width
-            || * bgImgHeight > ctx->rootWinAttr.height)
+        if (   *bgImgWidth  > ctx->rootWAttr.width
+            || * bgImgHeight > ctx->rootWAttr.height)
         {
             float scaleFactor = (float) *bgImgWidth / (float) *bgImgHeight;
 
-            int newWidth  = ctx->rootWinAttr.width;
+            int newWidth  = ctx->rootWAttr.width;
             int newHeight = (float) newWidth / scaleFactor;
 
             snprintf (buf, sizeof (buf), "Image scaled to:\n\twidth:\t%d\n\t"
@@ -1760,12 +2117,12 @@ bgImgPrepare (XWCContext        * ctx,
         }
 
 
-        *bgImgPm = XCreatePixmap (ctx->xDpy, bgImgRootWin, *bgImgWidth,
-                                  *bgImgHeight, bgImgRootWinAttr->depth);
+        *bgImgPm = XCreatePixmap (ctx->xDpy, ctx->trgW, *bgImgWidth,
+                                  *bgImgHeight, ctx->trgWAttr.depth);
 
         imlib_context_set_display (ctx->xDpy);
-        imlib_context_set_visual (bgImgRootWinAttr->visual);
-        imlib_context_set_colormap (bgImgRootWinAttr->colormap);
+        imlib_context_set_visual (ctx->trgWAttr.visual);
+        imlib_context_set_colormap (ctx->trgWAttr.colormap);
         imlib_context_set_drawable (*bgImgPm);
 
         imlib_render_image_on_drawable (0, 0);

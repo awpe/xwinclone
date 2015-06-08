@@ -9,6 +9,23 @@ extern "C"
 #include "defines.h"
 #include "headers.h"
 
+    typedef struct charcodemap
+    {
+        wchar_t key; /** the letter for this key, like 'a' */
+        KeyCode code; /** the keycode that this key is on */
+        KeySym symbol; /** the symbol representing this key */
+        int group; /** the keyboard group that has this key in it */
+        int modmask; /** the modifiers to apply when sending this key */
+        /** if this key need to be bound at runtime because it does not
+         * exist in the current keymap, this will be set to 1. */
+        int needs_binding;
+    } charcodemap_t;
+
+
+
+
+
+
     /****************************************/
     /*Redefine imlib2 functions*/
     /****************************************/
@@ -48,9 +65,10 @@ extern "C"
         DAEMON        = 8,
         SINGLEINST    = 9,
         BGIMAGE       = 10,
+        LCKFPATH      = 11,
         /****************************************/
         /*Write count of possible arguments here*/
-        OPTIONS_COUNT = 11
+        OPTIONS_COUNT = 12
         /****************************************/
     } argNames;
 
@@ -92,7 +110,7 @@ extern "C"
         int               topOffset;   /**< Source window top offset (pixels)*/
         XColor            bgColor;     /**< Background color data*/
         const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
-        const char      * bgImgFileStr; /**< Background image file path*/
+        const char      * bgImgFilePath; /**< Background image file path*/
         Bool              bgImgFileSet; /**< Shows if background image file path
                                         *  was specified*/
         Bool              bgImgStatus; /**< Shows if background image file has
@@ -103,6 +121,7 @@ extern "C"
                                         * its content (frames per second)*/
         struct timespec   longDelay;   /**< Used for waiting in case of
                                         *  unmapped windows*/
+        struct timespec   clickDelay;
         const char      * exitKeyStr;  /**< string representing exit key 
                                         * (keysymdef.h)*/
         const char      * transCtrlKeyStr;  /**< string representing
@@ -123,13 +142,18 @@ extern "C"
                                         *  daemon mode*/
         Display         * xDpy;
         Screen          * xScr;
-        Window            rootWin;
-        XWindowAttributes rootWinAttr;
-        Window            srcWin; /**< Default window id to be used as 
+        Window            rootW;
+        XWindowAttributes rootWAttr;
+        Window            srcW; /**< Default window id to be used as 
                                         * source*/
-        XWindowAttributes srcWinAttr;
-        Window            trgWin;
-        XWindowAttributes trgWinAttr;
+        XWindowAttributes srcWAttr;
+        Window            trgW;
+        XWindowAttributes trgWAttr;
+
+        int               lckFD;
+
+        const char      * lckFPath;
+        const char      * cfgFPath;
 
     } ;
 
@@ -408,7 +432,7 @@ extern "C"
      * Checks if no other instance of this program is running.
      */
     Bool
-    ifSingleInst (void);
+    ifSingleInst (XWCContext * ctx);
 
     int
     getPressedComb (XWCContext * cfg);
@@ -424,9 +448,7 @@ extern "C"
     bgImgPrepare (XWCContext        * ctx,
                   Pixmap            * bgImgPm,
                   unsigned int      * bgImgWidth,
-                  unsigned int      * bgImgHeight,
-                  Window              bgImgRootWin,
-                  XWindowAttributes * bgImgRootWinAttr);
+                  unsigned int      * bgImgHeight);
 
     void
     printDrawableInfo (Display  * xDpy,
@@ -435,8 +457,15 @@ extern "C"
     Bool
     parseColor (XWCContext * cfg);
 
+    int
+    setMouseUp (XWCContext * ctx, int button);
+
+    int
+    setMouseDown (XWCContext * ctx,  int button);
+
 #ifdef	__cplusplus
 }
 #endif
 
 #endif
+

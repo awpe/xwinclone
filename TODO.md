@@ -17,7 +17,7 @@ arguments in any order
 - [x] Add ability to specify id of source window from command line
 - [x] Try to acquire source window pixmap only in case it is in visible state
 - [x] Add daemon option
-- [ ] Send mouse clicks from target window to source window on same coordinates
+- [x] Send mouse clicks from target window to source window on same coordinates
 - [x] Redraw target window with fewer FPS in case of source window being 
 unmapped
 - [x] If source window was unmapped, make program to wait longer, before 
@@ -31,9 +31,12 @@ checking source window state again
 - [x] Fix error with grabbing same keys from multiple applications
 - [x] Fix log text formatting
 - [ ] Add option to select exit and translation control key combinations
-- [ ] Add option to select PID file path
+- [x] Add option to select PID file path
 - [ ] Add verbose for resource-clearing routines
 - [ ] Add option to control writing of log info into specified file
+- [ ] Control killing program by closing translation window from WM
+- [ ] Fix coordinates for sending mouse events when in autocentering mode and
+ window are not equal in size
 
 Version 0.2:
 - [ ] Add routine for automatic conversion of background image from various

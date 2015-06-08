@@ -10,26 +10,22 @@ main (int     argc,
     XWCContext           * ctx;
     Screen               * scrOfSrc;
     Window                 rootWinOfSrc;
-    GC                     xGraphicsCtx;
-    XGCValues              xGCtxVals;
+    GC                     xGC;
+    XGCValues              xGCVals;
     Pixmap                 pm, srcWinPm, bgImgPm, srcWinPmOld;
     char                   buf[1024];
-    int                    retVal, trgWinLeftOff, trgWinTOff, pressedKey,
+    int                    retVal, trgWinLOff, trgWinTOff, pressedKey,
         trgWinW, trgWinH, srcWinW, srcWinH;
-    unsigned int           bgImgWidth, bgImgHeight;
+    unsigned int           bgImgW, bgImgH;
     /**************************************************************************/
 
 
     /**************************************************************************/
     /*Variables initialization*/
     /**************************************************************************/
-    retVal               = EXIT_SUCCESS;
-    trgWinLeftOff        = 0;
-    trgWinTOff           = 0;
-    bgImgPm              = 0;
-    bgImgWidth           = 0;
-    bgImgHeight          = 0;
-    pressedKey           = NO_KEY_PRESSED;
+    pressedKey                 = NO_KEY_PRESSED;
+    retVal                     = EXIT_FAILURE;
+    xGCVals.graphics_exposures = False;
     /**************************************************************************/
 
 
@@ -56,6 +52,37 @@ main (int     argc,
     while (pressedKey != EXIT_COMBINATION)
     {
         /**********************************************************************/
+        /*All breaks considered to be caused by some error*/
+        /**********************************************************************/
+        retVal = EXIT_FAILURE;
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Reset resources*/
+        /**********************************************************************/
+        memset (&ctx->srcWAttr, 0 , sizeof (ctx->srcWAttr));
+        memset (&ctx->trgWAttr, 0 , sizeof (ctx->srcWAttr));
+        xGC           = NULL;
+        ctx->srcW     = None;
+        ctx->trgW     = None;
+        pm            = None;
+        srcWinPm      = None;
+        bgImgPm       = None;
+        srcWinPmOld   = None;
+        trgWinLOff    = 0;
+        trgWinTOff    = 0;
+        pressedKey    = 0;
+        trgWinW       = 0;
+        trgWinH       = 0;
+        srcWinW       = 0;
+        srcWinH       = 0;
+        bgImgW        = 0;
+        bgImgH        = 0;
+        /**********************************************************************/
+
+
+        /**********************************************************************/
         /*Wait for user input if in daemon mode*/
         /**********************************************************************/
         if (ctx->isDaemon == True)
@@ -72,6 +99,7 @@ main (int     argc,
 
             if (pressedKey == EXIT_COMBINATION)
             {
+                retVal = EXIT_SUCCESS;
                 break;
             }
         }
@@ -81,32 +109,19 @@ main (int     argc,
         /**********************************************************************/
         /*Get source window and its attributes*/
         /**********************************************************************/
-        if ((ctx->srcWin = getActiveWindow (ctx)) == None)
+        if (getActiveWindow (ctx) == False)
         {
-            XCloseDisplay (ctx->xDpy);
-            free (ctx);
-            return EXIT_FAILURE;
+            goto freeResources;
         }
-
-        XGetWindowAttributes (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
-
-        if (getXErrState () == True)
-        {
-            retVal = EXIT_FAILURE;
-            break;
-        }
-
-        printWindowInfo (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
         /**********************************************************************/
 
 
         /**********************************************************************/
         /*Check if source window screen is still the same*/
         /**********************************************************************/
-        if ((scrOfSrc = getScreenByWindowAttr (ctx, &ctx->srcWinAttr)) == NULL)
+        if ((scrOfSrc = getScreenByWindowAttr (ctx, &ctx->srcWAttr)) == NULL)
         {
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
 
         if (scrOfSrc != ctx->xScr)
@@ -115,35 +130,30 @@ main (int     argc,
 
             if (parseColor (ctx) == False)
             {
-                retVal = EXIT_FAILURE;
-                break;
+                goto freeResources;
             }
 
             if (( rootWinOfSrc = getRootWinOfScr (ctx->xScr) ) == None)
             {
-                retVal = EXIT_FAILURE;
-                break;
+                goto freeResources;
             }
 
-            if (rootWinOfSrc != ctx->rootWin)
+            if (rootWinOfSrc != ctx->rootW)
             {
                 ungrabKeys (ctx);
 
-                ctx->rootWin = rootWinOfSrc;
+                ctx->rootW = rootWinOfSrc;
 
-                XGetWindowAttributes (ctx->xDpy, ctx->rootWin,
-                                      &ctx->rootWinAttr);
+                XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
 
                 if (getXErrState () == True)
                 {
-                    retVal = EXIT_FAILURE;
-                    break;
+                    goto freeResources;
                 }
 
                 if (grabKeys (ctx) == False)
                 {
-                    retVal = EXIT_FAILURE;
-                    break;
+                    goto freeResources;
                 }
             }
         }
@@ -153,62 +163,28 @@ main (int     argc,
         /**********************************************************************/
         /*Create translation window*/
         /**********************************************************************/
-        logCtr ("Creating translation window:", LOG_LVL_1, False);
-
         if (createTrgWindow (ctx) == False)
         {
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
-
-        XMapWindow (ctx->xDpy, ctx->trgWin);
-
-        if (getXErrState () == True)
-        {
-            logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
-        }
-
-        XGetWindowAttributes (ctx->xDpy, ctx->trgWin, &ctx->trgWinAttr);
-
-        if (getXErrState () == True)
-        {
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
-        }
-
-        printWindowInfo (ctx->xDpy, ctx->trgWin, &ctx->trgWinAttr);
-
-        logCtr ("\tsuccess", LOG_LVL_1, True);
         /**********************************************************************/
 
 
         /**********************************************************************/
         /*Prepare temporary pixmap*/
         /**********************************************************************/
-        pm = XCreatePixmap (ctx->xDpy, ctx->trgWin, ctx->rootWinAttr.width,
-                            ctx->rootWinAttr.height, ctx->srcWinAttr.depth);
-        xGCtxVals.graphics_exposures = False;
-        xGraphicsCtx = XCreateGC (ctx->xDpy, pm, GCGraphicsExposures,
-                                  &xGCtxVals);
+        pm = XCreatePixmap (ctx->xDpy, ctx->trgW, ctx->rootWAttr.width,
+                            ctx->rootWAttr.height, ctx->srcWAttr.depth);
 
-        XSetForeground (ctx->xDpy, xGraphicsCtx, ctx->bgColor.pixel);
-        XFillRectangle (ctx->xDpy, pm, xGraphicsCtx, 0, 0,
-                        ctx->rootWinAttr.width, ctx->rootWinAttr.height);
+        xGC = XCreateGC (ctx->xDpy, pm, GCGraphicsExposures, &xGCVals);
+
+        XSetForeground (ctx->xDpy, xGC, ctx->bgColor.pixel);
+        XFillRectangle (ctx->xDpy, pm, xGC, 0, 0,
+                        ctx->rootWAttr.width, ctx->rootWAttr.height);
 
         if (getXErrState () == True)
         {
-            XFreeGC (ctx->xDpy, xGraphicsCtx);
-            XFreePixmap (ctx->xDpy, pm);
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
         /**********************************************************************/
 
@@ -216,35 +192,19 @@ main (int     argc,
         /**********************************************************************/
         /*Prepare background image*/
         /**********************************************************************/
-        if (bgImgPrepare (ctx, &bgImgPm, &bgImgWidth, &bgImgHeight, ctx->trgWin,
-                          &ctx->trgWinAttr) == False)
+        if (bgImgPrepare (ctx, &bgImgPm, &bgImgW, &bgImgH) == False)
         {
-            XFreeGC (ctx->xDpy, xGraphicsCtx);
-            XFreePixmap (ctx->xDpy, pm);
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
 
         if (ctx->bgImgStatus == True)
         {
-            XCopyArea (ctx->xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0, bgImgWidth,
-                       bgImgHeight, 0, 0);
+            XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0, bgImgW, bgImgH, 0, 0);
         }
 
         if (getXErrState () == True)
         {
-            XFreeGC (ctx->xDpy, xGraphicsCtx);
-            XFreePixmap (ctx->xDpy, pm);
-            if (bgImgPm != 0)
-            {
-                XFreePixmap (ctx->xDpy, bgImgPm);
-            }
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
         /**********************************************************************/
 
@@ -252,25 +212,13 @@ main (int     argc,
         /**********************************************************************/
         /*Redirect source window to pixmap and check it*/
         /**********************************************************************/
-        redirWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-        redirSubWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-        srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcWin);
+        redirWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+        redirSubWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+        srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
 
         if (getXErrState () == True)
         {
-            unRedirWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-            unRedirSubWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-            XFreeGC (ctx->xDpy, xGraphicsCtx);
-            XFreePixmap (ctx->xDpy, pm);
-            XFreePixmap (ctx->xDpy, srcWinPm);
-            if (bgImgPm != 0)
-            {
-                XFreePixmap (ctx->xDpy, bgImgPm);
-            }
-            XUnmapWindow (ctx->xDpy, ctx->trgWin);
-            XDestroyWindow (ctx->xDpy, ctx->trgWin);
-            retVal = EXIT_FAILURE;
-            break;
+            goto freeResources;
         }
         /**********************************************************************/
 
@@ -282,26 +230,25 @@ main (int     argc,
         {
             nanosleep (&ctx->frameDelay, NULL);
 
-            XGetWindowAttributes (ctx->xDpy, ctx->trgWin, &ctx->trgWinAttr);
-            XGetWindowAttributes (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
+            XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
+            XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
 
-            trgWinW = ctx->trgWinAttr.width;
-            srcWinW = ctx->srcWinAttr.width;
-            trgWinH = ctx->trgWinAttr.height;
-            srcWinH = ctx->srcWinAttr.height;
+            trgWinW = ctx->trgWAttr.width;
+            srcWinW = ctx->srcWAttr.width;
+            trgWinH = ctx->trgWAttr.height;
+            srcWinH = ctx->srcWAttr.height;
 
-            if (ctx->srcWinAttr.map_state == IsViewable)
+            if (ctx->srcWAttr.map_state == IsViewable)
             {
                 srcWinPmOld = srcWinPm;
-                srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcWin);
+                srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
                 XSync (ctx->xDpy, 0);
-                XGetWindowAttributes (ctx->xDpy, ctx->srcWin, &ctx->srcWinAttr);
+                XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
 
                 if (getXErrState () == True)
                 {
-                    if (ctx->srcWinAttr.map_state == IsViewable)
+                    if (ctx->srcWAttr.map_state == IsViewable)
                     {
-                        retVal = EXIT_FAILURE;
                         break;
                     }
                     srcWinPm = None;
@@ -316,46 +263,45 @@ main (int     argc,
                     XFreePixmap (ctx->xDpy, srcWinPmOld);
                 }
 
-                XFillRectangle (ctx->xDpy, pm, xGraphicsCtx, 0, 0,
-                                ctx->rootWinAttr.width,
-                                ctx->rootWinAttr.height);
+                XFillRectangle (ctx->xDpy, pm, xGC, 0, 0,
+                                ctx->rootWAttr.width,
+                                ctx->rootWAttr.height);
 
                 if (ctx->bgImgStatus == True)
                 {
-                    XCopyArea (ctx->xDpy, bgImgPm, pm, xGraphicsCtx, 0, 0,
-                               bgImgWidth, bgImgHeight, 0, 0);
+                    XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0,
+                               bgImgW, bgImgH, 0, 0);
                 }
 
                 if (ctx->autoCenter == True)
                 {
-                    trgWinLeftOff = trgWinW - srcWinW;
-                    trgWinTOff    = trgWinH - srcWinH + ctx->topOffset;
+                    trgWinLOff = trgWinW - srcWinW;
+                    trgWinTOff = trgWinH - srcWinH + ctx->topOffset;
 
-                    trgWinLeftOff >>= 1;
-                    trgWinTOff    >>= 1;
+                    trgWinLOff >>= 1;
+                    trgWinTOff >>= 1;
                 }
 
-                XCopyArea (ctx->xDpy, srcWinPm, pm, xGraphicsCtx,
+                XCopyArea (ctx->xDpy, srcWinPm, pm, xGC,
                            0,             0       + ctx->topOffset,
                            srcWinW,       srcWinH - ctx->topOffset,
-                           trgWinLeftOff, trgWinTOff);
+                           trgWinLOff,    trgWinTOff);
             }
 
-            if (ctx->trgWinAttr.map_state == IsViewable)
+            if (ctx->trgWAttr.map_state == IsViewable)
             {
-                XCopyArea (ctx->xDpy, pm, ctx->trgWin, xGraphicsCtx, 0, 0,
+                XCopyArea (ctx->xDpy, pm, ctx->trgW, xGC, 0, 0,
                            trgWinW, trgWinH, 0, 0);
             }
 
-            if (   ctx->trgWinAttr.map_state != IsViewable
-                || ctx->srcWinAttr.map_state != IsViewable)
+            if (   ctx->trgWAttr.map_state != IsViewable
+                || ctx->srcWAttr.map_state != IsViewable)
             {
                 nanosleep (&ctx->longDelay, NULL);
             }
 
             if (getXErrState () == True)
             {
-                retVal = EXIT_FAILURE;
                 break;
             }
         }
@@ -363,32 +309,49 @@ main (int     argc,
 
 
         /**********************************************************************/
-        /*Free old resources*/
+        /*Free resources*/
         /**********************************************************************/
-        unRedirWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-        unRedirSubWin (ctx->xDpy, ctx->srcWin, CompositeRedirectAutomatic);
-        XFreeGC (ctx->xDpy, xGraphicsCtx);
-        XFreePixmap (ctx->xDpy, pm);
+freeResources:
+        if (ctx->srcW != None)
+        {
+            unRedirWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+            unRedirSubWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+        }
+        if (xGC != NULL)
+        {
+            XFreeGC (ctx->xDpy, xGC);
+        }
+        if (pm != None)
+        {
+            XFreePixmap (ctx->xDpy, pm);
+        }
         if (srcWinPm != None)
         {
             XFreePixmap (ctx->xDpy, srcWinPm);
         }
-        if (bgImgPm != 0)
+        if (bgImgPm != None)
         {
             XFreePixmap (ctx->xDpy, bgImgPm);
         }
-        XUnmapWindow (ctx->xDpy, ctx->trgWin);
-        XDestroyWindow (ctx->xDpy, ctx->trgWin);
-        ctx->srcWin = None;
+        if (ctx->trgW != None)
+        {
+            XUnmapWindow (ctx->xDpy, ctx->trgW);
+            XDestroyWindow (ctx->xDpy, ctx->trgW);
+        }
         /**********************************************************************/
 
 
         /**********************************************************************/
         /*Check exit conditions*/
         /**********************************************************************/
-        if (   pressedKey    == EXIT_COMBINATION
-            || ctx->isDaemon == 0
-            || retVal        == EXIT_FAILURE)
+        if (pressedKey == NO_KEY_PRESSED)
+        {
+            break;
+        }
+
+        retVal = EXIT_SUCCESS;
+
+        if (ctx->isDaemon == 0)
         {
             break;
         }
@@ -397,6 +360,10 @@ main (int     argc,
 
     ungrabKeys (ctx);
     XCloseDisplay (ctx->xDpy);
+    if (ctx->isSingleton == True)
+    {
+        flock (ctx->lckFD, LOCK_UN);
+    }
     free (ctx);
 
     return retVal;
