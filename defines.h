@@ -1,15 +1,10 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#ifdef	__cplusplus
-extern "C"
-{
-#endif
+#define XWINCLONE_VERSION_STR                        "0.1i"
 
-#define XWINCLONE_VERSION_STR                        "0.1h"
-
-    /**************************************************************************/
-    /*Program definitions*/
+/**************************************************************************/
+/*Program definitions*/
 #define NO_KEY_PRESSED                               0
 #define TRANSLATION_COMB                             1
 #define EXIT_COMBINATION                             2
@@ -20,10 +15,10 @@ extern "C"
 #define LOG_LVL_2                                    2
 #define FIND_PARENTS                                 0 
 #define FIND_CHILDREN                                1
-    /**************************************************************************/
+/**************************************************************************/
 
-    /**************************************************************************/
-    /*Options*/
+/**************************************************************************/
+/*Options*/
 #define _POSIX_C_SOURCE                              200112L
 #define FRAMERATE_FPS                                30  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC                     2   //s
@@ -50,10 +45,7 @@ extern "C"
 #define DEFAULT_BGIMAGE_PATH                         "2e2e4.jpeg"
 #define FIRST_POINTER_ID 14
 #define SECOND_POINTER_ID 2
-    /**************************************************************************/
-#ifdef	__cplusplus
-}
-#endif
+/**************************************************************************/
 
 #endif
 

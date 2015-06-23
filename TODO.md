@@ -37,6 +37,7 @@ checking source window state again
 - [ ] Control killing program by closing translation window from WM
 - [ ] Fix coordinates for sending mouse events when in autocentering mode and
  window are not equal in size
+- [x] Split project into multiple files
 
 Version 0.2:
 - [ ] Add routine for automatic conversion of background image from various

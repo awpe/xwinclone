@@ -1,10 +1,6 @@
 #ifndef HEADERS_H
 #define	HEADERS_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,14 +20,16 @@ extern "C" {
 #include <X11/Xmu/WinUtil.h>
 #include <X11/Xatom.h>    
 #include <X11/extensions/Xcomposite.h>
+#include <X11/extensions/XInput.h>
 #include <X11/extensions/XInput2.h>
     
 #include <Imlib2.h>
 
-
-#ifdef	__cplusplus
-}
-#endif
+#include "xwcArgs.h"
+#include "xwcDevCtrl.h"
+#include "xwcInit.h"
+#include "xwcWinUtil.h"
+#include "xwcXSrvUtil.h"
 
 #endif
 

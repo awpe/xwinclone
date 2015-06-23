@@ -1,4 +1,4 @@
-#include "xwclib.h"
+#include "xwc.h"
 
 int
 main (int     argc,
