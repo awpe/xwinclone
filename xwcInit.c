@@ -12,7 +12,7 @@ init (int           argCnt,
     char                buf[2048];
     XWCContext        * ctx;
 
-    ctx = (XWCContext*) malloc (sizeof (XWCContext ));
+    ctx = (XWCContext*) malloc (sizeof (XWCContext));
 
     if (ctx == NULL)
     {
@@ -21,26 +21,54 @@ init (int           argCnt,
         return NULL;
     }
 
+    memset (ctx, 0, sizeof (*ctx));
+
+    ctx->bgColorStr      = NULL;
+    ctx->bgImgFilePath   = NULL;
+    ctx->cfgFPath        = NULL;
+    ctx->exitKeyStr      = NULL;
+    ctx->kbds            = NULL;
+    ctx->lckFPath        = NULL;
+    ctx->transCtrlKeyStr = NULL;
+    ctx->xDpy            = NULL;
+    ctx->xScr            = NULL;
+    ctx->clMods          = NULL;
+    ctx->exitMods        = NULL;
+
     /*Make a program to be portable to all locales*/
     setlocale (LC_ALL, "");
 
     if (( ctx->xDpy = openDefaultDisplay () )  == NULL)
     {
-        free (ctx);
+        freeXWCContext (ctx);
         return NULL;
     }
 
     if (chkCompExt (ctx->xDpy) == False)
     {
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
+        return NULL;
+    }
+
+    if (chckXI2Ext (ctx) == False)
+    {
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
+        return NULL;
+    }
+
+    if (getMasterDevsList (ctx, XIMasterKeyboard) == False)
+    {
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         return NULL;
     }
 
     if ((ctx->rootW = getDefaultRootWindow (ctx->xDpy)) == None)
     {
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         return NULL;
     }
 
@@ -48,15 +76,15 @@ init (int           argCnt,
 
     if (getXErrState () == True)
     {
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         return NULL;
     }
 
     if (( ctx->xScr = getScreenByWindowAttr (ctx, &ctx->rootWAttr) ) == NULL)
     {
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         return NULL;
     }
 
@@ -69,8 +97,8 @@ init (int           argCnt,
     {
         logCtr ("\tCannot allocate structure to process arguments!",
                 LOG_LVL_NO, True);
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         return NULL;
     }
 
@@ -117,8 +145,9 @@ init (int           argCnt,
     {
         delArgs (args);
         logCtr ("\tCannot add new argument to list!\n", LOG_LVL_NO, True);
-        free (ctx);
         XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
+        delArgs (args);
         return NULL;
     }
 
@@ -140,6 +169,8 @@ init (int           argCnt,
                                   "set several times!",
                                   args->m_Args[j]->m_NameStr);
                         logCtr (buf, LOG_LVL_NO, True);
+                        XCloseDisplay (ctx->xDpy);
+                        freeXWCContext (ctx);
                         delArgs (args);
                         return NULL;
                     }
@@ -165,6 +196,8 @@ init (int           argCnt,
                                           args->m_Args[j]->m_NameStr,
                                           PROGRAM_EXE_NAME_STR);
                                 logCtr (buf, LOG_LVL_NO, True);
+                                XCloseDisplay (ctx->xDpy);
+                                freeXWCContext (ctx);
                                 delArgs (args);
                                 return NULL;
                             }
@@ -182,6 +215,8 @@ init (int           argCnt,
                                           args->m_Args[j]->m_NameStr,
                                           PROGRAM_EXE_NAME_STR);
                                 logCtr (buf, LOG_LVL_NO, True);
+                                XCloseDisplay (ctx->xDpy);
+                                freeXWCContext (ctx);
                                 delArgs (args);
                                 return NULL;
                             }
@@ -207,9 +242,9 @@ init (int           argCnt,
             snprintf (buf, sizeof (buf), "\tUnknown argument specified!\n\nTry:"
                       "\n\n\t%s [-help | -h | --help]\n", PROGRAM_EXE_NAME_STR);
             logCtr (buf, LOG_LVL_NO, True);
-            delArgs (args);
-            free (ctx);
             XCloseDisplay (ctx->xDpy);
+            freeXWCContext (ctx);
+            delArgs (args);
             return NULL;
         }
         else
@@ -255,7 +290,8 @@ init (int           argCnt,
         snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
                   ctx->exitKeyStr);
         logCtr (buf, LOG_LVL_NO, True);
-        free (ctx);
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         delArgs (args);
         return NULL;
     }
@@ -264,7 +300,8 @@ init (int           argCnt,
     {
         snprintf (buf, sizeof (buf), "\tUnknown keycode %d", ctx->exitKeyCode);
         logCtr (buf, LOG_LVL_NO, True);
-        free (ctx);
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         delArgs (args);
         return NULL;
     }
@@ -275,7 +312,8 @@ init (int           argCnt,
         snprintf (buf, sizeof (buf), "\tError parsing exit key string (%s)",
                   ctx->transCtrlKeyStr);
         logCtr (buf, LOG_LVL_NO, True);
-        free (ctx);
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         delArgs (args);
         return NULL;
     }
@@ -285,7 +323,8 @@ init (int           argCnt,
         snprintf (buf, sizeof (buf), "\tUnknown keycode %d",
                   ctx->cloneKeyCode);
         logCtr (buf, LOG_LVL_NO, True);
-        free (ctx);
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         delArgs (args);
         return NULL;
     }
@@ -293,6 +332,8 @@ init (int           argCnt,
     if (args->m_Args[HELP]->m_IsSet == True)
     {
         printUsage (args);
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
         delArgs (args);
         return NULL;
     }
@@ -300,27 +341,26 @@ init (int           argCnt,
     if (ctx->isSingleton == True && ifSingleInst (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
-        free (ctx);
+        freeXWCContext (ctx);
+        delArgs (args);
         return NULL;
     }
 
     if (parseColor (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
-        free (ctx);
+        freeXWCContext (ctx);
+        delArgs (args);
         return NULL;
     }
 
-    /*
-        if (grabKeys (ctx) == False)
-        {
-            XCloseDisplay (ctx->xDpy);
-            return NULL;
-        }
-     */
-
-    //XSelectInput (ctx->xDpy, ctx->rootWin,  KeyPressMask);
-    /*XSelectInput only throws BadWindow which we've already checked*/
+    if ((ctx->keysGrabbed = grabAllKeys (ctx)) == False)
+    {
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
+        delArgs (args);
+        return NULL;
+    }
 
     if (LOG_LVL > LOG_LVL_NO)
     {
@@ -331,4 +371,27 @@ init (int           argCnt,
 
     delArgs (args);
     return ctx;
+}
+
+void
+freeXWCContext (XWCContext * ctx)
+{
+    if (ctx->clMods != NULL)
+    {
+        free (ctx->clMods);
+        free (ctx->exitMods);
+    }
+    
+    
+    if (ctx->kbds != NULL)
+    {
+        printf ("there are keyboards\n");
+        if (ctx->kbds->devs != NULL)
+        {
+            printf ("there are devs\n");
+            free (ctx->kbds->devs);
+        }
+        free (ctx->kbds);
+    }
+    free (ctx);
 }

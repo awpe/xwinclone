@@ -1,6 +1,14 @@
 #ifndef XWCINIT_H
 #define	XWCINIT_H
 
+struct DevList_
+{
+    int * devs;
+    int   nDevs;
+} ;
+
+typedef struct DevList_ DevList;
+
 /**
  * Actual structure to hold various program options. Maybe you want to use 
  * type definition `XWCOptions` instead.
@@ -9,49 +17,46 @@
 struct XWCContext_
 {
     int               autoCenter;  /**< whether to enable autocentering of 
-                                        * source window int the xwinclone window 
-                                        * (in case source window is smaller than 
-                                        * xwinclone's window).\n 1 - enabled, 
-                                        * 0 -  disabled, other - enabled*/
+                                      * source window int the xwinclone window 
+                                      * (in case source window is smaller than 
+                                      * xwinclone's window).\n 1 - enabled, 
+                                      * 0 -  disabled, other - enabled*/
     int               topOffset;   /**< Source window top offset (pixels)*/
     XColor            bgColor;     /**< Background color data*/
     const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
     const char      * bgImgFilePath; /**< Background image file path*/
     Bool              bgImgFileSet; /**< Shows if background image file path
-                                        *  was specified*/
+                                      *  was specified*/
     Bool              bgImgStatus; /**< Shows if background image file has
-                                        *  been loaded to x server's pixmap*/
+                                     *  been loaded to x server's pixmap*/
     struct timespec   focusDelay;  /**< how long to wait, before you focuse 
-                                        * on window you want to be cloned*/
+                                      * on window you want to be cloned*/
     struct timespec   frameDelay;  /**< how often should xwinclone refresh 
-                                        * its content (frames per second)*/
-    struct timespec   longDelay;   /**< Used for waiting in case of
-                                        *  unmapped windows*/
+                                      * its content (frames per second)*/
+    struct timespec   longDelay;   /**< Used for waiting in case of unmapped
+                                    *  windows*/
     struct timespec   clickDelay;
     const char      * exitKeyStr;  /**< string representing exit key 
-                                        * (keysymdef.h)*/
-    const char      * transCtrlKeyStr;  /**< string representing
-                                                   *  translation control key
-                                        * (keysymdef.h)*/
+                                      * (keysymdef.h)*/
+    const char      * transCtrlKeyStr;  /**< string representing translation
+                                         *  control key (keysymdef.h)*/
     KeyCode           exitKeyCode; /**< result of exit key string parsing*/
     int               exitKeyMask; /**< Exit key modifier according to X.h*/
-    KeyCode           cloneKeyCode; /**< result of translation
-                                                   *  control key string
-                                                   *  parsing*/
-    int               cloneKeyMask; /**< Translation control key
-                                                   *  modifier according to
-                                                   *  X.h*/
+    KeyCode           cloneKeyCode; /**< result of translation control key
+                                     *  string parsing*/
+    int               cloneKeyMask; /**< Translation control key modifier
+                                     *  according to X.h*/
     int               isDaemon;    /**< If program considered to be run in 
-                                        * daemon mode*/
+                                    * daemon mode*/
     int               isSingleton; /**< Allow only one instance of program
-                                        *  to be run, automatically set in
-                                        *  daemon mode*/
+                                    *  to be run, automatically set in
+                                    *  daemon mode*/
     Display         * xDpy;
     Screen          * xScr;
     Window            rootW;
     XWindowAttributes rootWAttr;
     Window            srcW; /**< Default window id to be used as 
-                                        * source*/
+                             * source*/
     XWindowAttributes srcWAttr;
     Window            trgW;
     XWindowAttributes trgWAttr;
@@ -61,6 +66,18 @@ struct XWCContext_
     const char      * lckFPath;
     const char      * cfgFPath;
 
+    DevList         * kbds; /**< List of master keyboard devices*/
+
+    int               xiOp; /**< XInput 2 extension opcode */
+    
+    int               nMods; /**< Number of modifiers for control keys*/
+    
+    XIGrabModifiers * clMods; /**< Modifiers for clone key */
+    XIGrabModifiers * exitMods; /**< Modifiers for exit key */
+    
+    Bool              keysGrabbed;
+    
+    
 } ;
 
 /** 
@@ -103,6 +120,9 @@ XWCContext *
 init (int           argCnt,
       const char ** argArr);
 
+
+void
+freeXWCContext (XWCContext * ctx);
 
 
 #endif

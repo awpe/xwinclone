@@ -554,6 +554,20 @@ createTrgWindow (XWCContext * ctx)
     }
 
     XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
+    
+    XIEventMask evmasks[1];
+    unsigned char mask1[(XI_LASTEVENT + 7)/8];
+
+    memset(mask1, 0, sizeof(mask1));
+
+    XISetMask(mask1, XI_ButtonPress);
+    XISetMask(mask1, XI_ButtonRelease);
+
+    evmasks[0].deviceid = XIAllMasterDevices;
+    evmasks[0].mask_len = sizeof(mask1);
+    evmasks[0].mask = mask1;
+    
+    XISelectEvents(ctx->xDpy, ctx->trgW, evmasks, 1);
 
     if (getXErrState () == True)
     {
@@ -644,6 +658,8 @@ findWClient (XWCContext * ctx,
             return False;
         }
 
+        items = 0;
+        
         getWPrprtByAtom (ctx, window, atom_wmstate, &items, NULL, NULL);
 
         if (items == 0)

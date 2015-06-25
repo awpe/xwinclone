@@ -8,6 +8,8 @@
 #define NO_KEY_PRESSED                               0
 #define TRANSLATION_COMB                             1
 #define EXIT_COMBINATION                             2
+#define SKIP_COMBINATION                             3
+#define ERROR_COMBINATION                            0xEE
 #define STR_EQUAL                                    0
 #define INT_CONV_OK                                  0
 #define LOG_LVL_NO                                   0
@@ -40,7 +42,7 @@
 #define TOP_OFFSET                                   0 // in pixels
 #define PROGRAM_EXE_NAME_STR                         "xwinclone"
 #define BG_IMAGE_PATH                                "./"
-#define DEFAULT_LOG_LVL                              LOG_LVL_1
+#define DEFAULT_LOG_LVL                              LOG_LVL_2
 #define LOCK_FILE_PATH                               "/tmp/xwinclone.pid"
 #define DEFAULT_BGIMAGE_PATH                         "2e2e4.jpeg"
 #define FIRST_POINTER_ID 14

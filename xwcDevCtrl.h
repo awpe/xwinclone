@@ -5,27 +5,66 @@
 
 /**
  * Registers exit key combination for a given window.
- * @param[in] d Pointer to Xlib's Display data struct.
- * @param[in] WID Window xid of window where exit event will be grabbed
- * @param[in] prgCfg Data struct with program's configuration
- * @return Xlib's True on success, False otherwise
+ * @param[in] ctx Pointer to program's context.
+ * @param[in] w Window xid of window where key will be grabbed, may be root
+ * for system wide grabbing.
+ * @param[in] xKCode Keycode to be grabbed.
+ * @param[in] kbds Pointer to list of devices where grabbing should take place.
+ * @param[in] nMods Number of modifiers.
+ * @param[in] mods Array of modifiers.
+ * @param[in] grab Specify either key must be grabbed(True) or ungrabbed(False).
+ * @return Xlib's True on success, False otherwise.
  */
 Bool
-grabKeys (XWCContext * prgCfg);
+grabKeyCtrl (XWCContext      * ctx,
+             Window            w,
+             KeyCode           xKCode,
+             int               nMods,
+             XIGrabModifiers * mods,
+             Bool              grab);
 
 /**
- * Deregisters exit key combination for a given window.
- * @param[in] d Pointer to Xlib's Display data struct.
- * @param[in] WID Window xid of window where exit event was grabbed
- * @param[in] prgCfg Data struct with program's configuration
+ * Checks if version 2.0 of XInput2 extension is available.
+ * @param[in] ctx Pointer to program's context.
+ * @return Xlib's True on success, False otherwise.
+ */
+Bool
+chckXI2Ext (XWCContext * ctx);
+
+/**
+ * Tries to get a list of master devices of specified type, creates and fills
+ * device list structure on success, nothing is created or filled otherwise.
+ * @param[in] ctx Pointer to program's context.
+ * @param[in] kbds Address of pointer to the list of devices to store results.
+ * @param[in] devType Type of master devices.
+ * @return Xlib's True on success, False otherwise.
+ * @sa XInput 2 Device types
+ */
+Bool
+getMasterDevsList (XWCContext *  ctx,
+                   int           devType);
+
+/**
+ * Tries to grab all control keys
+ * @param[in] ctx Pointer to program's context.
+ * @return Xlib's True on success, False otherwise.
+ */
+Bool
+grabAllKeys (XWCContext * ctx);
+
+
+/**
+ * Ungrabs all control keys if possible
+ * @param[in] ctx Pointer to program's context.
+ * @return Xlib's True on success, False otherwise.
  */
 void
-ungrabKeys (XWCContext * prgCfg);
+ungrabAllKeys (XWCContext * ctx);
 
 int
-mvPtr (XWCContext * ctx, 
-       int          x, 
-       int          y, 
+mvPtr (XWCContext * ctx,
+       int          x,
+       int          y,
        int          screen);
 
 int
@@ -42,8 +81,8 @@ unsigned int
 getInSt (XWCContext * ctx);
 
 int
-mouseBtnCtrl (XWCContext * ctx, 
-              int          button, 
+mouseBtnCtrl (XWCContext * ctx,
+              int          button,
               int          is_press);
 
 int

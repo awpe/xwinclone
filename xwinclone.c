@@ -85,22 +85,23 @@ main (int     argc,
         /**********************************************************************/
         /*Wait for user input if in daemon mode*/
         /**********************************************************************/
-        
+
         if (ctx->isDaemon == True)
         {
             snprintf (buf, sizeof (buf), "Move focus to desired window and"
                       " press %s to start translation", ctx->transCtrlKeyStr);
 
             logCtr (buf, LOG_LVL_NO, False);
-            
-            grabKeys (ctx);
+
             while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
             {
-                ungrabKeys (ctx);
                 nanosleep (&ctx->longDelay, NULL);
-                grabKeys (ctx);
             }
-            ungrabKeys (ctx);
+
+            if (pressedKey == ERROR_COMBINATION)
+            {
+                break;
+            }
 
             if (pressedKey == EXIT_COMBINATION)
             {
@@ -108,7 +109,7 @@ main (int     argc,
                 break;
             }
         }
-        
+
         /**********************************************************************/
 
 
@@ -225,13 +226,10 @@ main (int     argc,
         /**********************************************************************/
         /*Start drawing frames */
         /**********************************************************************/
-        grabKeys (ctx);
         while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
         {
-            ungrabKeys (ctx);
-            
             nanosleep (&ctx->frameDelay, NULL);
-            
+
             XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
             XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
 
@@ -249,7 +247,6 @@ main (int     argc,
 
                 if (getXErrState () == True)
                 {
-                    grabKeys (ctx);
                     if (ctx->srcWAttr.map_state == IsViewable)
                     {
                         break;
@@ -302,14 +299,12 @@ main (int     argc,
             {
                 nanosleep (&ctx->longDelay, NULL);
             }
-            
-            grabKeys (ctx);
-            
+
             if (getXErrState () == True)
             {
                 break;
             }
-            
+
         }
         /**********************************************************************/
 
@@ -364,13 +359,15 @@ freeResources:
         /**********************************************************************/
     }
 
-    ungrabKeys (ctx);
+    ungrabAllKeys (ctx);
+
     XCloseDisplay (ctx->xDpy);
     if (ctx->isSingleton == True)
     {
         flock (ctx->lckFD, LOCK_UN);
     }
-    free (ctx);
+    freeXWCContext (ctx);
+
 
     return retVal;
 }
