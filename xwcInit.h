@@ -69,15 +69,19 @@ struct XWCContext_
     DevList         * kbds; /**< List of master keyboard devices*/
 
     int               xiOp; /**< XInput 2 extension opcode */
-    
+
     int               nMods; /**< Number of modifiers for control keys*/
-    
+
     XIGrabModifiers * clMods; /**< Modifiers for clone key */
     XIGrabModifiers * exitMods; /**< Modifiers for exit key */
-    
-    Bool              keysGrabbed;
-    
-    
+
+    Bool              devsAcquired;
+
+    int               slavePtrDevId; /**< Used to select events*/
+    int               masterPtrDevId; /**< Used to manipulate pointer*/
+
+    const char      * ptrDevName;
+
 } ;
 
 /** 

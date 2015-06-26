@@ -314,7 +314,6 @@ printWindowClass (Display * d,
     }
 }
 
-
 void
 printWindowInfo (Display           * d,
                  Window              w,
@@ -489,7 +488,6 @@ setWindowClass (Display    * d,
     return False;
 }
 
-
 Window
 createWindow (XWCContext           * ctx,
               Visual               * xVis,
@@ -554,20 +552,20 @@ createTrgWindow (XWCContext * ctx)
     }
 
     XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
-    
+
     XIEventMask evmasks[1];
-    unsigned char mask1[(XI_LASTEVENT + 7)/8];
+    unsigned char mask1[(XI_LASTEVENT + 7) / 8];
 
-    memset(mask1, 0, sizeof(mask1));
+    memset (mask1, 0, sizeof (mask1));
 
-    XISetMask(mask1, XI_ButtonPress);
-    XISetMask(mask1, XI_ButtonRelease);
+    XISetMask (mask1, XI_ButtonPress);
+    XISetMask (mask1, XI_ButtonRelease);
 
-    evmasks[0].deviceid = XIAllMasterDevices;
-    evmasks[0].mask_len = sizeof(mask1);
+    evmasks[0].deviceid = ctx->slavePtrDevId;
+    evmasks[0].mask_len = sizeof (mask1);
     evmasks[0].mask = mask1;
-    
-    XISelectEvents(ctx->xDpy, ctx->trgW, evmasks, 1);
+
+    XISelectEvents (ctx->xDpy, ctx->trgW, evmasks, 1);
 
     if (getXErrState () == True)
     {
@@ -582,11 +580,11 @@ createTrgWindow (XWCContext * ctx)
 }
 
 unsigned char *
-getWPrprtByAtom (XWCContext * ctx, 
-                 Window       window, 
-                 Atom         atom, 
+getWPrprtByAtom (XWCContext * ctx,
+                 Window       window,
+                 Atom         atom,
                  long       * nitems,
-                 Atom       * type, 
+                 Atom       * type,
                  int        * size)
 {
     /*From documenetation examples*/
@@ -635,8 +633,8 @@ getWPrprtByAtom (XWCContext * ctx,
 }
 
 int
-findWClient (XWCContext * ctx, 
-             Window       window, 
+findWClient (XWCContext * ctx,
+             Window       window,
              Window     * window_ret,
              int          direction)
 {
@@ -659,7 +657,7 @@ findWClient (XWCContext * ctx,
         }
 
         items = 0;
-        
+
         getWPrprtByAtom (ctx, window, atom_wmstate, &items, NULL, NULL);
 
         if (items == 0)
