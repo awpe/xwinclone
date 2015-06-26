@@ -32,12 +32,19 @@ checking source window state again
 - [x] Fix log text formatting
 - [ ] Add option to select exit and translation control key combinations
 - [x] Add option to select PID file path
-- [ ] Add verbose for resource-clearing routines
+- [ ] Add verbose for resource-cleaning routines
 - [ ] Add option to control writing of log info into specified file
 - [ ] Control killing program by closing translation window from WM
 - [ ] Fix coordinates for sending mouse events when in autocentering mode and
- window are not equal in size
+ windows are not equal in size
 - [x] Split project into multiple files
+- [x] Move to XInput 2 extension for keyboard and pointer device grabbing
+- [x] Grab control keys for all keyboard devices
+- [ ] Add option to specify pointer device name for processing mouse-button
+ events
+- [ ] Use libjpeg-turbo instead of imlib2
+- [ ] Check if slave pointer is not floating and actually attached to virtual
+ master!
 
 Version 0.2:
 - [ ] Add routine for automatic conversion of background image from various

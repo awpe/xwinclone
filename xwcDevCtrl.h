@@ -41,8 +41,7 @@ chckXI2Ext (XWCContext * ctx);
  * @sa XInput 2 Device types
  */
 Bool
-getMasterDevsList (XWCContext *  ctx,
-                   int           devType);
+getInputDevices (XWCContext *  ctx);
 
 /**
  * Tries to grab all control keys
@@ -60,12 +59,6 @@ grabAllKeys (XWCContext * ctx);
  */
 void
 ungrabAllKeys (XWCContext * ctx);
-
-int
-mvPtr (XWCContext * ctx,
-       int          x,
-       int          y,
-       int          screen);
 
 int
 mvPtrWRel (XWCContext * ctx, Window window, int x, int y);

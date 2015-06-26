@@ -182,63 +182,87 @@ grabKeyCtrl (XWCContext      * ctx,
 }
 
 Bool
-getMasterDevsList (XWCContext *  ctx,
-                   int           devType)
+getInputDevices (XWCContext * ctx)
 {
-    int          * devs, nResDevs, nAllDevs;
-    XIDeviceInfo * device_info;
+    XIDeviceInfo * allDevsInfo, * dev;
+    char           buf[1024];
+    int            i, * kbdIds, masterKbdCnt, nAllDevs;
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot get list of master devices: NULL pointer to program"
+        logCtr ("Cannot get list of all devices: NULL pointer to program"
                 " context received!", LOG_LVL_NO, False);
         return False;
     }
 
     nAllDevs    = 0;
-    nResDevs    = 0;
-    devs        = NULL;
-    device_info = XIQueryDevice (ctx->xDpy, XIAllMasterDevices, &nAllDevs);
+    kbdIds      = NULL;
+    allDevsInfo = XIQueryDevice (ctx->xDpy, XIAllDevices, &nAllDevs);
 
-    if (device_info != NULL)
+    if (allDevsInfo != NULL)
     {
-        devs = (int*) malloc (sizeof (int) * nAllDevs);
+        kbdIds = (int*) malloc (sizeof (int) * nAllDevs);
 
-        if (devs == NULL)
+        if (kbdIds == NULL)
         {
-            logCtr ("Cannot get list of master devices: cannot allocate memory"
+            logCtr ("Cannot get list of all devices: cannot allocate memory"
                     " for device's id array!", LOG_LVL_NO, False);
-            XIFreeDeviceInfo (device_info);
+            XIFreeDeviceInfo (allDevsInfo);
             return False;
         }
 
-        for (int i = 0; i < nAllDevs; ++ i)
+        masterKbdCnt = 0;
+
+        for (i = 0; i < nAllDevs; ++ i)
         {
-            if (device_info[i].use == devType)
+            dev = & allDevsInfo[i];
+
+            if (dev->use == XIMasterKeyboard)
             {
-                devs[nResDevs] = device_info[i].deviceid;
-                ++ nResDevs;
+                kbdIds[masterKbdCnt] = dev->deviceid;
+                ++ masterKbdCnt;
             }
+
+            if (dev->use == XISlavePointer)
+            {
+                if (strncmp (dev->name, ctx->ptrDevName,
+                             MAX_POINTER_DEVICE_NAME_LENGTH) == STR_EQUAL)
+                {
+                    ctx->slavePtrDevId  = dev->deviceid;
+                    ctx->masterPtrDevId = dev->attachment;
+                }
+            }
+
         }
 
-        XIFreeDeviceInfo (device_info);
+        XIFreeDeviceInfo (allDevsInfo);
+
+        if (ctx->slavePtrDevId == NO_DEVICE)
+        {
+            snprintf (buf, sizeof (buf), "Cannot get list of all devices: no "
+                      "slave pointer with name('%s') found, see '$ xinput list'"
+                      " to find propriate pointer name!", ctx->ptrDevName);
+            logCtr (buf, LOG_LVL_NO, False);
+            free (kbdIds);
+            return False;
+        }
 
         ctx->kbds = (DevList *) malloc (sizeof (DevList));
 
         if (ctx->kbds == NULL)
         {
-            logCtr ("Cannot get list of master devices: Cannot allocate memory"
+            logCtr ("Cannot get list of all devices: Cannot allocate memory"
                     " for device list!", LOG_LVL_NO, False);
-            free (devs);
+            free (kbdIds);
             return False;
         }
 
-        ctx->kbds->devs  = devs;
-        ctx->kbds->nDevs = nResDevs;
+        ctx->kbds->devs  = kbdIds;
+        ctx->kbds->nDevs = masterKbdCnt;
     }
     else
     {
-        logCtr ("Cannot get list of master devices: XIQueryDevice error!",
+        logCtr ("Cannot get list of all devices: XIQueryDevice error!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -325,7 +349,7 @@ grabAllKeys (XWCContext * ctx)
 void
 ungrabAllKeys (XWCContext * ctx)
 {
-    if (ctx->keysGrabbed)
+    if (ctx->devsAcquired)
     {
         grabKeyCtrl (ctx, ctx->rootW, ctx->exitKeyCode, ctx->nMods,
                      ctx->exitMods, False);
@@ -334,31 +358,19 @@ ungrabAllKeys (XWCContext * ctx)
     }
 }
 
-int
-mvPtr (XWCContext * ctx, int x, int y, int screen)
+Bool
+mvPtrWRel (XWCContext * ctx, Window window, int x, int y)
 {
     int ret;
 
     ret = 0;
-    //ret = XWarpPointer (ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, x, y);
 
-    ret = XIWarpPointer ( ctx->xDpy, FIRST_POINTER_ID, None, ctx->rootW, 0, 0, 0, 0, x, y);
-    ret = XIWarpPointer ( ctx->xDpy, SECOND_POINTER_ID, None, ctx->rootW, 0, 0, 0, 0, x, y);
+    ret = XIWarpPointer ( ctx->xDpy, ctx->masterPtrDevId, None, window,
+                         0, 0, 0, 0, x, y);
 
     XFlush (ctx->xDpy);
 
-    return ret == 0;
-}
-
-int
-mvPtrWRel (XWCContext * ctx, Window window, int x, int y)
-{
-    Window n;
-    int    rX, rY;
-
-    XTranslateCoordinates (ctx->xDpy, window, ctx->rootW, x, y, &rX, &rY, &n);
-
-    return mvPtr (ctx, rX, rY, XScreenNumberOfScreen (ctx->xScr));
+    return ret == 0 ? True : False;
 }
 
 int
@@ -407,7 +419,8 @@ getMouseLoc (XWCContext * ctx,
                 findret = findWClient (ctx, window, &client, FIND_CHILDREN);
             }
 
-            //fprintf (stderr, "%lX, %lX, %lX, %X\n", window, root, client, findret);
+            //fprintf (stderr, "%lX, %lX, %lX, %X\n", window, root, client,
+            //findret);
 
             if (findret == True)
             {
@@ -453,7 +466,8 @@ getInSt (XWCContext * ctx)
     int          rX, rY, wX, wY;
     unsigned int mask;
 
-    XQueryPointer (ctx->xDpy, ctx->rootW, &dummy, &dummy, &rX, &rY, &wX, &wY, &mask);
+    XQueryPointer (ctx->xDpy, ctx->rootW, &dummy, &dummy, &rX, &rY, &wX, &wY,
+                   &mask);
 
     return mask;
 }
@@ -472,7 +486,8 @@ mouseBtnCtrl (XWCContext * ctx, int button, int is_press)
 
     getMouseLoc (ctx, &xbpe.x_root, &xbpe.y_root, &screen, &z);
 
-    //printf ("\tmouse is in %d, %d relative to root\n", xbpe.x_root, xbpe.y_root);
+    //printf ("\tmouse is in %d, %d relative to root\n", xbpe.x_root,
+    //xbpe.y_root);
 
     xbpe.window      = ctx->srcW;
     xbpe.button      = button;
@@ -494,7 +509,8 @@ mouseBtnCtrl (XWCContext * ctx, int button, int is_press)
     if (xbpe.subwindow != None)
     {
         XTranslateCoordinates (ctx->xDpy, ctx->rootW, xbpe.subwindow,
-                               xbpe.x_root, xbpe.y_root, &xbpe.x, &xbpe.y, &xbpe.subwindow);
+                               xbpe.x_root, xbpe.y_root, &xbpe.x, &xbpe.y,
+                               &xbpe.subwindow);
 
         //printf ("\t1relative to source it is %d, %d\n", xbpe.x, xbpe.y);
 
@@ -566,6 +582,13 @@ getPressedComb (XWCContext * ctx)
     //int                   rX, rY, trgX, trgY, retVal;
     //unsigned int          mask_return;
 
+    Bool                  res;
+    Window                rootRet, childRet;
+    double                rX, rY, wX, wY;
+    XIButtonState         btnSt;
+    XIModifierState       modsSt;
+    XIGroupState          grpSt;
+
     /**************************************************************************/
     /*Start event processing*/
     /**************************************************************************/
@@ -575,6 +598,8 @@ getPressedComb (XWCContext * ctx)
     while (XPending (ctx->xDpy) != 0)
     {
 
+        xEvent.xbutton.button = 0;
+
         XNextEvent (ctx->xDpy, &xEvent);
 
         if (retVal != NO_KEY_PRESSED)
@@ -582,7 +607,7 @@ getPressedComb (XWCContext * ctx)
             continue;
         }
 
-        cookie = &xEvent.xcookie;
+        cookie = & xEvent.xcookie;
 
         if (   cookie->type                      != GenericEvent
             || cookie->extension                 != ctx->xiOp
@@ -621,27 +646,87 @@ getPressedComb (XWCContext * ctx)
         else if (cookie->evtype == XI_ButtonRelease)
         {
 
-
             logCtr ("Got click", LOG_LVL_2, False);
 
-            /*
-                        res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, &chRetW,
-                                             &rX, &rY, &trgX, &trgY, &mask_return);
+            xide = cookie->data;
 
-                        if (res == False)
-                        {
-                            logCtr ("Error getting pointer position\n", LOG_LVL_NO, False);
-                            continue;
-                        }
+            printf ("btn = %d; tracked = %d\n", xide->buttons.mask[0],
+                    1 << (TRACKED_BUTTON - 1));
 
-                        mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
+            if (xide == NULL)
+            {
+                logCtr ("Very bad error that should have never happened:"
+                        " XGetEventData faled completely!", LOG_LVL_NO, False);
 
-                        clickW (ctx, Button1);
+                retVal = EXIT_COMBINATION;
+            }
+            else if (xide->buttons.mask == NULL)
+            {
+                logCtr ("Very bad error that should have never happened:"
+                        " devEv->buttons.mask surprisingly is NULL!",
+                        LOG_LVL_NO, False);
 
-                        mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
-             */
+                retVal = EXIT_COMBINATION;
+            }
+            else if (xide->buttons.mask[0] == 1 << (TRACKED_BUTTON - 1))
+            {
+                memset (&btnSt, 0, sizeof (btnSt));
+                btnSt.mask = NULL;
 
-            retVal = SKIP_COMBINATION;
+                res = XIQueryPointer (ctx->xDpy, ctx->masterPtrDevId, ctx->trgW,
+                                      &rootRet, &childRet, &rX, &rY, &wX, &wY,
+                                      &btnSt, &modsSt, &grpSt);
+
+                if (res == False)
+                {
+                    printf ("Error\n");
+                    retVal = EXIT_COMBINATION;
+                }
+                else
+                {
+                    printf ("\nResults of quering pointer for device id %d on"
+                            " window %lX:\n"
+                            "\troot:\t%lX\n"
+                            "\tchild:\t%lX\n"
+                            "\trootX:\t%f\n"
+                            "\trootY:\t%f\n"
+                            "\twinX:\t%f\n"
+                            "\twinY:\t%f\n"
+                            "\tbtnSt[0]:\t%X\n", ctx->masterPtrDevId, ctx->trgW,
+                            rootRet, childRet, rX, rY, wX, wY,
+                            btnSt.mask == NULL ? 0 : btnSt.mask[0]);
+
+                    //calculate coords for source window
+                    //move pointer to sourc window
+                    //click
+                    //move pointer back to translation window
+
+//                    res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, 
+//                                         &chRetW,
+//                                         &rX, &rY, &trgX, &trgY,
+//                                         &mask_return);
+//
+//                    if (res == False)
+//                    {
+//                        logCtr ("Error getting pointer position\n",
+//                                LOG_LVL_NO, False);
+//                        continue;
+//                    }
+//
+//                    mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
+//
+//                    clickW (ctx, Button1);
+//
+//                    mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
+
+                    retVal = SKIP_COMBINATION;
+                }
+
+                if (btnSt.mask != NULL)
+                {
+                    free (btnSt.mask);
+                }
+            }
         }
 
         XFreeEventData (ctx->xDpy, cookie);

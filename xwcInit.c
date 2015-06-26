@@ -58,13 +58,6 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (getMasterDevsList (ctx, XIMasterKeyboard) == False)
-    {
-        XCloseDisplay (ctx->xDpy);
-        freeXWCContext (ctx);
-        return NULL;
-    }
-
     if ((ctx->rootW = getDefaultRootWindow (ctx->xDpy)) == None)
     {
         XCloseDisplay (ctx->xDpy);
@@ -186,7 +179,7 @@ init (int           argCnt,
                     {
                         case INT:
                             *( (int*) args->m_Args[j]->m_Value ) =
-                                strtol (argArr[i + 1], &endPtr, 10);
+                                    strtol (argArr[i + 1], &endPtr, 10);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -205,7 +198,7 @@ init (int           argCnt,
 
                         case ULONG:
                             *( (unsigned long*) args->m_Args[j]->m_Value ) =
-                                strtol (argArr[i + 1], &endPtr, 0);
+                                    strtol (argArr[i + 1], &endPtr, 0);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -260,30 +253,43 @@ init (int           argCnt,
 
     memset (&ctx->bgColor, 0, sizeof (ctx->bgColor ));
 
-    ctx->focusDelay.tv_nsec     = 0;
-    ctx->focusDelay.tv_sec      = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
-    ctx->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
-    ctx->frameDelay.tv_sec      = 0;
-    ctx->longDelay.tv_sec       = 0;
-    ctx->longDelay.tv_nsec      = LONG_WAIT;
-    ctx->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
-    ctx->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
-    ctx->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    ctx->bgImgFilePath          = (const char*) args->m_Args[BGIMAGE]->m_Value;
-    ctx->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
-    ctx->bgImgStatus            = False;
-    ctx->exitKeyStr             = EXIT_KEY;
-    ctx->exitKeyMask            = EXIT_MASK;
-    ctx->transCtrlKeyStr        = TRANSLATION_CTRL_KEY;
-    ctx->cloneKeyMask           = TRANSLATION_CTRL_MASK;
-    ctx->srcW                   = srcid;
-    ctx->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
-    ctx->lckFPath               = args->m_Args[LCKFPATH]->m_Value;
-    ctx->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
-    ctx->clickDelay.tv_sec      = 0;
-    ctx->clickDelay.tv_nsec     = MOUSE_BTN_DELAY;
+    ctx->focusDelay.tv_nsec = 0;
+    ctx->focusDelay.tv_sec  = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
+    ctx->frameDelay.tv_nsec = ( 1.00000001 / fr) * 1000000000L;
+    ctx->frameDelay.tv_sec  = 0;
+    ctx->longDelay.tv_sec   = 0;
+    ctx->longDelay.tv_nsec  = LONG_WAIT;
+    ctx->autoCenter         = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
+    ctx->topOffset          = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
+    ctx->bgColorStr         = (const char*) args->m_Args[BGCOLOR]->m_Value;
+    ctx->bgImgFilePath      = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ctx->bgImgFileSet       = args->m_Args[BGIMAGE]->m_IsSet;
+    ctx->bgImgStatus        = False;
+    ctx->exitKeyStr         = EXIT_KEY;
+    ctx->exitKeyMask        = EXIT_MASK;
+    ctx->transCtrlKeyStr    = TRANSLATION_CTRL_KEY;
+    ctx->cloneKeyMask       = TRANSLATION_CTRL_MASK;
+    ctx->srcW               = srcid;
+    ctx->isDaemon           = args->m_Args[DAEMON]->m_IsSet;
+    ctx->lckFPath           = args->m_Args[LCKFPATH]->m_Value;
+    ctx->isSingleton        = args->m_Args[SINGLEINST]->m_IsSet;
+    ctx->clickDelay.tv_sec  = 0;
+    ctx->clickDelay.tv_nsec = MOUSE_BTN_DELAY;
 
-    ctx->isSingleton            = ctx->isSingleton || ctx->isDaemon;
+    ctx->isSingleton        = ctx->isSingleton || ctx->isDaemon;
+
+    ctx->slavePtrDevId      = NO_DEVICE;
+    ctx->masterPtrDevId     = NO_DEVICE;
+
+    ctx->ptrDevName         = TRACKED_PTR_NAME;
+
+    if (getInputDevices (ctx) == False)
+    {
+        XCloseDisplay (ctx->xDpy);
+        freeXWCContext (ctx);
+        delArgs (args);
+        return NULL;
+    }
 
     if (( exitKeySym = XStringToKeysym (ctx->exitKeyStr) ) == NoSymbol)
     {
@@ -354,7 +360,7 @@ init (int           argCnt,
         return NULL;
     }
 
-    if ((ctx->keysGrabbed = grabAllKeys (ctx)) == False)
+    if ((ctx->devsAcquired = grabAllKeys (ctx)) == False)
     {
         XCloseDisplay (ctx->xDpy);
         freeXWCContext (ctx);
@@ -381,8 +387,8 @@ freeXWCContext (XWCContext * ctx)
         free (ctx->clMods);
         free (ctx->exitMods);
     }
-    
-    
+
+
     if (ctx->kbds != NULL)
     {
         printf ("there are keyboards\n");
