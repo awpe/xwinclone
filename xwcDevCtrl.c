@@ -14,7 +14,7 @@ chckXI2Ext (XWCContext * ctx)
                 " received.", LOG_LVL_NO, False);
         return False;
     }
-
+    //GetReqSized();
     if (XQueryExtension (ctx->xDpy, "XInputExtension", &ctx->xiOp, &event,
                          &error) == 0)
     {
@@ -68,7 +68,7 @@ grabKeyCtrl (XWCContext      * ctx,
     unsigned char     mask[(XI_LASTEVENT + 7) / 8];
     char              buf[1024];
 
-    snprintf (buf, sizeof (buf), "Grabbing keycode %d on window 0x%lX:",
+    snprintf (buf, sizeof (buf), "\tGrabbing keycode %d on window 0x%lX:",
               xKCode, w);
     logCtr (buf, LOG_LVL_1, False);
 
@@ -124,9 +124,12 @@ grabKeyCtrl (XWCContext      * ctx,
     {
         for (int i = 0; i < ctx->kbds->nDevs; ++ i)
         {
-            logCtr ("\tkeycode ungrabbed.", LOG_LVL_2, True);
             XIUngrabKeycode (ctx->xDpy, ctx->kbds->devs[i], xKCode, w, nMods,
                              mods);
+
+            snprintf (buf, sizeof (buf), "\t\tkeycode ungrabbed on device %d.",
+                      ctx->kbds->devs[i]);
+            logCtr (buf, LOG_LVL_2, True);
         }
         return True;
     }
@@ -157,6 +160,12 @@ grabKeyCtrl (XWCContext      * ctx,
         nfailMods = XIGrabKeycode (ctx->xDpy, ctx->kbds->devs[i], xKCode, w,
                                    GrabModeAsync, GrabModeAsync, False, &evmask,
                                    nMods, failMods);
+        if (nfailMods == 0)
+        {
+            snprintf (buf, sizeof (buf), "\t\tkeycode grabbed on device %d.",
+                      ctx->kbds->devs[i]);
+            logCtr (buf, LOG_LVL_2, True);
+        }
     }
 
     if (nfailMods != 0)
@@ -173,7 +182,7 @@ grabKeyCtrl (XWCContext      * ctx,
         return False;
     }
 
-    snprintf (buf, sizeof (buf), "\tSuccess");
+    snprintf (buf, sizeof (buf), "\t\tSuccess");
     logCtr (buf, LOG_LVL_2, True);
 
     free (failMods);
@@ -341,7 +350,7 @@ grabAllKeys (XWCContext * ctx)
     }
     /**************************************************************************/
 
-    logCtr ("\tsuccess", LOG_LVL_1, True);
+    logCtr ("\tsuccess", LOG_LVL_1, False);
 
     return True;
 }
@@ -679,11 +688,12 @@ getPressedComb (XWCContext * ctx)
 
                 if (res == False)
                 {
-                    printf ("Error\n");
+                    //printf ("Error\n");
                     retVal = EXIT_COMBINATION;
                 }
                 else
                 {
+                    /*
                     printf ("\nResults of quering pointer for device id %d on"
                             " window %lX:\n"
                             "\troot:\t%lX\n"
@@ -695,29 +705,142 @@ getPressedComb (XWCContext * ctx)
                             "\tbtnSt[0]:\t%X\n", ctx->masterPtrDevId, ctx->trgW,
                             rootRet, childRet, rX, rY, wX, wY,
                             btnSt.mask == NULL ? 0 : btnSt.mask[0]);
+                    */
+                    int rXret, rYret;
+
+                    XTranslateCoordinates (ctx->xDpy,
+                                           ctx->srcW,
+                                           ctx->rootW,
+                                           (int) (wX + 0.5), (int) (wY + 0.5),
+                                           &rXret, &rYret,
+                                           &childRet);
+
+                    //printf ("Translated coords are %d %d, subw is %lX\n", rXret, rYret, childRet);
+
+                    /*
+                                        printf ("Current screen is %lX\n", (unsigned long)ctx->xScr);
+                     */
+                    /*
+                                        printf ("Screen 0 is %lX\n", (unsigned long)ScreenOfDisplay(ctx->xDpy, 0));
+                                        printf ("Screen 1 is %lX\n", (unsigned long)ScreenOfDisplay(ctx->xDpy, 1));
+                     */
+
+                    //printf ("Current root window is %lX\n", ctx->rootW);
+                    /*
+                                        printf ("Root window of screen 0 is %lX\n", RootWindowOfScreen(ScreenOfDisplay(ctx->xDpy, 0)));
+                                        printf ("Root window of screen 1 is %lX\n", RootWindowOfScreen(ScreenOfDisplay(ctx->xDpy, 1)));
+                     */
+
+                    res = XIWarpPointer (ctx->xDpy,
+                                         ctx->masterPtrDevId,
+                                         None,
+                                         ctx->rootW,
+                                         0.0,   0.0,
+                                         0,     0,
+                                         (double) rXret, (double) rYret);
+
+                    //printf ("Warping pointer to root window on coords %d %d\n", rXret, rYret);
+
+                    //XWarpPointer(ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, 100, 100);
+
+                    XFlush (ctx->xDpy);
+
+                    nanosleep (&ctx->clickDelay, NULL);
+
+
+
+
+                    if (res != Success)
+                    {
+                        //printf ("Error moving pointer\n");
+                        if (getXErrState () == True)
+                        {
+                            //printf ("X err\n");
+                        }
+                    }
+
+                    //clickW (ctx, Button1);
+
+                    xEvent.xbutton.button = Button1;
+
+                    xEvent.xbutton.x_root = (int) rX;
+                    xEvent.xbutton.y_root = (int) rY;
+
+                    xEvent.xbutton.window      = ctx->srcW;
+                    xEvent.xbutton.display     = ctx->xDpy;
+                    xEvent.xbutton.root        = ctx->rootW;
+                    xEvent.xbutton.same_screen = True;
+                    xEvent.xbutton.state       = getInSt (ctx);
+                    xEvent.xbutton.subwindow   = None;
+                    xEvent.xbutton.time        = CurrentTime;
+                    xEvent.xbutton.type        = ButtonPress;
+
+                    xEvent.xcookie.evtype = XI_ButtonPress;
+
+                    XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonPressMask, &xEvent);
+                    XFlush (ctx->xDpy);
+
+                    nanosleep (&ctx->clickDelay, NULL);
+
+                    xEvent.xbutton.type        = ButtonRelease;
+                    xEvent.xbutton.state |= Button1MotionMask;
+
+                    xEvent.xcookie.evtype = XI_ButtonRelease;
+
+                    XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonReleaseMask, &xEvent);
+                    XFlush (ctx->xDpy);
+
+                    nanosleep (&ctx->clickDelay, NULL);
+
+
+                    XTranslateCoordinates (ctx->xDpy,
+                                           ctx->trgW,
+                                           ctx->rootW,
+                                           (int) (wX + 0.5), (int) (wY + 0.5),
+                                           &rXret, &rYret,
+                                           &childRet);
+
+                    //printf ("Translated coords are %d %d, subw is %lX\n", rXret, rYret, childRet);
+
+
+                    res = XIWarpPointer (ctx->xDpy,
+                                         ctx->masterPtrDevId,
+                                         None,
+                                         ctx->rootW,
+                                         0.0,   0.0,
+                                         0,     0,
+                                         (double) rXret, (double) rYret);
+
+                    //printf ("Warping pointer to root window on coords %d %d\n", rXret, rYret);
+
+                    //XWarpPointer(ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, 100, 100);
+
+                    XFlush (ctx->xDpy);
+
+                    nanosleep (&ctx->frameDelay, NULL);
 
                     //calculate coords for source window
                     //move pointer to sourc window
                     //click
                     //move pointer back to translation window
 
-//                    res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, 
-//                                         &chRetW,
-//                                         &rX, &rY, &trgX, &trgY,
-//                                         &mask_return);
-//
-//                    if (res == False)
-//                    {
-//                        logCtr ("Error getting pointer position\n",
-//                                LOG_LVL_NO, False);
-//                        continue;
-//                    }
-//
-//                    mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
-//
-//                    clickW (ctx, Button1);
-//
-//                    mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
+                    //                    res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, 
+                    //                                         &chRetW,
+                    //                                         &rX, &rY, &trgX, &trgY,
+                    //                                         &mask_return);
+                    //
+                    //                    if (res == False)
+                    //                    {
+                    //                        logCtr ("Error getting pointer position\n",
+                    //                                LOG_LVL_NO, False);
+                    //                        continue;
+                    //                    }
+                    //
+                    //                    mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
+                    //
+                    //                    clickW (ctx, Button1);
+                    //
+                    //                    mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
 
                     retVal = SKIP_COMBINATION;
                 }
@@ -737,6 +860,8 @@ getPressedComb (XWCContext * ctx)
         retVal = NO_KEY_PRESSED;
     }
     /**************************************************************************/
+
+
 
     return retVal;
 }

@@ -498,6 +498,7 @@ createWindow (XWCContext           * ctx,
     w = XCreateWindow (ctx->xDpy, ctx->rootW, 0, 0, ctx->srcWAttr.width,
                        ctx->srcWAttr.height, 0, ctx->srcWAttr.depth,
                        InputOutput, xVis, mask, attr);
+    XFlush (ctx->xDpy);
     return w;
 }
 
@@ -528,11 +529,11 @@ createTrgWindow (XWCContext * ctx)
 
     if (getXErrState () == True)
     {
-        logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
         if (ctx->trgW != None)
         {
             XDestroyWindow (ctx->xDpy, ctx->trgW);
         }
+        logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
         return None;
     }
 

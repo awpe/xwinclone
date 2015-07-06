@@ -388,16 +388,14 @@ freeXWCContext (XWCContext * ctx)
         free (ctx->exitMods);
     }
 
-
     if (ctx->kbds != NULL)
     {
-        printf ("there are keyboards\n");
         if (ctx->kbds->devs != NULL)
         {
-            printf ("there are devs\n");
             free (ctx->kbds->devs);
         }
         free (ctx->kbds);
     }
+    
     free (ctx);
 }

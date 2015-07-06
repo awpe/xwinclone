@@ -8,14 +8,14 @@ main (int     argc,
     /*Variables declaration*/
     /**************************************************************************/
     XWCContext           * ctx;
-    Screen               * scrOfSrc;
-    Window                 rootWinOfSrc;
+    //Screen               * scrOfSrc;
+    //Window                 rootWinOfSrc;
     GC                     xGC;
     XGCValues              xGCVals;
     Pixmap                 pm, srcWinPm, bgImgPm, srcWinPmOld;
     char                   buf[1024];
     int                    retVal, trgWinLOff, trgWinTOff, pressedKey,
-        trgWinW, trgWinH, srcWinW, srcWinH;
+            trgWinW, trgWinH, srcWinW, srcWinH;
     unsigned int           bgImgW, bgImgH;
     /**************************************************************************/
 
@@ -122,41 +122,66 @@ main (int     argc,
         }
         /**********************************************************************/
 
+        /**********************************************************************/
+        /*Redirect source window to pixmap and check it*/
+        /**********************************************************************/
+        redirWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+        redirSubWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
+        srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
+
+        if (getXErrState () == True)
+        {
+            goto freeResources;
+        }
+        /**********************************************************************/
+
 
         /**********************************************************************/
         /*Check if source window screen is still the same*/
         /**********************************************************************/
-        if ((scrOfSrc = getScreenByWindowAttr (ctx, &ctx->srcWAttr)) == NULL)
-        {
-            goto freeResources;
-        }
 
-        if (scrOfSrc != ctx->xScr)
-        {
-            ctx->xScr = scrOfSrc;
+        //Screen * scr = ScreenOfDisplay (ctx->xDpy, 0);
+        //scrOfSrc = scr;
 
-            if (parseColor (ctx) == False)
-            {
-                goto freeResources;
-            }
+        ctx->xScr = &(ctx->xDpy->screens[ctx->xDpy->default_screen]);
+        ctx->rootW = DefaultRootWindow(ctx->xDpy);
+        XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
 
-            if (( rootWinOfSrc = getRootWinOfScr (ctx->xScr) ) == None)
-            {
-                goto freeResources;
-            }
-
-            if (rootWinOfSrc != ctx->rootW)
-            {
-                ctx->rootW = rootWinOfSrc;
-
-                XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
-
-                if (getXErrState () == True)
+        /*
+                if ((scrOfSrc = getScreenByWindowAttr (ctx, &ctx->srcWAttr)) == NULL)
                 {
                     goto freeResources;
                 }
-            }
-        }
+         */
+
+        /*
+                if (scrOfSrc != ctx->xScr)
+                {
+                    ctx->xScr = scrOfSrc;
+
+                    if (parseColor (ctx) == False)
+                    {
+                        goto freeResources;
+                    }
+
+                    if (( rootWinOfSrc = getRootWinOfScr (ctx->xScr) ) == None)
+                    {
+                        goto freeResources;
+                    }
+
+                    if (rootWinOfSrc != ctx->rootW)
+                    {
+                        ctx->rootW = rootWinOfSrc;
+
+                        XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
+
+                        if (getXErrState () == True)
+                        {
+                            goto freeResources;
+                        }
+                    }
+                }
+         */
         /**********************************************************************/
 
 
@@ -201,20 +226,6 @@ main (int     argc,
         {
             XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0, bgImgW, bgImgH, 0, 0);
         }
-
-        if (getXErrState () == True)
-        {
-            goto freeResources;
-        }
-        /**********************************************************************/
-
-
-        /**********************************************************************/
-        /*Redirect source window to pixmap and check it*/
-        /**********************************************************************/
-        redirWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
-        redirSubWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
-        srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
 
         if (getXErrState () == True)
         {
