@@ -1,30 +1,35 @@
 #ifndef XWCARGS_H
 #define	XWCARGS_H
 
-typedef enum argNames_ {
-    HELP = 0,
-    FRAMERATE = 1,
-    BGCOLOR = 2,
+typedef enum argNames_
+{
+    HELP       = 0,
+    FRAMERATE  = 1,
+    BGCOLOR    = 2,
     AUTOCENTER = 3,
-    FOCUSTIME = 4,
-    TOPOFFSET = 5,
-    LOGLVL = 6,
-    SOURCEID = 7,
-    DAEMON = 8,
+    FOCUSTIME  = 4,
+    TOPOFFSET  = 5,
+    LOGLVL     = 6,
+    SOURCEID   = 7,
+    DAEMON     = 8,
     SINGLEINST = 9,
-    BGIMAGE = 10,
-    LCKFPATH = 11,
+    BGIMAGE    = 10,
+    LCKFPATH   = 11,
+    PTRDEVNAME = 12,
+    LOGFNAME   = 13,
     /****************************************/
     /*Write count of possible arguments here*/
-    OPTIONS_COUNT = 12
+    OPTIONS_COUNT = 14
     /****************************************/
 } argNames;
 
-typedef enum argTypes_ {
+typedef enum argTypes_
+{
     C_STR, INT, ULONG
 } argTypes;
 
-typedef struct argument_ {
+typedef struct argument_
+{
     int m_SynCnt;
     const char ** m_SynStrs;
     argTypes m_Type;
@@ -35,7 +40,8 @@ typedef struct argument_ {
     void * m_Value;
 } argument;
 
-typedef struct arguments_ {
+typedef struct arguments_
+{
     int m_ArgCnt;
     argument ** m_Args;
 } arguments;

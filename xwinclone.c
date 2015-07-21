@@ -24,6 +24,7 @@ main (int     argc,
     pressedKey                 = NO_KEY_PRESSED;
     retVal                     = EXIT_FAILURE;
     xGCVals.graphics_exposures = False;
+    LOG_FILE                   = stdout;
     /**************************************************************************/
 
 
@@ -212,7 +213,7 @@ main (int     argc,
         {
             XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0, bgImgW, bgImgH, 0, 0);
         }
-        
+
         XSync (ctx->xDpy, False);
 
         if (getXErrState () == True)
@@ -229,8 +230,11 @@ main (int     argc,
         {
             nanosleep (&ctx->frameDelay, NULL);
 
-            XGetWindowAttributes (ctx->xDpy, ctx->trgW, &ctx->trgWAttr);
-            XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+            if (   getWAttr (ctx, &ctx->srcW, &ctx->srcWAttr) == False
+                || getWAttr (ctx, &ctx->trgW, &ctx->trgWAttr) == False)
+            {
+                break;
+            }
 
             trgWinW = ctx->trgWAttr.width;
             srcWinW = ctx->srcWAttr.width;
@@ -253,7 +257,7 @@ main (int     argc,
                     srcWinPm = None;
                     logCtr ("Spurious error: An attempt to remap window"
                             " during pixmap creation!", LOG_LVL_2, False);
-                    nanosleep (&ctx->raiseDelay, NULL);
+                    nanosleep (&ctx->frameLongDelay, NULL);
                     continue;
                 }
 
@@ -277,8 +281,8 @@ main (int     argc,
                     trgWinLOff = trgWinW - srcWinW;
                     trgWinTOff = trgWinH - srcWinH + ctx->topOffset;
 
-                    trgWinLOff >>= 1;
-                    trgWinTOff >>= 1;
+                    trgWinLOff /= 2;
+                    trgWinTOff /= 2;
                 }
 
                 XCopyArea (ctx->xDpy, srcWinPm, pm, xGC,
@@ -296,7 +300,7 @@ main (int     argc,
             if (   ctx->trgWAttr.map_state != IsViewable
                 || ctx->srcWAttr.map_state != IsViewable)
             {
-                nanosleep (&ctx->raiseDelay, NULL);
+                nanosleep (&ctx->frameLongDelay, NULL);
             }
 
             if (getXErrState () == True)
@@ -325,7 +329,7 @@ freeResources:
         {
             XFreePixmap (ctx->xDpy, pm);
         }
-        if (srcWinPm != None)
+        if (srcWinPm != None && ctx->srcW != None)
         {
             XFreePixmap (ctx->xDpy, srcWinPm);
         }
@@ -338,6 +342,14 @@ freeResources:
             XUnmapWindow (ctx->xDpy, ctx->trgW);
             XDestroyWindow (ctx->xDpy, ctx->trgW);
         }
+
+        XSync (ctx->xDpy, False);
+
+        if (getXErrState () == True)
+        {
+            logCtr ("Error freeing resources\n", LOG_LVL_1, False);
+        }
+
         /**********************************************************************/
 
 

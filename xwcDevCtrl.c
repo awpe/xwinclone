@@ -250,7 +250,8 @@ getInputDevices (XWCContext * ctx)
         {
             snprintf (buf, sizeof (buf), "Cannot get list of all devices: no "
                       "slave pointer with name('%s') found, see '$ xinput list'"
-                      " to find propriate pointer name!", ctx->ptrDevName);
+                      " to find propriate pointer name for slave pointer!",
+                      ctx->ptrDevName);
             logCtr (buf, LOG_LVL_NO, False);
             free (kbdIds);
             return False;
@@ -454,14 +455,59 @@ adjPtrLoc (XWCContext * ctx,
            int        * adjRY)
 {
     Window childRet;
+    int trgWinLOff, trgWinTOff, trgWinW, trgWinH, srcWinW, srcWinH;
+
+    if (ctx == NULL || adjX == NULL || adjY == NULL || adjRX == NULL
+        || adjRY == NULL)
+    {
+        logCtr ("Cannot translate source window coordinates to root window:"
+                " NULL pointer received!", LOG_LVL_NO, False);
+        return False;
+    }
 
     *adjX = inX;
     *adjY = inY;
+
+    if (ctx->autoCenter == True)
+    {
+        if (   getWAttr (ctx, &ctx->srcW, &ctx->srcWAttr) == False
+            || getWAttr (ctx, &ctx->trgW, &ctx->trgWAttr) == False)
+        {
+            return False;
+        }
+
+        trgWinW = ctx->trgWAttr.width;
+        srcWinW = ctx->srcWAttr.width;
+        trgWinH = ctx->trgWAttr.height;
+        srcWinH = ctx->srcWAttr.height;
+
+        trgWinLOff = trgWinW - srcWinW;
+        trgWinTOff = trgWinH - srcWinH - ctx->topOffset;
+
+        trgWinLOff /= 2;
+        trgWinTOff /= 2;
+
+        *adjX -= trgWinLOff;
+        *adjY -= trgWinTOff;
+    }
+    else
+    {
+        *adjY += ctx->topOffset;
+    }
 
     XTranslateCoordinates (ctx->xDpy, ctx->srcW, ctx->rootW,
                            *adjX, *adjY,
                            adjRX, adjRY,
                            &childRet);
+
+    XSync (ctx->xDpy, False);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot translate source window coordinates to root window:"
+                " XTranslateCoordinates error!", LOG_LVL_NO, False);
+        return False;
+    }
 
     return True;
 }
@@ -603,7 +649,7 @@ procBtnEv (XWCContext    * ctx,
     XIModifierState modSt;
     XEvent          btnEv;
     Window          focused;
-    Atom            srcWStateAtom;
+    triState        visRes;
     int             trgRX, trgRY, adjRX, adjRY, adjX, adjY, trgX, trgY;
     char            buf[1024];
 
@@ -644,140 +690,39 @@ procBtnEv (XWCContext    * ctx,
     {
         /**********************************************************************/
         /*check source window state*/
-        /*TODO move this to xwcWinUtil*/
         /**********************************************************************/
-        XSync (ctx->xDpy, 0);
-        XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+        visRes = isWinVis (ctx, ctx->srcW);
 
-        if (getXErrState () == True)
+        if (visRes == False)
         {
-            logCtr ("Cannot process pressed button event: "
-                    "XGetWindowAttributes error!", LOG_LVL_NO, True);
-            return EXIT_COMBINATION;
-        }
+            logCtr ("Source seems to be hidden", LOG_LVL_2, True);
 
-        Atom property = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
-        Atom actual_type;
-        int actual_format;
-        unsigned long nitems;
-        unsigned long leftover;
-        unsigned char *data = NULL;
-        if (XGetWindowProperty (ctx->xDpy, ctx->srcW, property, 0L,
-                                (long) BUFSIZ, False, AnyPropertyType, &actual_type, &actual_format,
-                                &nitems, &leftover, &data) != Success)
-        {
-            printf ("Cannot read property\n");
-            return EXIT_COMBINATION;
-        }
-        char * tmp;
-        Bool hidden = False;
-        Atom hiddenProperty = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
-        for (int i = 0; i < nitems; ++i)
-        {
-            printf ("%ld\n", ((long *) (data))[i]);
-            tmp = XGetAtomName (ctx->xDpy, ((long *) (data))[i]);
-            printf ("%s\n\n", tmp);
-            XFree (tmp);
-            if (hiddenProperty == ((long *) (data))[i])
+            if (toggleHiddenState (ctx, ctx->srcW) == False )
             {
-                hidden = True;
-                printf ("actual_type = %ld\n", actual_type);
-                printf ("actual_format = %d\n", actual_format);
-                break;
-            }
-        }
-        XFree (data);
-
-
-
-        /*
-                        if (ctx->srcWAttr.map_state != IsViewable || hidden == True)
-                        {
-                            logCtr ("Cannot process pressed button event: "
-                                    "source window is not visible!", LOG_LVL_1, True);
-                            return NO_KEY_PRESSED;
-                        }
-         */
-
-        /*
-                    XChangeProperty (ctx->xDpy, ctx->srcW, property, XA_ATOM,
-                                     32, PropModeReplace, (unsigned char *) name,
-                                     name ? strlen (name) : 0);
-         */
-        if (hidden == True || ctx->srcWAttr.map_state != IsViewable)
-        {
-            printf ("Source is hidden\n");
-            
-            XEvent event;
-            memset (&event, 0, sizeof (event));
-            long mask = SubstructureRedirectMask | SubstructureNotifyMask;
-
-            event.xclient.type = ClientMessage;
-            event.xclient.serial = 0;
-            event.xclient.send_event = True;
-            event.xclient.message_type = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
-            event.xclient.window = ctx->srcW;
-            event.xclient.format = 32;
-            event.xclient.data.l[0] = 2;
-            event.xclient.data.l[1] = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
-            event.xclient.data.l[2] = 0;
-            event.xclient.data.l[3] = 0;
-            event.xclient.data.l[4] = 0;
-
-            if (XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event))
-            {
-                XSync (ctx->xDpy, False);
-            }
-            else
-            {
-                printf ("Cannot send event.\n");
+                logCtr ("Cannot process pressed button event: "
+                        "toggleHiddenState error!", LOG_LVL_NO, True);
                 return EXIT_COMBINATION;
             }
 
             nanosleep (&ctx->raiseDelay, NULL);
-            
-            Bool b;
-            property = XInternAtom (ctx->xDpy, "WM_STATE", False);
-            while (1)
+
+            visRes = isWinVis (ctx, ctx->srcW);
+
+            if (visRes == False)
             {
-                if (XGetWindowProperty (ctx->xDpy, ctx->srcW, property, 0L,
-                                        (long) BUFSIZ, False, AnyPropertyType, &actual_type, &actual_format,
-                                        &nitems, &leftover, &data) != Success)
-                {
-                    printf ("Cannot read property\n");
-                    return EXIT_COMBINATION;
-                }
-                printf ("actual_type = %ld\n", actual_type);
-                tmp = XGetAtomName (ctx->xDpy, actual_type);
-                printf ("actual type name %s\n", tmp);
-                free (tmp);
-                printf ("actual_format = %d\n", actual_format);
-                b = False;
-                printf ("nitems %ld\n", nitems);
-                for (int i = 0; i < nitems - 1; ++i)
-                {
-                    printf ("%ld\n", ((long *) (data))[i]);
-                    tmp = XGetAtomName (ctx->xDpy, ((long *) (data))[i]);
-                    printf ("%s\n\n", tmp);
-                    XFree (tmp);
-                    if (hiddenProperty == ((long *) (data))[i])
-                    {
-                        b = True;
-                        printf ("still hidden\n");
-                        break;
-                    }
-                }
-                XFree (data);
-                if (b == False)
-                {
-                    printf ("visible\n");
-                    break;
-                }
-
-                nanosleep (&ctx->raiseDelay, NULL);
-
+                logCtr ("Cannot process pressed button event: problem occured"
+                        " while restoring hidden window, if last is true, check"
+                        " if source window was on visible(active) desktop!",
+                        LOG_LVL_NO, True);
+                return EXIT_COMBINATION;
             }
+        }
 
+        if (visRes == UNDEFINED)
+        {
+            logCtr ("Error getting source window visibility state: "
+                    "isWinVis error!", LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
         }
         /**********************************************************************/
 
@@ -810,7 +755,8 @@ procBtnEv (XWCContext    * ctx,
         /*raise source if needed*/
         /**********************************************************************/
         focused = ctx->srcW;
-        if (wRaiseCtrl (ctx, &focused, &srcWStateAtom) == False)
+
+        if (wRaiseCtrl (ctx, &focused) == False)
         {
             logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
                     LOG_LVL_NO, True);
@@ -875,51 +821,15 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
 
 
-
         /**********************************************************************/
         /*raise last focused if needed*/
         /**********************************************************************/
-
-
-        if (wRaiseCtrl (ctx, &focused, &srcWStateAtom) == False)
+        if (wRaiseCtrl (ctx, &focused) == False)
         {
             logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
-        
-        
-        
-        if (hidden == True)
-        {
-            nanosleep (&ctx->raiseDelay, NULL);
-            XEvent event;
-            memset (&event, 0, sizeof (event));
-            long mask = SubstructureRedirectMask | SubstructureNotifyMask;
-
-            event.xclient.type = ClientMessage;
-            event.xclient.serial = 0;
-            event.xclient.send_event = True;
-            event.xclient.message_type = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
-            event.xclient.window = ctx->srcW;
-            event.xclient.format = 32;
-            event.xclient.data.l[0] = 2;
-            event.xclient.data.l[1] = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
-            event.xclient.data.l[2] = 0;
-            event.xclient.data.l[3] = 0;
-            event.xclient.data.l[4] = 0;
-
-            if (XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event))
-            {
-                XSync (ctx->xDpy, False);
-            }
-            else
-            {
-                printf ("Cannot send event.\n");
-                return EXIT_COMBINATION;
-            }
-        }
-
         /**********************************************************************/
     }
 

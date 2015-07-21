@@ -512,9 +512,10 @@ createTrgWindow (XWCContext * ctx)
     trgWinSetAttr.background_pixel = ctx->bgColor.pixel;
     trgWinSetAttr.border_pixel     = 0;
     trgWinSetAttr.bit_gravity      = NorthWestGravity;
-    trgWinSetAttr.event_mask       = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
+    trgWinSetAttr.event_mask       = ButtonPressMask | ButtonReleaseMask |
+            ButtonMotionMask;
     mask                           = CWBackPixel | CWColormap | CWBorderPixel |
-        CWBitGravity | CWEventMask;
+            CWBitGravity | CWEventMask;
 
     ctx->trgW = createWindow (ctx, xVisInfo.visual, mask, &trgWinSetAttr);
 
@@ -658,7 +659,8 @@ findWClient (XWCContext * ctx,
         if (items == 0)
         {
             /* This window doesn't have WM_STATE property, keep searching. */
-            XQueryTree (ctx->xDpy, window, &dummy, &parent, &children, &nchildren);
+            XQueryTree (ctx->xDpy, window, &dummy, &parent, &children,
+                        &nchildren);
 
             if (direction == FIND_PARENTS)
             {
@@ -718,6 +720,113 @@ findWClient (XWCContext * ctx,
     return True;
 }
 
+triState
+isWinVis (XWCContext * ctx,
+          Window       checkW)
+{
+    XWindowAttributes   xwa;
+    Bool                hiddenPropertySet;
+#if (ALLOW_NON_EWMH_COMPILANT_WM != 0)
+    Atom                netWmState, actualType, netWmStHidden;
+    int                 actualFormat, r;
+    unsigned long       itemCnt, leftover;
+    unsigned char     * data;
+#endif    
+
+    if (ctx == NULL)
+    {
+        logCtr ("Cannot check window visibility: "
+                "context pointer is NULL!", LOG_LVL_NO, False);
+        return UNDEFINED;
+    }
+
+    if (checkW == None)
+    {
+        logCtr ("Cannot check window visibility: "
+                "window id is None!", LOG_LVL_NO, False);
+        return UNDEFINED;
+    }
+
+    XGetWindowAttributes (ctx->xDpy, checkW, &xwa);
+
+    XSync (ctx->xDpy, False);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot check window visibility: "
+                "XGetWindowAttributes error!", LOG_LVL_NO, False);
+        return UNDEFINED;
+    }
+
+    hiddenPropertySet = False;
+
+#if (ALLOW_NON_EWMH_COMPILANT_WM != 0)
+
+    netWmState    = XInternAtom (ctx->xDpy, "_NET_WM_STATE", True);
+    netWmStHidden = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
+
+    XSync (ctx->xDpy, False);
+
+    if (netWmState == None || netWmStHidden == None || getXErrState () == True)
+    {
+        logCtr ("Cannot check window visibility: "
+                "XInternAtom error!", LOG_LVL_NO, False);
+        return UNDEFINED;
+    }
+
+    data = NULL;
+
+    r = XGetWindowProperty (ctx->xDpy, ctx->srcW, netWmState, 0L, (long) BUFSIZ,
+                            False, XA_ATOM, &actualType, &actualFormat,
+                            &itemCnt, &leftover, &data);
+
+    XSync (ctx->xDpy, False);
+
+    if (getXErrState () == True || r != Success)
+    {
+        logCtr ("Cannot check window visibility: "
+                "XGetWindowProperty error!", LOG_LVL_NO, False);
+        if (data != NULL)
+        {
+            XFree (data);
+        }
+        return UNDEFINED;
+    }
+
+    printf ("actualType = %ld\n", actualType);
+
+    if (actualType == None || actualType != XA_ATOM)
+    {
+        logCtr ("Cannot check window visibility: XGetWindowProperty error OR"
+                " current Window manager is not EWMH compilant!", LOG_LVL_NO,
+                False);
+        if (data != NULL)
+        {
+            XFree (data);
+        }
+        return UNDEFINED;
+    }
+
+    for (int i = 0; i < itemCnt; ++ i)
+    {
+        if (netWmStHidden == ((long *) (data))[i])
+        {
+            hiddenPropertySet = True;
+            break;
+        }
+    }
+
+    if (data != NULL)
+    {
+        XFree (data);
+    }
+
+#endif    
+
+    return (   (((xwa.map_state == IsViewable) ? True : False) == True)
+            && (hiddenPropertySet == False) ) ? True : False;
+}
+
 static Bool
 raiseW (XWCContext * ctx,
         Window       w)
@@ -738,35 +847,131 @@ raiseW (XWCContext * ctx,
 
 Bool
 wRaiseCtrl (XWCContext * ctx,
-            Window     * ioWin,
-            Atom       * st)
+            Window     * ioWin)
 {
     Window currentTopWin;
 
-    if (ctx == NULL || ioWin == NULL || *ioWin == None || st==NULL)
+    if (ctx == NULL || ioWin == NULL || * ioWin == None)
     {
+        logCtr ("Cannot raise window: bad input data!", LOG_LVL_NO, False);
         return False;
     }
-    
-    
 
     currentTopWin = getActiveWindow (ctx, None);
 
     if (currentTopWin == None)
     {
+        logCtr ("Cannot raise window: Cannot get active window!", LOG_LVL_NO,
+                False);
         return False;
     }
 
-    if (currentTopWin != *ioWin)
+    if (currentTopWin != * ioWin)
     {
         if (raiseW (ctx, *ioWin) == False)
         {
+            logCtr ("Cannot raise window: XRaiseWindow AND/OR XSetInputFocus "
+                    "error!", LOG_LVL_NO, False);
             return False;
         }
+
         *ioWin = currentTopWin;
+
 #if (RAISE_SOURCE_DELAY_ENABLE==1)
         nanosleep (&ctx->raiseDelay, NULL);
 #endif
+    }
+
+    return True;
+}
+
+Bool
+toggleHiddenState (XWCContext * ctx,
+                   Window       win)
+{
+    XEvent event;
+    Atom netWmSt, hiddenProperty;
+    long mask;
+
+    if (ctx == NULL)
+    {
+        logCtr ("Cannot toggle window hidden state: NULL pointer to context"
+                " received!", LOG_LVL_NO, False);
+        return False;
+    }
+
+    if (win == None)
+    {
+        logCtr ("Cannot toggle window hidden state: Bad window id received!",
+                LOG_LVL_NO, False);
+        return False;
+    }
+
+    memset (&event, 0, sizeof (event));
+
+    mask = SubstructureRedirectMask | SubstructureNotifyMask;
+
+    netWmSt        = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
+    hiddenProperty = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
+
+    XSync (ctx->xDpy, False);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot toggle window hidden state: XInternAtom error!",
+                LOG_LVL_NO, False);
+        return False;
+    }
+
+    event.xclient.type         = ClientMessage;
+    event.xclient.serial       = 0;
+    event.xclient.send_event   = True;
+    event.xclient.message_type = netWmSt;
+    event.xclient.window       = win;
+    event.xclient.format       = 32;
+    event.xclient.data.l[0]    = 2;
+    event.xclient.data.l[1]    = hiddenProperty;
+    event.xclient.data.l[2]    = 0;
+    event.xclient.data.l[3]    = 0;
+    event.xclient.data.l[4]    = 0;
+
+    if (XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event) != 0)
+    {
+        XSync (ctx->xDpy, False);
+    }
+    else
+    {
+        logCtr ("Cannot toggle window hidden state: XSendEvent error!",
+                LOG_LVL_NO, False);
+        return False;
+    }
+
+    return True;
+}
+
+Bool
+getWAttr (XWCContext        * ctx,
+          Window            * win,
+          XWindowAttributes * wa)
+{
+    XGetWindowAttributes (ctx->xDpy, *win, wa);
+
+    XSync (ctx->xDpy, False);
+
+    if (getXErrState () == True)
+    {
+        logCtr ("Cannot get window attributes(getWAttr): ", LOG_LVL_NO, False);
+        if (X_ERROR_CODE == BadWindow)
+        {
+            *win = None;
+            logCtr ("\tXGetWindowAttributes failed on given window,"
+                    " maybe it was closed?", LOG_LVL_NO, True);
+        }
+        else
+        {
+            logCtr ("\tXGetWindowAttributes error!", LOG_LVL_NO, True);
+        }
+        return False;
     }
 
     return True;

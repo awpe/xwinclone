@@ -1,6 +1,13 @@
 #ifndef XWCWINUTIL_H
 #define	XWCWINUTIL_H
 
+typedef enum triStateLogic_
+{
+    UNDEFINED = INT_MIN, //True != INT_MIN && False != INT_MIN
+    TRUE      = True, //Xlib's Bool compilant
+    FALSE     = False //Xlib's Bool compilant
+} triState;
+
 /**
  * Tries to get currently focused window. It may NOT be the id of window 
  * you really see on the screen, it depends on toolkit beign used 
@@ -149,7 +156,6 @@ findWClient (XWCContext * ctx,
  * then sets ioWin to be last focused window
  * @param[in] ctx Pointer to XWCOptions struct
  * @param[in/out] ioWin Window xid of window to be raised
- * @param[in/out] state focused window state
  * @return Xlib's True on success, False otherwise
  * @sa XRaiseWindow(), XSetInputFocus()
  * @todo check for minimized windows and maximize them if needed
@@ -158,7 +164,19 @@ findWClient (XWCContext * ctx,
  */
 Bool
 wRaiseCtrl (XWCContext * ctx,
-               Window     * ioWin,
-               Atom       * state);
+            Window     * ioWin);
+
+triState
+isWinVis (XWCContext * ctx,
+          Window       checkW);
+
+Bool
+toggleHiddenState (XWCContext * ctx,
+                   Window       ioWin);
+
+Bool
+getWAttr (XWCContext        * ctx,
+          Window            * win,
+          XWindowAttributes * wa);
 
 #endif

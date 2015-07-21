@@ -19,10 +19,16 @@ extern XCompUnRedirSubWin_t unRedirSubWin;
 
 
 /** @var Bool X_ERROR
-@brief Contains the last Xlib's error code. 
+@brief Shows if there was an error on x server side
 @warning Not thread safe!
  */
 extern Bool X_ERROR;
+
+/** @var Bool X_ERROR
+@brief Contains the last x server error code. 
+@warning Not thread safe!
+ */
+extern int  X_ERROR_CODE;
 
 /**
  * Opens connection to default X display. Provides simple verbose.

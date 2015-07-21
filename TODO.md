@@ -32,18 +32,18 @@ checking source window state again
 - [x] Fix log text formatting
 - [ ] Add option to select exit and translation control key combinations
 - [x] Add option to select PID file path
-- [ ] Add verbose for resource-cleaning routines
-- [ ] Add option to control writing of log info into specified file
-- [ ] Control killing program by closing translation window from WM
-- [ ] Fix coordinates for sending mouse events when in autocentering mode and
+- [x] Add verbose for resource-cleaning routines
+- [x] Add option to control writing of log info into specified file
+- [x] Control killing program by closing translation window from WM
+- [x] Fix coordinates for sending mouse events when in autocentering mode and
  windows are not equal in size
 - [x] Split project into multiple files
 - [x] Move to XInput 2 extension for keyboard and pointer device grabbing
 - [x] Grab control keys for all keyboard devices
-- [ ] Add option to specify pointer device name for processing mouse-button
+- [x] Add option to specify pointer device name for processing mouse-button
  events
 - [ ] Use libjpeg-turbo instead of imlib2
-- [ ] Check if slave pointer is not floating and actually attached to virtual
+- [x] Check if slave pointer is not floating and actually attached to virtual
  master!
 
 Version 0.2:
@@ -52,6 +52,7 @@ Version 0.2:
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [ ] Set propriate logging levels by using all of them (0, 1, 2)
+- [ ] Add log file state control or use built-in logging system
 
 Version 0.3:
 - [ ] Add remote x server support

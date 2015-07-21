@@ -42,7 +42,8 @@ errorHandlerBasic (Display     * display,
     buf[0] = '\t';
     logCtr (buf, LOG_LVL_NO, True);
 
-    X_ERROR = True;
+    X_ERROR      = True;
+    X_ERROR_CODE = error->error_code;
     return 1;
 }
 

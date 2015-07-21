@@ -6,11 +6,12 @@ init (int           argCnt,
 {
     KeySym              exitKeySym;
     arguments         * args;
-    char              * endPtr;
+    char              * endPtr, buf[2048];
     int                 nextArgOffset, i, j, k, fr;
     unsigned long       srcid;
-    char                buf[2048];
+    const char        * ptrDevName;
     XWCContext        * ctx;
+    Bool                endOfStrFound;
 
     ctx = (XWCContext*) malloc (sizeof (XWCContext));
 
@@ -134,6 +135,13 @@ init (int           argCnt,
         || addArg (args, False, INT,   DAEMON,     "DAEMON",       2, "-d",
                    "-daemon")
         == False
+
+        || addArg (args, True,  C_STR, PTRDEVNAME, "PTRDEVNAME",   1,
+                   "-ptrname")
+        == False
+
+        || addArg (args, True,  C_STR, LOGFNAME,   "LOGFNAME",     1, "-logf")
+        == False
         )
     {
         delArgs (args);
@@ -247,41 +255,102 @@ init (int           argCnt,
     }
 
     /*boilerplate wa*/
-    LOG_LVL = * ((int*)           args->m_Args[LOGLVL]->m_Value);
-    fr      = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
-    srcid   = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
+    LOG_LVL    = * ((int*)           args->m_Args[LOGLVL]->m_Value);
+    fr         = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
+    srcid      = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
+    ptrDevName =   (const char*)     args->m_Args[PTRDEVNAME]->m_Value;
 
     memset (&ctx->bgColor, 0, sizeof (ctx->bgColor ));
 
-    ctx->focusDelay.tv_nsec = 0;
-    ctx->focusDelay.tv_sec  = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
-    ctx->frameDelay.tv_nsec = ( 1.00000001 / fr) * 1000000000L;
-    ctx->frameDelay.tv_sec  = 0;
-    ctx->raiseDelay.tv_sec  = 0;
-    ctx->raiseDelay.tv_nsec = RAISE_SOURCE_DELAY;
-    ctx->autoCenter         = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
-    ctx->topOffset          = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
-    ctx->bgColorStr         = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    ctx->bgImgFilePath      = (const char*) args->m_Args[BGIMAGE]->m_Value;
-    ctx->bgImgFileSet       = args->m_Args[BGIMAGE]->m_IsSet;
-    ctx->bgImgStatus        = False;
-    ctx->exitKeyStr         = EXIT_KEY;
-    ctx->exitKeyMask        = EXIT_MASK;
-    ctx->transCtrlKeyStr    = TRANSLATION_CTRL_KEY;
-    ctx->cloneKeyMask       = TRANSLATION_CTRL_MASK;
-    ctx->srcW               = srcid;
-    ctx->isDaemon           = args->m_Args[DAEMON]->m_IsSet;
-    ctx->lckFPath           = args->m_Args[LCKFPATH]->m_Value;
-    ctx->isSingleton        = args->m_Args[SINGLEINST]->m_IsSet;
-    ctx->clickDelay.tv_sec  = 0;
-    ctx->clickDelay.tv_nsec = BTN_CLICK_DELAY;
+    ctx->focusDelay.tv_nsec     = 0;
+    ctx->focusDelay.tv_sec      = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
+    ctx->frameDelay.tv_nsec     = ( 1.00000001 / fr) * 1000000000L;
+    ctx->frameDelay.tv_sec      = 0;
+    ctx->raiseDelay.tv_sec      = 0;
+    ctx->raiseDelay.tv_nsec     = RAISE_SOURCE_DELAY;
+    ctx->frameLongDelay.tv_sec  = 0;
+    ctx->frameLongDelay.tv_nsec = FRAME_LONG_DELAY;
+    ctx->autoCenter             = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
+    ctx->topOffset              = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
+    ctx->bgColorStr             = (const char*) args->m_Args[BGCOLOR]->m_Value;
+    ctx->bgImgFilePath          = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ctx->bgImgFileSet           = args->m_Args[BGIMAGE]->m_IsSet;
+    ctx->bgImgStatus            = False;
+    ctx->exitKeyStr             = EXIT_KEY;
+    ctx->exitKeyMask            = EXIT_MASK;
+    ctx->transCtrlKeyStr        = TRANSLATION_CTRL_KEY;
+    ctx->cloneKeyMask           = TRANSLATION_CTRL_MASK;
+    ctx->srcW                   = srcid;
+    ctx->isDaemon               = args->m_Args[DAEMON]->m_IsSet;
+    ctx->lckFPath               = args->m_Args[LCKFPATH]->m_Value;
+    ctx->isSingleton            = args->m_Args[SINGLEINST]->m_IsSet;
+    ctx->clickDelay.tv_sec      = 0;
+    ctx->clickDelay.tv_nsec     = BTN_CLICK_DELAY;
 
-    ctx->isSingleton        = ctx->isSingleton || ctx->isDaemon;
+    ctx->isSingleton            = ctx->isSingleton || ctx->isDaemon;
 
-    ctx->slavePtrDevId      = NO_DEVICE;
-    ctx->masterPtrDevId     = NO_DEVICE;
+    ctx->slavePtrDevId          = NO_DEVICE;
+    ctx->masterPtrDevId         = NO_DEVICE;
 
-    ctx->ptrDevName         = TRACKED_PTR_NAME;
+    ctx->ptrDevName             = ptrDevName;
+
+    ctx->logFileName            = (const char*) args->m_Args[LOGFNAME]->m_Value;
+
+    if (strncmp (ctx->logFileName, "stdout", LOG_FILE_NAME_MAX_LENGTH)
+        == STR_EQUAL)
+    {
+        LOG_FILE = stdout;
+    }
+    
+    if (strncmp (ctx->logFileName, "stderr", LOG_FILE_NAME_MAX_LENGTH)
+        == STR_EQUAL)
+    {
+        LOG_FILE = stderr;
+    }
+
+    if (LOG_FILE != stdout && LOG_FILE != stderr)
+    {
+
+        if (ctx->logFileName == NULL)
+        {
+            XCloseDisplay (ctx->xDpy);
+            freeXWCContext (ctx);
+            delArgs (args);
+            return NULL;
+        }
+
+        endOfStrFound = False;
+
+        for (i = 1; i < LOG_FILE_NAME_MAX_LENGTH; ++ i)
+        {
+            if (*ctx->logFileName == '\0')
+            {
+                endOfStrFound = 1;
+                break;
+            }
+        }
+
+        if (endOfStrFound == False)
+        {
+            XCloseDisplay (ctx->xDpy);
+            freeXWCContext (ctx);
+            delArgs (args);
+            return NULL;
+        }
+
+        LOG_FILE = fopen (ctx->logFileName, "a");
+
+        if (LOG_FILE == NULL)
+        {
+            snprintf (buf, sizeof (buf), "Error opening log file %s!",
+                      ctx->logFileName);
+            logCtr (buf, LOG_LVL_NO, False);
+            XCloseDisplay (ctx->xDpy);
+            freeXWCContext (ctx);
+            delArgs (args);
+            return NULL;
+        }
+    }
 
     if (getInputDevices (ctx) == False)
     {
@@ -396,6 +465,6 @@ freeXWCContext (XWCContext * ctx)
         }
         free (ctx->kbds);
     }
-    
+
     free (ctx);
 }

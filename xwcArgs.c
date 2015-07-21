@@ -183,6 +183,14 @@ addArg (arguments  * args,
             *( (unsigned long*) arg->m_Value ) = None;
             break;
 
+        case PTRDEVNAME:
+            arg->m_Value                       = (void*) TRACKED_PTR_NAME;
+            break;
+
+        case LOGFNAME:
+            arg->m_Value                       = (void*) LOG_FILE_NAME;
+            break;
+
         default:
             logCtr ("Unknown argument type detected while creating option!",
                     LOG_LVL_NO, False);

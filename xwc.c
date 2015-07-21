@@ -1,7 +1,8 @@
 #include "xwc.h"
 
 /*Global X_ERROR initialization*/
-Bool X_ERROR = False;
+Bool X_ERROR      = False;
+int  X_ERROR_CODE = 0;
 
 imgLibCreateCrSc_t   imgLibCreateCrSc = & imlib_create_cropped_scaled_image;
 
@@ -12,6 +13,8 @@ XCompUnRedirSubWin_t unRedirSubWin    = & XCompositeUnredirectSubwindows;
 
 /*Global LOG_LVL initialization*/
 int LOG_LVL = DEFAULT_LOG_LVL;
+
+FILE * LOG_FILE = NULL;
 
 void
 printVersion (void)
@@ -29,13 +32,13 @@ logCtr (const char * msg,
 {
     if (msg == NULL)
     {
-        printf ("Tryng to log NULL msg!\n");
+        fprintf (LOG_FILE, "Tryng to log NULL msg!\n");
         return;
     }
 
     if (lvl < 0)
     {
-        printf ("Tryng to log with unknown lvl!\n");
+        fprintf (LOG_FILE, "Tryng to log with unknown lvl!\n");
         return;
     }
 
@@ -43,11 +46,12 @@ logCtr (const char * msg,
     {
         if (sequenced == False)
         {
-            printf ("\n%s\n", msg);
+            fprintf (LOG_FILE, "\n%s\n", msg);
         }
         else
         {
-            printf ("%s\n", msg);
+
+            fprintf (LOG_FILE, "%s\n", msg);
         }
     }
 }
@@ -78,6 +82,7 @@ ifSingleInst (XWCContext * ctx)
 
     if (rc != 0 && EWOULDBLOCK == errno)
     {
+
         snprintf (buf, sizeof (buf), "File %s seems to be already created and"
                   " locked,\nassuming other instance of this program is"
                   " running", ctx->lckFPath);

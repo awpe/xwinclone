@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#define XWINCLONE_VERSION_STR          "0.1l"
+#define XWINCLONE_VERSION_STR          "0.1m"
 
 /**************************************************************************/
 /*Program definitions*/
@@ -20,19 +20,25 @@
 #define MAX_POINTER_DEVICE_NAME_LENGTH 256
 #define NO_DEVICE                      0
 #define TRACKED_BUTTON                 2 // 2 = lmb
+#define LOG_FILE_NAME_MAX_LENGTH       256   
 /**************************************************************************/
 
 /**************************************************************************/
 /*Options*/
 #define _POSIX_C_SOURCE                200112L
+
+#define ALLOW_NON_EWMH_COMPILANT_WM    0
+
 #define FRAMERATE_FPS                  30  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC       2   //s
 
 #define BTN_CLICK_DELAY_ENABLE         0
-#define BTN_CLICK_DELAY                5000000L //1ms
+#define BTN_CLICK_DELAY                5000000L //5ms
 
 #define RAISE_SOURCE_DELAY_ENABLE      0
 #define RAISE_SOURCE_DELAY             250000000L //250ms
+
+#define FRAME_LONG_DELAY               500000000L //500ms
 
 #define DEFAULT_BG_COLOR               "000000" //rgb color
 
@@ -46,14 +52,15 @@
 
 #define WM_CLASS_PRG_NAME_STR          "XWinClone"
 #define WM_CLASS_CLASS_NAME_STR        "xwinclone"
-#define AUTOCENTERING                  1 //1=true; 0=false
-#define TOP_OFFSET                     0 // in pixels
+#define AUTOCENTERING                  0 //1=true; 0=false
+#define TOP_OFFSET                     71 // in pixels
 #define PROGRAM_EXE_NAME_STR           "xwinclone"
 #define BG_IMAGE_PATH                  "./"
 #define DEFAULT_LOG_LVL                LOG_LVL_2
 #define LOCK_FILE_PATH                 "/tmp/xwinclone.pid"
 #define DEFAULT_BGIMAGE_PATH           "/usr/share/wallpapers/e2e4.jpeg"
 #define TRACKED_PTR_NAME               "A4Tech USB Optical Mouse"
+#define LOG_FILE_NAME                  "stdout"
 /**************************************************************************/
 
 #endif

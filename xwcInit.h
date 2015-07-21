@@ -36,6 +36,9 @@ struct XWCContext_
     struct timespec   raiseDelay;   /**< Used for waiting in case of unmapped
                                     *  windows*/
     struct timespec   clickDelay;
+    
+    struct timespec   frameLongDelay;
+    
     const char      * exitKeyStr;  /**< string representing exit key 
                                       * (keysymdef.h)*/
     const char      * transCtrlKeyStr;  /**< string representing translation
@@ -81,6 +84,8 @@ struct XWCContext_
     int               masterPtrDevId; /**< Used to manipulate pointer*/
 
     const char      * ptrDevName;
+    
+    const char      * logFileName;
 
 } ;
 

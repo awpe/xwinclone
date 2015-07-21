@@ -16,6 +16,8 @@ Imlib_Image (*imgLibCreateCrSc_t)(int, int, int, int, int, int) ;
  */
 extern int LOG_LVL;
 
+extern FILE * LOG_FILE;
+
 /**
  * Processes log messages according to current logging level.
  * @param[in] msg Pointer to null-terminated C-string with message.
