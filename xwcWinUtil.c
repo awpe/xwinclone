@@ -136,20 +136,20 @@ getNamedWindow (Display * d,
 }
 
 Window
-getActiveWindow (XWCContext * ctx)
+getActiveWindow (XWCContext * ctx, Window implicitW)
 {
     if (ctx == NULL)
     {
         logCtr ("Error getting active window: No program options"
                 " data specified!", LOG_LVL_NO, False);
-        return False;
+        return None;
     }
 
     if (ctx->xDpy == NULL)
     {
         logCtr ("Error getting active window: No display specified!",
                 LOG_LVL_NO, False);
-        return False;
+        return None;
     }
 
     if (ctx->isDaemon == False)
@@ -159,28 +159,19 @@ getActiveWindow (XWCContext * ctx)
         nanosleep (&ctx->focusDelay, NULL);
     }
 
-    if (ctx->srcW == None)
+    if (implicitW == None)
     {
-        ctx->srcW = getFocusedWindow (ctx->xDpy);
+        implicitW = getFocusedWindow (ctx->xDpy);
     }
 
-    if (     ctx->srcW                                          == None
-        || ( ctx->srcW = getTopWindow (ctx->xDpy, ctx->srcW)   ) == None
-        || ( ctx->srcW = getNamedWindow (ctx->xDpy, ctx->srcW) ) == None )
+    if (     implicitW                                           == None
+        || ( implicitW = getTopWindow (ctx->xDpy, implicitW)   ) == None
+        || ( implicitW = getNamedWindow (ctx->xDpy, implicitW) ) == None )
     {
-        return False;
+        return None;
     }
 
-    XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
-
-    if (getXErrState () == True)
-    {
-        return False;
-    }
-
-    printWindowInfo (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
-
-    return True;
+    return implicitW;
 }
 
 void
@@ -523,7 +514,7 @@ createTrgWindow (XWCContext * ctx)
     trgWinSetAttr.bit_gravity      = NorthWestGravity;
     trgWinSetAttr.event_mask       = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
     mask                           = CWBackPixel | CWColormap | CWBorderPixel |
-            CWBitGravity | CWEventMask;
+        CWBitGravity | CWEventMask;
 
     ctx->trgW = createWindow (ctx, xVisInfo.visual, mask, &trgWinSetAttr);
 
@@ -546,6 +537,8 @@ createTrgWindow (XWCContext * ctx)
 
     XMapWindow (ctx->xDpy, ctx->trgW);
 
+    XSync (ctx->xDpy, False);
+
     if (getXErrState () == True)
     {
         logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
@@ -564,9 +557,10 @@ createTrgWindow (XWCContext * ctx)
 
     evmasks[0].deviceid = ctx->slavePtrDevId;
     evmasks[0].mask_len = sizeof (mask1);
-    evmasks[0].mask = mask1;
+    evmasks[0].mask     = mask1;
 
     XISelectEvents (ctx->xDpy, ctx->trgW, evmasks, 1);
+    XSync (ctx->xDpy, False);
 
     if (getXErrState () == True)
     {
@@ -721,5 +715,59 @@ findWClient (XWCContext * ctx,
             done = True;
         }
     }
+    return True;
+}
+
+static Bool
+raiseW (XWCContext * ctx,
+        Window       w)
+{
+    if (ctx == NULL || w == None)
+    {
+        return False;
+    }
+
+    XRaiseWindow (ctx->xDpy, w);
+    XSync (ctx->xDpy, False);
+
+    XSetInputFocus (ctx->xDpy, w, RevertToParent, CurrentTime);
+    XSync (ctx->xDpy, False);
+
+    return True;
+}
+
+Bool
+wRaiseCtrl (XWCContext * ctx,
+            Window     * ioWin,
+            Atom       * st)
+{
+    Window currentTopWin;
+
+    if (ctx == NULL || ioWin == NULL || *ioWin == None || st==NULL)
+    {
+        return False;
+    }
+    
+    
+
+    currentTopWin = getActiveWindow (ctx, None);
+
+    if (currentTopWin == None)
+    {
+        return False;
+    }
+
+    if (currentTopWin != *ioWin)
+    {
+        if (raiseW (ctx, *ioWin) == False)
+        {
+            return False;
+        }
+        *ioWin = currentTopWin;
+#if (RAISE_SOURCE_DELAY_ENABLE==1)
+        nanosleep (&ctx->raiseDelay, NULL);
+#endif
+    }
+
     return True;
 }

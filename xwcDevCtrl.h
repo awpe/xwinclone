@@ -60,35 +60,27 @@ grabAllKeys (XWCContext * ctx);
 void
 ungrabAllKeys (XWCContext * ctx);
 
-int
-mvPtrWRel (XWCContext * ctx, Window window, int x, int y);
 
-int
-getMouseLoc (XWCContext * ctx,
-             int        * xR,
-             int        * yR,
-             int        * scrNumR,
-             Window     * wR);
-
-unsigned int
-getInSt (XWCContext * ctx);
-
-int
-mouseBtnCtrl (XWCContext * ctx,
-              int          button,
-              int          is_press);
-
-int
-setMouseUp (XWCContext * ctx,
-            int          button);
-
-int
-setMouseDown (XWCContext * ctx,
-              int          button);
-
-int
-clickW (XWCContext * ctx,
-        int          button);
+/**
+ * adjust target window pointer (cursor) coords to source window proper pointer
+ * coords, and get corresponding coords in root window
+ * @param[in] ctx Pointer to program's context.
+ * @param[in] inX cursor X coordinate in target window to be adjusted
+ * @param[in] inY cursor Y coordinate in target window to be adjusted
+ * @param[out] adjX Pointer to store adjustment result (X) relative to source
+ * @param[out] adjY Pointer to store adjustment result (Y) relative to source
+ * @param[out] adjRX Pointer to store adjustment result (X) relative to root
+ * @param[out] adjRY Pointer to store adjustment result (Y) relative to root
+ * @return Xlib's True on success, False otherwise.
+ */
+Bool
+adjPtrLoc (XWCContext * ctx,
+           int          inX,
+           int          inY,
+           int        * adjX,
+           int        * adjY,
+           int        * adjRX,
+           int        * adjRY);
 
 int
 getPressedComb (XWCContext * ctx);

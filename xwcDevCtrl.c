@@ -367,252 +367,582 @@ ungrabAllKeys (XWCContext * ctx)
     }
 }
 
-Bool
-mvPtrWRel (XWCContext * ctx, Window window, int x, int y)
+int
+procKeySeqEv (XWCContext    * ctx,
+              XIDeviceEvent * xide)
 {
-    int ret;
+    /* For button events, detail is the button number (after mapping
+     * applies of course). For key events, detail is the keycode. 
+     * XI2 supports 32-bit keycodes, btw. For motion events, 
+     * detail is 0. 
+     * From http://who-t.blogspot.cz/2009/07/xi2-recipes-part-4.html*/
+    if (xide->detail == ctx->cloneKeyCode)
+    {
+        logCtr ("Grab window key sequence received", LOG_LVL_NO, False);
 
-    ret = 0;
+        return TRANSLATION_COMB;
+    }
 
-    ret = XIWarpPointer ( ctx->xDpy, ctx->masterPtrDevId, None, window,
-                         0, 0, 0, 0, x, y);
+    if (xide->detail == ctx->exitKeyCode)
+    {
+        logCtr ("Exit key sequence received", LOG_LVL_NO, False);
 
-    XFlush (ctx->xDpy);
+        return EXIT_COMBINATION;
+    }
 
-    return ret == 0 ? True : False;
+    return NO_KEY_PRESSED;
 }
 
-int
-getMouseLoc (XWCContext * ctx,
-             int        * xR,
-             int        * yR,
-             int        * scrNumR,
-             Window     * wR)
+Bool
+getTrgWPtrData (XWCContext      * ctx,
+                int             * trgX,
+                int             * trgY,
+                XIModifierState * modsSt,
+                int             * trgRX,
+                int             * trgRY)
 {
-    int          ret, x, y, screen_num, dummy_int;
-    Window       window;
-    Window       root;
-    unsigned int dummy_uint;
-    //char         buf[1024];
+    XIButtonState btnSt;
+    XIGroupState  grpSt;
+    Window        rootRet, childRet;
+    Bool          res;
+    double        rX, rY, wX, wY;
 
-    ret         = False;
-    window      = None;
-    root        = None;
-
-    ret = XQueryPointer (ctx->xDpy, ctx->rootW, &root, &window, &x, &y,
-                         &dummy_int, &dummy_int, &dummy_uint);
-
-    if (ret == True)
+    /*simple check*/
+    /*TODO change to asserts*/
+    if (ctx == NULL || trgX == NULL || trgY == NULL || modsSt == NULL)
     {
-        screen_num = XScreenNumberOfScreen (ctx->xScr);
+        logCtr ("Cannot get target window pointer data: "
+                "NULL pointer received!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    memset (&btnSt, 0, sizeof (btnSt));
+    btnSt.mask = NULL;
+
+    res = XIQueryPointer (ctx->xDpy, ctx->masterPtrDevId, ctx->trgW,
+                          &rootRet, &childRet, &rX, &rY, &wX,
+                          &wY, &btnSt, modsSt, &grpSt);
+
+    /*free btnSt.mask after XIQueryPointer call*/
+    if (btnSt.mask != NULL)
+    {
+        free (btnSt.mask);
+    }
+
+    if (res == False)
+    {
+        logCtr ("Cannot get target window pointer data: "
+                "XIQueryPointer error!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    *trgX  = (int) (wX + 0.5);
+    *trgY  = (int) (wY + 0.5);
+    *trgRX = (int) (rX + 0.5);
+    *trgRY = (int) (rY + 0.5);
+
+    return True;
+}
+
+Bool
+adjPtrLoc (XWCContext * ctx,
+           int          inX,
+           int          inY,
+           int        * adjX,
+           int        * adjY,
+           int        * adjRX,
+           int        * adjRY)
+{
+    Window childRet;
+
+    *adjX = inX;
+    *adjY = inY;
+
+    XTranslateCoordinates (ctx->xDpy, ctx->srcW, ctx->rootW,
+                           *adjX, *adjY,
+                           adjRX, adjRY,
+                           &childRet);
+
+    return True;
+}
+
+Bool
+getBtnEv (XWCContext      * ctx,
+          XIModifierState * modsSt,
+          XEvent          * xev,
+          int               adjX,
+          int               adjY,
+          int               adjRX,
+          int               adjRY)
+{
+    if (ctx == NULL || modsSt == NULL || xev == NULL)
+    {
+        logCtr ("Cannot prepare event structure: NULL pointer received!",
+                LOG_LVL_NO, False);
+        return False;
+    }
+
+    memset (xev, 0, sizeof (*xev));
+
+    xev->xbutton.serial      = 0;
+    xev->xbutton.send_event  = True;
+    xev->xbutton.display     = ctx->xDpy;
+    xev->xbutton.window      = ctx->srcW;
+    xev->xbutton.root        = ctx->rootW;
+    xev->xbutton.subwindow   = None;
+    xev->xbutton.time        = CurrentTime;
+    xev->xbutton.x           = adjX;
+    xev->xbutton.y           = adjY;
+    xev->xbutton.x_root      = adjRX;
+    xev->xbutton.y_root      = adjRY;
+    xev->xbutton.state       = modsSt->effective;
+    xev->xbutton.button      = TRACKED_BUTTON - 1;
+    xev->xbutton.same_screen = True;
+
+    return True;
+}
+
+Bool
+mvPtr (XWCContext * ctx,
+       int          x,
+       int          y)
+{
+    Bool res;
+
+    if (ctx == NULL)
+    {
+        logCtr ("Cannot move pointer: ctx is NULL!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    res = XIWarpPointer (ctx->xDpy,
+                         ctx->masterPtrDevId,
+                         None,
+                         ctx->rootW,
+                         0.0,            0.0,
+                         0,              0,
+                         (double) x, (double) y);
+
+    if (res != Success)
+    {
+        logCtr ("Cannot move pointer: XIWarpPointer error!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    XSync (ctx->xDpy, False);
+
+    return True;
+}
+
+Bool
+btnClick (XWCContext * ctx,
+          XEvent     * btnEv)
+{
+    Bool res;
+
+    if (ctx == NULL || btnEv == NULL)
+    {
+        logCtr ("Cannot emulate click: "
+                "NULL pointer received!", LOG_LVL_NO, True);
+        return False;
+    }
+
+    /**************************************************************************/
+    /*Send button press event*/
+    /**************************************************************************/
+    btnEv->xbutton.type = ButtonPress;
+    res = XSendEvent (ctx->xDpy, ctx->srcW, False,
+                      ButtonPressMask, btnEv);
+
+    if (res == 0)
+    {
+        logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
+        return False;
     }
     else
     {
-        logCtr ("Cannot get mouse location", LOG_LVL_NO, False);
+        logCtr ("Button press event sent\n", LOG_LVL_2, True);
+    }
+
+    XSync (ctx->xDpy, False); //make sure X server received press event
+    /**************************************************************************/
+
+
+#if (BTN_CLICK_DELAY_ENABLE==1)
+    nanosleep (&ctx->clickDelay, NULL);
+#endif
+
+
+    /**************************************************************************/
+    /*Send button release event*/
+    /**************************************************************************/
+    btnEv->xbutton.type = ButtonRelease;
+    res = XSendEvent (ctx->xDpy, ctx->srcW, False,
+                      ButtonReleaseMask, btnEv);
+
+    if (res == 0)
+    {
+        logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
         return False;
     }
-
-    if (wR != NULL)
+    else
     {
-        /* Find the client window if we are not root. */
-        if (window != root && window != 0)
-        {
-            int findret;
-            Window client = 0;
-
-            /* Search up the stack for a client window for this window */
-            findret = findWClient (ctx, window, &client, FIND_PARENTS);
-            if (findret == False)
-            {
-                /* If no client found, search down the stack */
-                findret = findWClient (ctx, window, &client, FIND_CHILDREN);
-            }
-
-            //fprintf (stderr, "%lX, %lX, %lX, %X\n", window, root, client,
-            //findret);
-
-            if (findret == True)
-            {
-                window = client;
-            }
-        }
-        else
-        {
-            window = root;
-        }
+        logCtr ("Button release event sent\n", LOG_LVL_2, True);
     }
 
-    //printf ("mouseloc root: %lX\n", root);
-    //printf ("mouseloc window: %lX\n", window);
-
-    if (ret == True)
-    {
-        if (xR != NULL)
-        {
-            *xR = x;
-        }
-        if (yR != NULL)
-        {
-            *yR = y;
-        }
-        if (scrNumR != NULL)
-        {
-            *scrNumR = screen_num;
-        }
-        if (wR != NULL)
-        {
-            *wR = window;
-        }
-    }
-
-    return ret;
-}
-
-unsigned int
-getInSt (XWCContext * ctx)
-{
-    Window       dummy;
-    int          rX, rY, wX, wY;
-    unsigned int mask;
-
-    XQueryPointer (ctx->xDpy, ctx->rootW, &dummy, &dummy, &rX, &rY, &wX, &wY,
-                   &mask);
-
-    return mask;
-}
-
-int
-mouseBtnCtrl (XWCContext * ctx, int button, int is_press)
-{
-    int          res;
-    int          screen;
-    XButtonEvent xbpe;
-    Window       z;
-
-    memset (&xbpe, 0, sizeof (xbpe));
-
-    z = ctx->srcW;
-
-    getMouseLoc (ctx, &xbpe.x_root, &xbpe.y_root, &screen, &z);
-
-    //printf ("\tmouse is in %d, %d relative to root\n", xbpe.x_root,
-    //xbpe.y_root);
-
-    xbpe.window      = ctx->srcW;
-    xbpe.button      = button;
-    xbpe.display     = ctx->xDpy;
-    xbpe.root        = ctx->rootW;
-    xbpe.same_screen = True;
-    xbpe.state       = getInSt (ctx);
-    xbpe.subwindow   = None;
-    xbpe.time        = CurrentTime;
-    xbpe.type        = (is_press ? ButtonPress : ButtonRelease);
-
-    XTranslateCoordinates (ctx->xDpy, ctx->rootW, ctx->srcW, xbpe.x_root,
-                           xbpe.y_root, &xbpe.x, &xbpe.y, &xbpe.subwindow);
-
-    //printf ("\t1relative to source it is %d, %d\n", xbpe.x, xbpe.y);
-
-    //printf ("\t1src is %lX, subw is %lX\n", ctx->srcW, xbpe.subwindow);
-
-    if (xbpe.subwindow != None)
-    {
-        XTranslateCoordinates (ctx->xDpy, ctx->rootW, xbpe.subwindow,
-                               xbpe.x_root, xbpe.y_root, &xbpe.x, &xbpe.y,
-                               &xbpe.subwindow);
-
-        //printf ("\t1relative to source it is %d, %d\n", xbpe.x, xbpe.y);
-
-        //printf ("\t1src is %lX, subw is %lX\n", ctx->srcW, xbpe.subwindow);
-    }
-
-    if (is_press == False)
-    {
-        xbpe.state |= Button1MotionMask;
-    }
-
-    res = XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonPressMask,
-                      (XEvent *) & xbpe);
-    XFlush (ctx->xDpy);
-
-    if (res == 0 || getXErrState () == True)
-    {
-        logCtr ("Error sending click event", LOG_LVL_NO, False);
-        return False;
-    }
+    XSync (ctx->xDpy, False); //make sure X server received release event
+    /**************************************************************************/
 
     return True;
 }
 
 int
-setMouseUp (XWCContext * ctx,
-            int          button)
+procBtnEv (XWCContext    * ctx,
+           XIDeviceEvent * xide)
 {
-    return mouseBtnCtrl (ctx, button, False);
-}
+    XIModifierState modSt;
+    XEvent          btnEv;
+    Window          focused;
+    Atom            srcWStateAtom;
+    int             trgRX, trgRY, adjRX, adjRY, adjX, adjY, trgX, trgY;
+    char            buf[1024];
 
-int
-setMouseDown (XWCContext * ctx,
-              int          button)
-{
-    return mouseBtnCtrl (ctx, button, True);
-}
+    logCtr ("Got click:", LOG_LVL_2, False);
 
-int
-clickW (XWCContext * ctx,
-        int          button)
-{
-    int ret;
-
-    ret = setMouseDown (ctx, button);
-
-    if (ret != True)
+    if (ctx == NULL)
     {
-        logCtr ("Click failed!", LOG_LVL_NO, False);
-        return ret;
+        logCtr ("Cannot process pressed button event: ctx is NULL!",
+                LOG_LVL_NO, True);
+        return EXIT_COMBINATION;
     }
 
-    //nanosleep (&ctx->clickDelay, NULL);
+    if (xide == NULL)
+    {
+        logCtr ("Very bad error that should have never happened: XGetEventData "
+                "failed completely at procBtnEv!", LOG_LVL_NO, True);
+        return EXIT_COMBINATION;
+    }
 
-    //ret = setMouseUp (ctx, button);
+    if (xide->buttons.mask == NULL)
+    {
+        logCtr ("Very bad error that should have never happened: "
+                "xide->buttons.mask surprisingly is NULL at procBtnEv!",
+                LOG_LVL_NO, True);
+        return EXIT_COMBINATION;
+    }
 
-    return ret;
+    snprintf (buf, sizeof (buf), "btn = %d; tracked = %d\n",
+              xide->buttons.mask[0], 1 << (TRACKED_BUTTON - 1));
+    logCtr (buf, LOG_LVL_2, True);
+
+    /* button is expressed as 1 shifted to the left by button number,
+     * XIButtonState structure has an array of bytes to store pressed 
+     * button number, but buttons we track will always fit into 
+     * 1 byte. If you need to track buttons with numbers greater
+     * than 7 then change next code to check all bytes */
+    if (xide->buttons.mask[0] == 1 << (TRACKED_BUTTON - 1))
+    {
+        /**********************************************************************/
+        /*check source window state*/
+        /*TODO move this to xwcWinUtil*/
+        /**********************************************************************/
+        XSync (ctx->xDpy, 0);
+        XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+
+        if (getXErrState () == True)
+        {
+            logCtr ("Cannot process pressed button event: "
+                    "XGetWindowAttributes error!", LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+
+        Atom property = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
+        Atom actual_type;
+        int actual_format;
+        unsigned long nitems;
+        unsigned long leftover;
+        unsigned char *data = NULL;
+        if (XGetWindowProperty (ctx->xDpy, ctx->srcW, property, 0L,
+                                (long) BUFSIZ, False, AnyPropertyType, &actual_type, &actual_format,
+                                &nitems, &leftover, &data) != Success)
+        {
+            printf ("Cannot read property\n");
+            return EXIT_COMBINATION;
+        }
+        char * tmp;
+        Bool hidden = False;
+        Atom hiddenProperty = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
+        for (int i = 0; i < nitems; ++i)
+        {
+            printf ("%ld\n", ((long *) (data))[i]);
+            tmp = XGetAtomName (ctx->xDpy, ((long *) (data))[i]);
+            printf ("%s\n\n", tmp);
+            XFree (tmp);
+            if (hiddenProperty == ((long *) (data))[i])
+            {
+                hidden = True;
+                printf ("actual_type = %ld\n", actual_type);
+                printf ("actual_format = %d\n", actual_format);
+                break;
+            }
+        }
+        XFree (data);
+
+
+
+        /*
+                        if (ctx->srcWAttr.map_state != IsViewable || hidden == True)
+                        {
+                            logCtr ("Cannot process pressed button event: "
+                                    "source window is not visible!", LOG_LVL_1, True);
+                            return NO_KEY_PRESSED;
+                        }
+         */
+
+        /*
+                    XChangeProperty (ctx->xDpy, ctx->srcW, property, XA_ATOM,
+                                     32, PropModeReplace, (unsigned char *) name,
+                                     name ? strlen (name) : 0);
+         */
+        if (hidden == True || ctx->srcWAttr.map_state != IsViewable)
+        {
+            printf ("Source is hidden\n");
+            
+            XEvent event;
+            memset (&event, 0, sizeof (event));
+            long mask = SubstructureRedirectMask | SubstructureNotifyMask;
+
+            event.xclient.type = ClientMessage;
+            event.xclient.serial = 0;
+            event.xclient.send_event = True;
+            event.xclient.message_type = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
+            event.xclient.window = ctx->srcW;
+            event.xclient.format = 32;
+            event.xclient.data.l[0] = 2;
+            event.xclient.data.l[1] = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
+            event.xclient.data.l[2] = 0;
+            event.xclient.data.l[3] = 0;
+            event.xclient.data.l[4] = 0;
+
+            if (XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event))
+            {
+                XSync (ctx->xDpy, False);
+            }
+            else
+            {
+                printf ("Cannot send event.\n");
+                return EXIT_COMBINATION;
+            }
+
+            nanosleep (&ctx->raiseDelay, NULL);
+            
+            Bool b;
+            property = XInternAtom (ctx->xDpy, "WM_STATE", False);
+            while (1)
+            {
+                if (XGetWindowProperty (ctx->xDpy, ctx->srcW, property, 0L,
+                                        (long) BUFSIZ, False, AnyPropertyType, &actual_type, &actual_format,
+                                        &nitems, &leftover, &data) != Success)
+                {
+                    printf ("Cannot read property\n");
+                    return EXIT_COMBINATION;
+                }
+                printf ("actual_type = %ld\n", actual_type);
+                tmp = XGetAtomName (ctx->xDpy, actual_type);
+                printf ("actual type name %s\n", tmp);
+                free (tmp);
+                printf ("actual_format = %d\n", actual_format);
+                b = False;
+                printf ("nitems %ld\n", nitems);
+                for (int i = 0; i < nitems - 1; ++i)
+                {
+                    printf ("%ld\n", ((long *) (data))[i]);
+                    tmp = XGetAtomName (ctx->xDpy, ((long *) (data))[i]);
+                    printf ("%s\n\n", tmp);
+                    XFree (tmp);
+                    if (hiddenProperty == ((long *) (data))[i])
+                    {
+                        b = True;
+                        printf ("still hidden\n");
+                        break;
+                    }
+                }
+                XFree (data);
+                if (b == False)
+                {
+                    printf ("visible\n");
+                    break;
+                }
+
+                nanosleep (&ctx->raiseDelay, NULL);
+
+            }
+
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Get pointer coordinates and modifiers state in target window*/
+        /**********************************************************************/
+        if (getTrgWPtrData (ctx, &trgX, &trgY, &modSt, &trgRX, &trgRY) == False)
+        {
+            logCtr ("Cannot process pressed button event: "
+                    "getTrgWPtrData error!", LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Adjust pointer coordinates for source window*/
+        /**********************************************************************/
+        if (adjPtrLoc (ctx, trgX, trgY, &adjX, &adjY, &adjRX, &adjRY) == False)
+        {
+            logCtr ("Cannot process pressed button event: adjPtrLoc error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*raise source if needed*/
+        /**********************************************************************/
+        focused = ctx->srcW;
+        if (wRaiseCtrl (ctx, &focused, &srcWStateAtom) == False)
+        {
+            logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*move pointer to source window*/
+        /**********************************************************************/
+        if (mvPtr (ctx, adjRX, adjRY) == False)
+        {
+            logCtr ("Cannot process pressed button event: mvPtr error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        else
+        {
+            logCtr ("Pointer moved to source\n", LOG_LVL_2, True);
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*prepare event structure*/
+        /**********************************************************************/
+        if (getBtnEv (ctx, &modSt, &btnEv, adjX, adjY, adjRX, adjRY) == False)
+        {
+            logCtr ("Cannot process pressed button event: getBtnEv"
+                    " error!", LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*emulate click*/
+        /**********************************************************************/
+        if (btnClick (ctx, &btnEv) == False)
+        {
+            logCtr ("Cannot process pressed button event: btnClick error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*move pointer to target window*/
+        /**********************************************************************/
+        if (mvPtr (ctx, trgRX, trgRY) == False)
+        {
+            logCtr ("Cannot process pressed button event: mvPtr error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        else
+        {
+            logCtr ("Pointer moved to target\n", LOG_LVL_2, True);
+        }
+        /**********************************************************************/
+
+
+
+        /**********************************************************************/
+        /*raise last focused if needed*/
+        /**********************************************************************/
+
+
+        if (wRaiseCtrl (ctx, &focused, &srcWStateAtom) == False)
+        {
+            logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
+                    LOG_LVL_NO, True);
+            return EXIT_COMBINATION;
+        }
+        
+        
+        
+        if (hidden == True)
+        {
+            nanosleep (&ctx->raiseDelay, NULL);
+            XEvent event;
+            memset (&event, 0, sizeof (event));
+            long mask = SubstructureRedirectMask | SubstructureNotifyMask;
+
+            event.xclient.type = ClientMessage;
+            event.xclient.serial = 0;
+            event.xclient.send_event = True;
+            event.xclient.message_type = XInternAtom (ctx->xDpy, "_NET_WM_STATE", False);
+            event.xclient.window = ctx->srcW;
+            event.xclient.format = 32;
+            event.xclient.data.l[0] = 2;
+            event.xclient.data.l[1] = XInternAtom (ctx->xDpy, "_NET_WM_STATE_HIDDEN", False);
+            event.xclient.data.l[2] = 0;
+            event.xclient.data.l[3] = 0;
+            event.xclient.data.l[4] = 0;
+
+            if (XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event))
+            {
+                XSync (ctx->xDpy, False);
+            }
+            else
+            {
+                printf ("Cannot send event.\n");
+                return EXIT_COMBINATION;
+            }
+        }
+
+        /**********************************************************************/
+    }
+
+    return SKIP_OTHER_EVENTS;
 }
 
 int
 getPressedComb (XWCContext * ctx)
 {
-    XEvent               xEvent;
-    //Bool                  res;
-    //Window                rRetW, chRetW;
+    XEvent                xEvent;
     XGenericEventCookie * cookie;
-    XIDeviceEvent       * xide;
-    int retVal;
-    //int                   rX, rY, trgX, trgY, retVal;
-    //unsigned int          mask_return;
-
-    Bool                  res;
-    Window                rootRet, childRet;
-    double                rX, rY, wX, wY;
-    XIButtonState         btnSt;
-    XIModifierState       modsSt;
-    XIGroupState          grpSt;
-
-    /**************************************************************************/
-    /*Start event processing*/
-    /**************************************************************************/
+    int                   retVal;
 
     retVal = NO_KEY_PRESSED;
 
     while (XPending (ctx->xDpy) != 0)
     {
-
-        xEvent.xbutton.button = 0;
-
         XNextEvent (ctx->xDpy, &xEvent);
 
         if (retVal != NO_KEY_PRESSED)
         {
+            /* if some event has been processed (so retVal has changed), skip
+             * all other events for this client in X server queue */
             continue;
         }
 
@@ -620,248 +950,47 @@ getPressedComb (XWCContext * ctx)
 
         if (   cookie->type                      != GenericEvent
             || cookie->extension                 != ctx->xiOp
-            || XGetEventData (ctx->xDpy, cookie) == 0)
+            || XGetEventData (ctx->xDpy, cookie) == False)
         {
-            continue;
-        }
-
-        if (   cookie->evtype == XI_KeyPress
-            || cookie->evtype == XI_ButtonPress)
-        {
-            XFreeEventData (ctx->xDpy, cookie);
             continue;
         }
 
         logCtr ("Got generic event", LOG_LVL_2, False);
 
-        xide = (XIDeviceEvent*) xEvent.xcookie.data;
-
-        if (cookie->evtype == XI_KeyRelease)
+        if (   cookie->evtype == XI_KeyPress
+            || cookie->evtype == XI_ButtonPress)
         {
-            if (xide->detail == ctx->cloneKeyCode)
-            {
-                logCtr ("Grab window key sequence received", LOG_LVL_NO, False);
-
-                retVal = TRANSLATION_COMB;
-            }
-
-            if (xide->detail == ctx->exitKeyCode)
-            {
-                logCtr ("Exit key sequence received", LOG_LVL_NO, False);
-
-                retVal = EXIT_COMBINATION;
-            }
-        }
-        else if (cookie->evtype == XI_ButtonRelease)
-        {
-
-            logCtr ("Got click", LOG_LVL_2, False);
-
-            xide = cookie->data;
-
-            printf ("btn = %d; tracked = %d\n", xide->buttons.mask[0],
-                    1 << (TRACKED_BUTTON - 1));
-
-            if (xide == NULL)
-            {
-                logCtr ("Very bad error that should have never happened:"
-                        " XGetEventData faled completely!", LOG_LVL_NO, False);
-
-                retVal = EXIT_COMBINATION;
-            }
-            else if (xide->buttons.mask == NULL)
-            {
-                logCtr ("Very bad error that should have never happened:"
-                        " devEv->buttons.mask surprisingly is NULL!",
-                        LOG_LVL_NO, False);
-
-                retVal = EXIT_COMBINATION;
-            }
-            else if (xide->buttons.mask[0] == 1 << (TRACKED_BUTTON - 1))
-            {
-                memset (&btnSt, 0, sizeof (btnSt));
-                btnSt.mask = NULL;
-
-                res = XIQueryPointer (ctx->xDpy, ctx->masterPtrDevId, ctx->trgW,
-                                      &rootRet, &childRet, &rX, &rY, &wX, &wY,
-                                      &btnSt, &modsSt, &grpSt);
-
-                if (res == False)
-                {
-                    //printf ("Error\n");
-                    retVal = EXIT_COMBINATION;
-                }
-                else
-                {
-                    /*
-                    printf ("\nResults of quering pointer for device id %d on"
-                            " window %lX:\n"
-                            "\troot:\t%lX\n"
-                            "\tchild:\t%lX\n"
-                            "\trootX:\t%f\n"
-                            "\trootY:\t%f\n"
-                            "\twinX:\t%f\n"
-                            "\twinY:\t%f\n"
-                            "\tbtnSt[0]:\t%X\n", ctx->masterPtrDevId, ctx->trgW,
-                            rootRet, childRet, rX, rY, wX, wY,
-                            btnSt.mask == NULL ? 0 : btnSt.mask[0]);
-                    */
-                    int rXret, rYret;
-
-                    XTranslateCoordinates (ctx->xDpy,
-                                           ctx->srcW,
-                                           ctx->rootW,
-                                           (int) (wX + 0.5), (int) (wY + 0.5),
-                                           &rXret, &rYret,
-                                           &childRet);
-
-                    //printf ("Translated coords are %d %d, subw is %lX\n", rXret, rYret, childRet);
-
-                    /*
-                                        printf ("Current screen is %lX\n", (unsigned long)ctx->xScr);
-                     */
-                    /*
-                                        printf ("Screen 0 is %lX\n", (unsigned long)ScreenOfDisplay(ctx->xDpy, 0));
-                                        printf ("Screen 1 is %lX\n", (unsigned long)ScreenOfDisplay(ctx->xDpy, 1));
-                     */
-
-                    //printf ("Current root window is %lX\n", ctx->rootW);
-                    /*
-                                        printf ("Root window of screen 0 is %lX\n", RootWindowOfScreen(ScreenOfDisplay(ctx->xDpy, 0)));
-                                        printf ("Root window of screen 1 is %lX\n", RootWindowOfScreen(ScreenOfDisplay(ctx->xDpy, 1)));
-                     */
-
-                    res = XIWarpPointer (ctx->xDpy,
-                                         ctx->masterPtrDevId,
-                                         None,
-                                         ctx->rootW,
-                                         0.0,   0.0,
-                                         0,     0,
-                                         (double) rXret, (double) rYret);
-
-                    //printf ("Warping pointer to root window on coords %d %d\n", rXret, rYret);
-
-                    //XWarpPointer(ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, 100, 100);
-
-                    XFlush (ctx->xDpy);
-
-                    nanosleep (&ctx->clickDelay, NULL);
-
-
-
-
-                    if (res != Success)
-                    {
-                        //printf ("Error moving pointer\n");
-                        if (getXErrState () == True)
-                        {
-                            //printf ("X err\n");
-                        }
-                    }
-
-                    //clickW (ctx, Button1);
-
-                    xEvent.xbutton.button = Button1;
-
-                    xEvent.xbutton.x_root = (int) rX;
-                    xEvent.xbutton.y_root = (int) rY;
-
-                    xEvent.xbutton.window      = ctx->srcW;
-                    xEvent.xbutton.display     = ctx->xDpy;
-                    xEvent.xbutton.root        = ctx->rootW;
-                    xEvent.xbutton.same_screen = True;
-                    xEvent.xbutton.state       = getInSt (ctx);
-                    xEvent.xbutton.subwindow   = None;
-                    xEvent.xbutton.time        = CurrentTime;
-                    xEvent.xbutton.type        = ButtonPress;
-
-                    xEvent.xcookie.evtype = XI_ButtonPress;
-
-                    XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonPressMask, &xEvent);
-                    XFlush (ctx->xDpy);
-
-                    nanosleep (&ctx->clickDelay, NULL);
-
-                    xEvent.xbutton.type        = ButtonRelease;
-                    xEvent.xbutton.state |= Button1MotionMask;
-
-                    xEvent.xcookie.evtype = XI_ButtonRelease;
-
-                    XSendEvent (ctx->xDpy, ctx->srcW, True, ButtonReleaseMask, &xEvent);
-                    XFlush (ctx->xDpy);
-
-                    nanosleep (&ctx->clickDelay, NULL);
-
-
-                    XTranslateCoordinates (ctx->xDpy,
-                                           ctx->trgW,
-                                           ctx->rootW,
-                                           (int) (wX + 0.5), (int) (wY + 0.5),
-                                           &rXret, &rYret,
-                                           &childRet);
-
-                    //printf ("Translated coords are %d %d, subw is %lX\n", rXret, rYret, childRet);
-
-
-                    res = XIWarpPointer (ctx->xDpy,
-                                         ctx->masterPtrDevId,
-                                         None,
-                                         ctx->rootW,
-                                         0.0,   0.0,
-                                         0,     0,
-                                         (double) rXret, (double) rYret);
-
-                    //printf ("Warping pointer to root window on coords %d %d\n", rXret, rYret);
-
-                    //XWarpPointer(ctx->xDpy, None, ctx->rootW, 0, 0, 0, 0, 100, 100);
-
-                    XFlush (ctx->xDpy);
-
-                    nanosleep (&ctx->frameDelay, NULL);
-
-                    //calculate coords for source window
-                    //move pointer to sourc window
-                    //click
-                    //move pointer back to translation window
-
-                    //                    res = XQueryPointer (ctx->xDpy, ctx->trgW, &rRetW, 
-                    //                                         &chRetW,
-                    //                                         &rX, &rY, &trgX, &trgY,
-                    //                                         &mask_return);
-                    //
-                    //                    if (res == False)
-                    //                    {
-                    //                        logCtr ("Error getting pointer position\n",
-                    //                                LOG_LVL_NO, False);
-                    //                        continue;
-                    //                    }
-                    //
-                    //                    mvPtrWRel (ctx, ctx->srcW, trgX, trgY);
-                    //
-                    //                    clickW (ctx, Button1);
-                    //
-                    //                    mvPtrWRel (ctx, ctx->trgW, trgX, trgY);
-
-                    retVal = SKIP_COMBINATION;
-                }
-
-                if (btnSt.mask != NULL)
-                {
-                    free (btnSt.mask);
-                }
-            }
+            /*free cookie after XGetEventData call*/
+            XFreeEventData (ctx->xDpy, cookie);
+            /*skip press events*/
+            continue;
         }
 
+        /* according to documentation for XI_KeyRelease and XI_ButtonRelease 
+         * event types there is XIDeviceEvent data structure 
+         * in the data field of cookie structure*/
+        switch (cookie->evtype)
+        {
+            case XI_KeyRelease:
+                retVal = procKeySeqEv (ctx, (XIDeviceEvent*) cookie->data);
+                break;
+
+            case XI_ButtonRelease:
+                retVal = procBtnEv (ctx, (XIDeviceEvent*) cookie->data);
+                break;
+
+            default:
+                break;
+        }
+
+        /*free cookie after XGetEventData call*/
         XFreeEventData (ctx->xDpy, cookie);
     }
 
-    if (retVal == SKIP_COMBINATION)
+    if (retVal == SKIP_OTHER_EVENTS)
     {
         retVal = NO_KEY_PRESSED;
     }
-    /**************************************************************************/
-
-
 
     return retVal;
 }

@@ -8,8 +8,6 @@ main (int     argc,
     /*Variables declaration*/
     /**************************************************************************/
     XWCContext           * ctx;
-    //Screen               * scrOfSrc;
-    //Window                 rootWinOfSrc;
     GC                     xGC;
     XGCValues              xGCVals;
     Pixmap                 pm, srcWinPm, bgImgPm, srcWinPmOld;
@@ -95,7 +93,7 @@ main (int     argc,
 
             while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
             {
-                nanosleep (&ctx->longDelay, NULL);
+                nanosleep (&ctx->raiseDelay, NULL);
             }
 
             if (pressedKey == ERROR_COMBINATION)
@@ -116,11 +114,48 @@ main (int     argc,
         /**********************************************************************/
         /*Get source window and its attributes*/
         /**********************************************************************/
-        if (getActiveWindow (ctx) == False)
+        if ( (ctx->srcW = getActiveWindow (ctx, ctx->srcW)) == None)
         {
             goto freeResources;
         }
+
+        XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+
+        if (getXErrState () == True)
+        {
+            goto freeResources;
+        }
+
+        printWindowInfo (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
         /**********************************************************************/
+
+
+        /**********************************************************************/
+        /*Check if new source window screen is still the same*/
+        /**********************************************************************/
+        if (ctx->srcWAttr.screen != ctx->xScr)
+        {
+            ctx->xScr = ctx->srcWAttr.screen;
+
+            if (parseColor (ctx) == False)
+            {
+                goto freeResources;
+            }
+
+            if (ctx->srcWAttr.root != ctx->rootW)
+            {
+                ctx->rootW = ctx->srcWAttr.root;
+
+                XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
+
+                if (getXErrState () == True)
+                {
+                    goto freeResources;
+                }
+            }
+        }
+        /**********************************************************************/
+
 
         /**********************************************************************/
         /*Redirect source window to pixmap and check it*/
@@ -133,55 +168,6 @@ main (int     argc,
         {
             goto freeResources;
         }
-        /**********************************************************************/
-
-
-        /**********************************************************************/
-        /*Check if source window screen is still the same*/
-        /**********************************************************************/
-
-        //Screen * scr = ScreenOfDisplay (ctx->xDpy, 0);
-        //scrOfSrc = scr;
-
-        ctx->xScr = &(ctx->xDpy->screens[ctx->xDpy->default_screen]);
-        ctx->rootW = DefaultRootWindow(ctx->xDpy);
-        XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
-
-        /*
-                if ((scrOfSrc = getScreenByWindowAttr (ctx, &ctx->srcWAttr)) == NULL)
-                {
-                    goto freeResources;
-                }
-         */
-
-        /*
-                if (scrOfSrc != ctx->xScr)
-                {
-                    ctx->xScr = scrOfSrc;
-
-                    if (parseColor (ctx) == False)
-                    {
-                        goto freeResources;
-                    }
-
-                    if (( rootWinOfSrc = getRootWinOfScr (ctx->xScr) ) == None)
-                    {
-                        goto freeResources;
-                    }
-
-                    if (rootWinOfSrc != ctx->rootW)
-                    {
-                        ctx->rootW = rootWinOfSrc;
-
-                        XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
-
-                        if (getXErrState () == True)
-                        {
-                            goto freeResources;
-                        }
-                    }
-                }
-         */
         /**********************************************************************/
 
 
@@ -226,6 +212,8 @@ main (int     argc,
         {
             XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0, bgImgW, bgImgH, 0, 0);
         }
+        
+        XSync (ctx->xDpy, False);
 
         if (getXErrState () == True)
         {
@@ -264,8 +252,8 @@ main (int     argc,
                     }
                     srcWinPm = None;
                     logCtr ("Spurious error: An attempt to remap window"
-                            " during pixmap creation!", LOG_LVL_1, False);
-                    nanosleep (&ctx->longDelay, NULL);
+                            " during pixmap creation!", LOG_LVL_2, False);
+                    nanosleep (&ctx->raiseDelay, NULL);
                     continue;
                 }
 
@@ -308,7 +296,7 @@ main (int     argc,
             if (   ctx->trgWAttr.map_state != IsViewable
                 || ctx->srcWAttr.map_state != IsViewable)
             {
-                nanosleep (&ctx->longDelay, NULL);
+                nanosleep (&ctx->raiseDelay, NULL);
             }
 
             if (getXErrState () == True)

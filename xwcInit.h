@@ -33,7 +33,7 @@ struct XWCContext_
                                       * on window you want to be cloned*/
     struct timespec   frameDelay;  /**< how often should xwinclone refresh 
                                       * its content (frames per second)*/
-    struct timespec   longDelay;   /**< Used for waiting in case of unmapped
+    struct timespec   raiseDelay;   /**< Used for waiting in case of unmapped
                                     *  windows*/
     struct timespec   clickDelay;
     const char      * exitKeyStr;  /**< string representing exit key 

@@ -257,8 +257,8 @@ init (int           argCnt,
     ctx->focusDelay.tv_sec  = * ((int*) args->m_Args[FOCUSTIME]->m_Value);
     ctx->frameDelay.tv_nsec = ( 1.00000001 / fr) * 1000000000L;
     ctx->frameDelay.tv_sec  = 0;
-    ctx->longDelay.tv_sec   = 0;
-    ctx->longDelay.tv_nsec  = LONG_WAIT;
+    ctx->raiseDelay.tv_sec  = 0;
+    ctx->raiseDelay.tv_nsec = RAISE_SOURCE_DELAY;
     ctx->autoCenter         = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
     ctx->topOffset          = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
     ctx->bgColorStr         = (const char*) args->m_Args[BGCOLOR]->m_Value;
@@ -274,7 +274,7 @@ init (int           argCnt,
     ctx->lckFPath           = args->m_Args[LCKFPATH]->m_Value;
     ctx->isSingleton        = args->m_Args[SINGLEINST]->m_IsSet;
     ctx->clickDelay.tv_sec  = 0;
-    ctx->clickDelay.tv_nsec = MOUSE_BTN_DELAY;
+    ctx->clickDelay.tv_nsec = BTN_CLICK_DELAY;
 
     ctx->isSingleton        = ctx->isSingleton || ctx->isDaemon;
 

@@ -1,14 +1,14 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#define XWINCLONE_VERSION_STR          "0.1k"
+#define XWINCLONE_VERSION_STR          "0.1l"
 
 /**************************************************************************/
 /*Program definitions*/
 #define NO_KEY_PRESSED                 0
 #define TRANSLATION_COMB               1
 #define EXIT_COMBINATION               2
-#define SKIP_COMBINATION               3
+#define SKIP_OTHER_EVENTS              3
 #define ERROR_COMBINATION              0xEE
 #define STR_EQUAL                      0
 #define INT_CONV_OK                    0
@@ -27,8 +27,13 @@
 #define _POSIX_C_SOURCE                200112L
 #define FRAMERATE_FPS                  30  //fps
 #define TIME_TO_CHANGE_FOCUS_SEC       2   //s
-#define LONG_WAIT                      500000000L //500ms
-#define MOUSE_BTN_DELAY                1000000L //1ms
+
+#define BTN_CLICK_DELAY_ENABLE         0
+#define BTN_CLICK_DELAY                5000000L //1ms
+
+#define RAISE_SOURCE_DELAY_ENABLE      0
+#define RAISE_SOURCE_DELAY             250000000L //250ms
+
 #define DEFAULT_BG_COLOR               "000000" //rgb color
 
 #define EXIT_KEY                       "g"

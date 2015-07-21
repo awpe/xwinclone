@@ -49,12 +49,13 @@ getNamedWindow (Display * d,
  * Tries to get currently active window. Uses different approaches to get
  * proper active window xid that can be used to aquire window's image.
  * @param[in] ctx Pointer to XWCOptions struct
+ * @param[in] implicitW Window xid of implicitly specified window to be checked
  * @return Window XID or 0 (Xlib's `None` macro) if no active window found
  * or error occured.
  * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
  */
 Window
-getActiveWindow (XWCContext * ctx);
+getActiveWindow (XWCContext * ctx, Window implicitW);
 
 /**
  * Prints window name as reported to window manager (ICCC WM_NAME).
@@ -130,18 +131,34 @@ Bool
 createTrgWindow (XWCContext * ctx);
 
 unsigned char *
-getWPrprtByAtom (XWCContext * ctx, 
-                 Window       window, 
-                 Atom         atom, 
+getWPrprtByAtom (XWCContext * ctx,
+                 Window       window,
+                 Atom         atom,
                  long       * nitems,
-                 Atom       * type, 
+                 Atom       * type,
                  int        * size);
 
 int
-findWClient (XWCContext * ctx, 
-             Window       window, 
+findWClient (XWCContext * ctx,
+             Window       window,
              Window     * window_ret,
              int          direction);
 
-#endif
+/**
+ * if window ioWin is not focused, raises it and sets input focus to that window
+ * then sets ioWin to be last focused window
+ * @param[in] ctx Pointer to XWCOptions struct
+ * @param[in/out] ioWin Window xid of window to be raised
+ * @param[in/out] state focused window state
+ * @return Xlib's True on success, False otherwise
+ * @sa XRaiseWindow(), XSetInputFocus()
+ * @todo check for minimized windows and maximize them if needed
+ * @todo check for desired coords as it may not be needed to do 
+ * minimize/maximize routine
+ */
+Bool
+wRaiseCtrl (XWCContext * ctx,
+               Window     * ioWin,
+               Atom       * state);
 
+#endif
