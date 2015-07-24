@@ -59,6 +59,7 @@ initArgs ()
         args->m_Args[i] = (argument*) malloc (sizeof (argument ));
         memset (args->m_Args[i], 0, sizeof (*args->m_Args[i] ));
         args->m_Args[i]->m_NameStr  = NULL;
+        args->m_Args[i]->m_Comment  = NULL;
         args->m_Args[i]->m_SynStrs  = NULL;
         args->m_Args[i]->m_Value    = NULL;
         args->m_Args[i]->m_HasValue = False;
@@ -73,6 +74,7 @@ addArg (arguments  * args,
         argTypes     type,
         argNames     name,
         const char * nameStr,
+        const char * comment,
         int          argSynCnt, ...)
 {
     if (args == NULL)
@@ -98,6 +100,7 @@ addArg (arguments  * args,
     arg->m_Name     = name;
     arg->m_HasValue = hasValue;
     arg->m_NameStr  = nameStr;
+    arg->m_Comment  = comment;
     arg->m_SynStrs  = (const char **) malloc (sizeof (const char*) * argSynCnt);
 
     if (arg->m_SynStrs == NULL)
@@ -191,6 +194,22 @@ addArg (arguments  * args,
             arg->m_Value                       = (void*) LOG_FILE_NAME;
             break;
 
+        case RAISETIME:
+            *( (int*) arg->m_Value )           = RAISE_SOURCE_DELAY;
+            break;
+
+        case RESTORETIME:
+            *( (int*) arg->m_Value )           = RESTORE_SOURCE_DELAY;
+            break;
+
+        case CLICKTIME:
+            *( (int*) arg->m_Value )           = BTN_CLICK_DELAY;
+            break;
+
+        case LONGWAIT:
+            *( (int*) arg->m_Value )           = LONG_WAIT;
+            break;
+
         default:
             logCtr ("Unknown argument type detected while creating option!",
                     LOG_LVL_NO, False);
@@ -206,25 +225,34 @@ addArg (arguments  * args,
 void
 printCurValues (arguments  * args)
 {
-    printf ("\n\tCurrent values (default value if no corresponding prompt "
-            "arg provided):\n\n");
+    printf ("\nCURRENT VALUES\n");
+
+    printBlock ("default value shown if no corresponding prompt arg provided, "
+                "you can specify option of interest with -h option and you "
+                "will see how program understood it in this section",
+                "\t",
+                "Notice: ");
+
+    printf ("\n\tValues:\n");
 
     for (int i = 0; i < args->m_ArgCnt; ++ i)
     {
         if (args->m_Args[i]->m_HasValue == True)
         {
+            printf ("\t%-8s%-12s\t", " ", args->m_Args[i]->m_NameStr);
+
             if (args->m_Args[i]->m_IsSet == True)
             {
-                printf ("\t\t%-10s\t%-10s\t", args->m_Args[i]->m_NameStr,
-                        "is set");
+                printf ("%-12s\t", "is set");
             }
             else
             {
-                printf ("\t\t%-10s\t%-10s\t", args->m_Args[i]->m_NameStr,
-                        "default");
+                printf ("%-12s\t", "default");
             }
+
             switch (args->m_Args[i]->m_Type)
             {
+
                 case INT:
                     printf ("%d\n", *( (int*) args->m_Args[i]->m_Value ));
                     break;
@@ -255,31 +283,85 @@ printCurValues (arguments  * args)
 void
 printUsage (arguments  * args)
 {
+    /*FIXME: This is shit, normal formatted output function needed!!!*/
+    int  printedChars, i;
+    char buf[1024];
+
+    memset (buf, 0, sizeof (buf));
+
+    printedChars = 0;
+
     if (args == NULL)
     {
         return;
     }
 
-    printf ("\nUSAGE:\n\n\t%s ", PROGRAM_EXE_NAME_STR);
+    printf ("\nNAME\n");
+
+    printBlock (PROGRAM_BRIEF, "\t", PROGRAM_EXE_NAME_STR" - ");
+
+    printf ("\nSYNOPSIS\n\t%s [OPTIONS]\n\n", PROGRAM_EXE_NAME_STR);
+
+    printedChars = 0;
+
+    for (i = 0; i < args->m_ArgCnt; ++ i)
+    {
+        printedChars += snprintf (buf + printedChars,
+                                  sizeof (buf) - printedChars, "%s",
+                                  args->m_Args[i]->m_SynStrs[0]);
+
+        if (args->m_Args[i]->m_HasValue == True)
+        {
+            printedChars += snprintf (buf + printedChars,
+                                      sizeof (buf) - printedChars, " %s",
+                                      args->m_Args[i]->m_NameStr);
+        }
+
+        if (i + 1 < args->m_ArgCnt)
+        {
+            printedChars += snprintf (buf + printedChars,
+                                      sizeof (buf) - printedChars, " | ");
+        }
+    }
+
+    printedChars += snprintf (buf + printedChars, sizeof (buf) - printedChars,
+                              " }");
+    
+    buf[printedChars] = '\0';
+
+    printBlock (buf, "\t", "OPTIONS := { ");
+
+    printf ("\nOPTIONS\n");
 
     for (int i = 0; i < args->m_ArgCnt; ++ i)
     {
-        printf ("[");
+        printf ("\t");
         for (int j = 0; j < args->m_Args[i]->m_SynCnt; ++ j)
         {
             printf ("%s", args->m_Args[i]->m_SynStrs[j]);
 
             if (j + 1 < args->m_Args[i]->m_SynCnt)
             {
-                printf (" | ");
+                printf (", ");
             }
         }
+
         if (args->m_Args[i]->m_HasValue == True)
         {
             printf (" %s", args->m_Args[i]->m_NameStr);
         }
-        printf ("] ");
-    }
 
+        printf ("\n");
+
+        const char * comment = args->m_Args[i]->m_Comment;
+
+        printBlock (comment, "\t\t", NULL);
+
+        if (i + 1 < args->m_ArgCnt)
+        {
+            printf ("\n");
+        }
+    }
+    
     printCurValues (args);
 }

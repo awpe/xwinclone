@@ -32,13 +32,27 @@ logCtr (const char * msg,
 {
     if (msg == NULL)
     {
-        fprintf (LOG_FILE, "Tryng to log NULL msg!\n");
+        if (LOG_FILE != NULL)
+        {
+            fprintf (LOG_FILE, "Tryng to log NULL msg!\n");
+        }
+        else
+        {
+            printf ("Tryng to log NULL msg!\n");
+        }
         return;
     }
 
     if (lvl < 0)
     {
-        fprintf (LOG_FILE, "Tryng to log with unknown lvl!\n");
+        if (LOG_FILE != NULL)
+        {
+            fprintf (LOG_FILE,  "Tryng to log with unknown lvl!\n");
+        }
+        else
+        {
+            printf ( "Tryng to log with unknown lvl!\n");
+        }
         return;
     }
 
@@ -46,12 +60,25 @@ logCtr (const char * msg,
     {
         if (sequenced == False)
         {
-            fprintf (LOG_FILE, "\n%s\n", msg);
+            if (LOG_FILE != NULL)
+            {
+                fprintf (LOG_FILE, "\n%s\n", msg);
+            }
+            else
+            {
+                printf ( "\n%s\n", msg);
+            }
         }
         else
         {
-
-            fprintf (LOG_FILE, "%s\n", msg);
+            if (LOG_FILE != NULL)
+            {
+                fprintf (LOG_FILE, "%s\n", msg);
+            }
+            else
+            {
+                printf ( "%s\n", msg);
+            }
         }
     }
 }
@@ -170,10 +197,14 @@ bgImgPrepare (XWCContext        * ctx,
 
         imlib_render_image_on_drawable (0, 0);
 
-        XSync (ctx->xDpy, 0);
-
         //imlib_free_image_and_decache ();
         imlib_free_image ();
+
+        if (getXErrState (ctx) == True)
+        {
+            return False;
+        }
+
         ctx->bgImgStatus = True;
 
         if (ctx->bgImgFileSet == True)
@@ -186,4 +217,89 @@ bgImgPrepare (XWCContext        * ctx,
         }
     }
     return True;
+}
+
+void
+printBlock (const char * str,
+            const char * linePrefix,
+            const char * blockPrefix)
+{
+    char buf[1024], indentStr[1024];
+    int  prefixLengthCols, printedChars, tmp, i, extraCharCnt, blockPreLen;
+    int  maxWordComplete, lineMaxLength, maxLen, strLen, prefixLenBytes;
+    const char * tmpChar;
+
+    blockPreLen      = blockPrefix != NULL ? strlen (blockPrefix) : 1;
+    prefixLenBytes   = strlen (linePrefix);
+    prefixLengthCols = prefixLenBytes;
+    tmpChar          = linePrefix;
+    while ((*tmpChar) != '\0')
+    {
+        if ((*tmpChar) == '\t')
+        {
+            prefixLengthCols += 7;
+        }
+
+        tmpChar ++;
+    }
+    maxLen          = OUTPUT_MAX_COLUMNS - (blockPreLen + prefixLengthCols) - 10;
+    lineMaxLength   = OUTPUT_MAX_COLUMNS - 10;
+    strLen          = strlen (str);
+    maxWordComplete = 10;
+    printedChars    = 0;
+
+    snprintf (indentStr, sizeof (indentStr), "%%s%%%ds%%s", blockPreLen);
+    i = 0;
+    while (printedChars < strLen)
+    {
+        if (blockPrefix != NULL && i == 0)
+        {
+            tmp = snprintf (buf, lineMaxLength, "%s%s%s", linePrefix,
+                            blockPrefix, str);
+        }
+        else
+        {
+            if (*(str + printedChars) == ' ')
+            {
+                printedChars ++;
+            }
+            tmp = snprintf (buf, lineMaxLength, indentStr, linePrefix, " ",
+                            str + printedChars);
+        }
+
+        if (tmp > lineMaxLength)
+        {
+            printedChars += maxLen - 1;
+            tmp = maxLen - 1 + blockPreLen + prefixLenBytes;
+            extraCharCnt = 0;
+
+            while (   (* (str + printedChars)) != '\0'
+                   && (* (str + printedChars)) != ','
+                   && (* (str + printedChars)) != ';'
+                   && (* (str + printedChars)) != ' '
+                   && (* (str + printedChars)) != '\t'
+                   && (* (str + printedChars)) != '\n'
+                   && extraCharCnt < maxWordComplete)
+            {
+                buf[tmp + extraCharCnt] = * (str + printedChars);
+                printedChars ++;
+                extraCharCnt ++;
+            }
+
+            buf[tmp + extraCharCnt] = * (str + printedChars);
+
+            printedChars ++;
+
+            extraCharCnt ++;
+
+            buf[tmp + extraCharCnt] = '\0';
+        }
+        else
+        {
+            printedChars += tmp - (blockPreLen + prefixLenBytes);
+        }
+
+        printf ("%s\n", buf);
+        i ++;
+    }
 }

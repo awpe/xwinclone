@@ -47,5 +47,10 @@ bgImgPrepare (XWCContext        * ctx,
               unsigned int      * bgImgWidth,
               unsigned int      * bgImgHeight);
 
+void
+printBlock (const char * str,
+            const char * linePrefix,
+            const char * blockPrefix);
+
 #endif
 

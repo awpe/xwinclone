@@ -3,7 +3,7 @@
 Bool
 chckXI2Ext (XWCContext * ctx)
 {
-    int event, error, major, minor, rc;
+    int event, error, major, minor, rc, majorSupported, minorSupported;
     char buf[1024];
 
     logCtr ("Checking XInput 2 extension:", LOG_LVL_1, False);
@@ -14,7 +14,7 @@ chckXI2Ext (XWCContext * ctx)
                 " received.", LOG_LVL_NO, False);
         return False;
     }
-    //GetReqSized();
+
     if (XQueryExtension (ctx->xDpy, "XInputExtension", &ctx->xiOp, &event,
                          &error) == 0)
     {
@@ -22,8 +22,8 @@ chckXI2Ext (XWCContext * ctx)
         return False;
     }
 
-    major = 2;
-    minor = 9;
+    majorSupported  = major = SUPPORTED_XI2_VERSION_MAJOR;
+    minorSupported = minor = SUPPORTED_XI2_VERSION_MINOR;
 
     if ((rc = XIQueryVersion (ctx->xDpy, &major, &minor)) == BadRequest)
     {
@@ -37,7 +37,7 @@ chckXI2Ext (XWCContext * ctx)
         logCtr ("Xlib internal error!", LOG_LVL_NO, False);
         return False;
     }
-    else if ((major * 1000 + minor) < 2002)
+    else if ((major * 1000 + minor) < 1000 * majorSupported + minorSupported)
     {
         snprintf (buf, sizeof (buf), "Available XI2 extension version (%d.%d)"
                   " is not supported.", major, minor);
@@ -104,8 +104,6 @@ grabKeyCtrl (XWCContext      * ctx,
         logCtr ("Cannot grab key: bad mods count.", LOG_LVL_NO, False);
         return False;
     }
-
-
 
     if (mods == NULL)
     {
@@ -372,6 +370,14 @@ int
 procKeySeqEv (XWCContext    * ctx,
               XIDeviceEvent * xide)
 {
+
+    if (xide == NULL || ctx == NULL)
+    {
+        logCtr ("Cannot process pressed key: NULL pointer(s) received!",
+                LOG_LVL_NO, False);
+        return EXIT_COMBINATION;
+    }
+
     /* For button events, detail is the button number (after mapping
      * applies of course). For key events, detail is the keycode. 
      * XI2 supports 32-bit keycodes, btw. For motion events, 
@@ -430,7 +436,7 @@ getTrgWPtrData (XWCContext      * ctx,
         free (btnSt.mask);
     }
 
-    if (res == False)
+    if (res == False || getXErrState (ctx) == True)
     {
         logCtr ("Cannot get target window pointer data: "
                 "XIQueryPointer error!", LOG_LVL_NO, True);
@@ -500,9 +506,7 @@ adjPtrLoc (XWCContext * ctx,
                            adjRX, adjRY,
                            &childRet);
 
-    XSync (ctx->xDpy, False);
-
-    if (getXErrState () == True)
+    if (getXErrState (ctx) == True)
     {
         logCtr ("Cannot translate source window coordinates to root window:"
                 " XTranslateCoordinates error!", LOG_LVL_NO, False);
@@ -557,7 +561,7 @@ mvPtr (XWCContext * ctx,
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot move pointer: ctx is NULL!", LOG_LVL_NO, True);
+        logCtr ("Cannot move pointer: ctx is NULL!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -569,13 +573,11 @@ mvPtr (XWCContext * ctx,
                          0,              0,
                          (double) x, (double) y);
 
-    if (res != Success)
+    if (res != Success || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot move pointer: XIWarpPointer error!", LOG_LVL_NO, True);
+        logCtr ("Cannot move pointer: XIWarpPointer error!", LOG_LVL_NO, False);
         return False;
     }
-
-    XSync (ctx->xDpy, False);
 
     return True;
 }
@@ -600,7 +602,7 @@ btnClick (XWCContext * ctx,
     res = XSendEvent (ctx->xDpy, ctx->srcW, False,
                       ButtonPressMask, btnEv);
 
-    if (res == 0)
+    if (res == 0 || getXErrState (ctx) == True)
     {
         logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
         return False;
@@ -609,14 +611,13 @@ btnClick (XWCContext * ctx,
     {
         logCtr ("Button press event sent\n", LOG_LVL_2, True);
     }
-
-    XSync (ctx->xDpy, False); //make sure X server received press event
     /**************************************************************************/
 
 
-#if (BTN_CLICK_DELAY_ENABLE==1)
-    nanosleep (&ctx->clickDelay, NULL);
-#endif
+    if (ctx->clickDelay.tv_nsec + ctx->clickDelay.tv_sec != 0)
+    {
+        nanosleep (&ctx->clickDelay, NULL);
+    }
 
 
     /**************************************************************************/
@@ -626,7 +627,7 @@ btnClick (XWCContext * ctx,
     res = XSendEvent (ctx->xDpy, ctx->srcW, False,
                       ButtonReleaseMask, btnEv);
 
-    if (res == 0)
+    if (res == 0 || getXErrState (ctx) == True)
     {
         logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
         return False;
@@ -635,8 +636,6 @@ btnClick (XWCContext * ctx,
     {
         logCtr ("Button release event sent\n", LOG_LVL_2, True);
     }
-
-    XSync (ctx->xDpy, False); //make sure X server received release event
     /**************************************************************************/
 
     return True;
@@ -704,7 +703,10 @@ procBtnEv (XWCContext    * ctx,
                 return EXIT_COMBINATION;
             }
 
-            nanosleep (&ctx->raiseDelay, NULL);
+            if (ctx->restoreDelay.tv_nsec + ctx->restoreDelay.tv_sec != 0)
+            {
+                nanosleep (&ctx->restoreDelay, NULL);
+            }
 
             visRes = isWinVis (ctx, ctx->srcW);
 

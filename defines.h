@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#define XWINCLONE_VERSION_STR          "0.1m"
+#define XWINCLONE_VERSION_STR          "0.1n"
 
 /**************************************************************************/
 /*Program definitions*/
@@ -9,7 +9,7 @@
 #define TRANSLATION_COMB               1
 #define EXIT_COMBINATION               2
 #define SKIP_OTHER_EVENTS              3
-#define ERROR_COMBINATION              0xEE
+#define ERROR_GETTING_COMBINATION      0xEE
 #define STR_EQUAL                      0
 #define INT_CONV_OK                    0
 #define LOG_LVL_NO                     0
@@ -21,6 +21,9 @@
 #define NO_DEVICE                      0
 #define TRACKED_BUTTON                 2 // 2 = lmb
 #define LOG_FILE_NAME_MAX_LENGTH       256   
+#define SUPPORTED_XI2_VERSION_MAJOR    2  
+#define SUPPORTED_XI2_VERSION_MINOR    3
+#define OUTPUT_MAX_COLUMNS             80
 /**************************************************************************/
 
 /**************************************************************************/
@@ -29,16 +32,17 @@
 
 #define ALLOW_NON_EWMH_COMPILANT_WM    0
 
-#define FRAMERATE_FPS                  30  //fps
-#define TIME_TO_CHANGE_FOCUS_SEC       2   //s
+#define FRAMERATE_FPS                  30   //fps
 
-#define BTN_CLICK_DELAY_ENABLE         0
-#define BTN_CLICK_DELAY                5000000L //5ms
+#define TIME_TO_CHANGE_FOCUS_SEC       2000 //ms
 
-#define RAISE_SOURCE_DELAY_ENABLE      0
-#define RAISE_SOURCE_DELAY             250000000L //250ms
+#define BTN_CLICK_DELAY                10L  //ms
 
-#define FRAME_LONG_DELAY               500000000L //500ms
+#define RAISE_SOURCE_DELAY             10L  //ms
+
+#define RESTORE_SOURCE_DELAY           250L //ms
+
+#define LONG_WAIT                      500L //ms
 
 #define DEFAULT_BG_COLOR               "000000" //rgb color
 
@@ -61,6 +65,14 @@
 #define DEFAULT_BGIMAGE_PATH           "/usr/share/wallpapers/e2e4.jpeg"
 #define TRACKED_PTR_NAME               "A4Tech USB Optical Mouse"
 #define LOG_FILE_NAME                  "stdout"
+/**************************************************************************/
+
+/**************************************************************************/
+/*text*/
+#define PROGRAM_BRIEF "clone specified window and send it click events from\
+ specified device, the window which content you wish to translate is called\
+ \"source\" window, the window where content of source is translated is called\
+ \"target\" window"
 /**************************************************************************/
 
 #endif

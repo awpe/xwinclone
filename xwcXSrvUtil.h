@@ -55,11 +55,12 @@ errorHandlerBasic (Display     * display,
 /**
  * Returns call-time state of X_ERROR variable. X_ERROR is always set 
  * to False.
+ * @param[in] s Pointer to Xlib's Screen data struct
  * @return Xlib's Bool with call-time state of X_ERROR
  * @sa XCloseDisplay()
  */
 Bool
-getXErrState (void);
+getXErrState (XWCContext * ctx);
 
 void
 printDrawableInfo (Display  * xDpy,

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
+#include <math.h>
 #include <stdarg.h>
 #include <errno.h>
     

@@ -37,7 +37,9 @@ struct XWCContext_
                                     *  windows*/
     struct timespec   clickDelay;
     
-    struct timespec   frameLongDelay;
+    struct timespec   longWait;
+    
+    struct timespec   restoreDelay;
     
     const char      * exitKeyStr;  /**< string representing exit key 
                                       * (keysymdef.h)*/

@@ -48,8 +48,9 @@ errorHandlerBasic (Display     * display,
 }
 
 Bool
-getXErrState (void)
+getXErrState (XWCContext * ctx)
 {
+    XSync (ctx->xDpy, False);
     Bool res = X_ERROR;
     X_ERROR  = False;
     return res;

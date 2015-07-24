@@ -97,7 +97,7 @@ main (int     argc,
                 nanosleep (&ctx->raiseDelay, NULL);
             }
 
-            if (pressedKey == ERROR_COMBINATION)
+            if (pressedKey == ERROR_GETTING_COMBINATION)
             {
                 break;
             }
@@ -108,13 +108,19 @@ main (int     argc,
                 break;
             }
         }
-
         /**********************************************************************/
 
 
         /**********************************************************************/
         /*Get source window and its attributes*/
         /**********************************************************************/
+        if (ctx->isDaemon == False)
+        {
+            logCtr ("Waiting for focus to be moved to source window", LOG_LVL_NO,
+                    False);
+            nanosleep (&ctx->focusDelay, NULL);
+        }
+
         if ( (ctx->srcW = getActiveWindow (ctx, ctx->srcW)) == None)
         {
             goto freeResources;
@@ -122,12 +128,12 @@ main (int     argc,
 
         XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
 
-        if (getXErrState () == True)
+        if (getXErrState (ctx) == True)
         {
             goto freeResources;
         }
 
-        printWindowInfo (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+        printWindowInfo (ctx, ctx->srcW, &ctx->srcWAttr);
         /**********************************************************************/
 
 
@@ -149,7 +155,7 @@ main (int     argc,
 
                 XGetWindowAttributes (ctx->xDpy, ctx->rootW, &ctx->rootWAttr);
 
-                if (getXErrState () == True)
+                if (getXErrState (ctx) == True)
                 {
                     goto freeResources;
                 }
@@ -165,7 +171,7 @@ main (int     argc,
         redirSubWin (ctx->xDpy, ctx->srcW, CompositeRedirectAutomatic);
         srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
 
-        if (getXErrState () == True)
+        if (getXErrState (ctx) == True)
         {
             goto freeResources;
         }
@@ -194,7 +200,7 @@ main (int     argc,
         XFillRectangle (ctx->xDpy, pm, xGC, 0, 0,
                         ctx->rootWAttr.width, ctx->rootWAttr.height);
 
-        if (getXErrState () == True)
+        if (getXErrState (ctx) == True)
         {
             goto freeResources;
         }
@@ -214,9 +220,7 @@ main (int     argc,
             XCopyArea (ctx->xDpy, bgImgPm, pm, xGC, 0, 0, bgImgW, bgImgH, 0, 0);
         }
 
-        XSync (ctx->xDpy, False);
-
-        if (getXErrState () == True)
+        if (getXErrState (ctx) == True)
         {
             goto freeResources;
         }
@@ -244,12 +248,11 @@ main (int     argc,
             if (ctx->srcWAttr.map_state == IsViewable)
             {
                 srcWinPmOld = srcWinPm;
-                srcWinPm = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
-                XSync (ctx->xDpy, 0);
-                XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
+                srcWinPm    = XCompositeNameWindowPixmap (ctx->xDpy, ctx->srcW);
 
-                if (getXErrState () == True)
+                if (getXErrState (ctx) == True)
                 {
+                    XGetWindowAttributes (ctx->xDpy, ctx->srcW, &ctx->srcWAttr);
                     if (ctx->srcWAttr.map_state == IsViewable)
                     {
                         break;
@@ -257,7 +260,7 @@ main (int     argc,
                     srcWinPm = None;
                     logCtr ("Spurious error: An attempt to remap window"
                             " during pixmap creation!", LOG_LVL_2, False);
-                    nanosleep (&ctx->frameLongDelay, NULL);
+                    nanosleep (&ctx->longWait, NULL);
                     continue;
                 }
 
@@ -300,10 +303,10 @@ main (int     argc,
             if (   ctx->trgWAttr.map_state != IsViewable
                 || ctx->srcWAttr.map_state != IsViewable)
             {
-                nanosleep (&ctx->frameLongDelay, NULL);
+                nanosleep (&ctx->longWait, NULL);
             }
 
-            if (getXErrState () == True)
+            if (getXErrState (ctx) == True)
             {
                 break;
             }
@@ -343,9 +346,7 @@ freeResources:
             XDestroyWindow (ctx->xDpy, ctx->trgW);
         }
 
-        XSync (ctx->xDpy, False);
-
-        if (getXErrState () == True)
+        if (getXErrState (ctx) == True)
         {
             logCtr ("Error freeing resources\n", LOG_LVL_1, False);
         }

@@ -3,23 +3,27 @@
 
 typedef enum argNames_
 {
-    HELP       = 0,
-    FRAMERATE  = 1,
-    BGCOLOR    = 2,
-    AUTOCENTER = 3,
-    FOCUSTIME  = 4,
-    TOPOFFSET  = 5,
-    LOGLVL     = 6,
-    SOURCEID   = 7,
-    DAEMON     = 8,
-    SINGLEINST = 9,
-    BGIMAGE    = 10,
-    LCKFPATH   = 11,
-    PTRDEVNAME = 12,
-    LOGFNAME   = 13,
+    HELP        = 0,
+    FRAMERATE   = 1,
+    BGCOLOR     = 2,
+    AUTOCENTER  = 3,
+    FOCUSTIME   = 4,
+    TOPOFFSET   = 5,
+    LOGLVL      = 6,
+    SOURCEID    = 7,
+    DAEMON      = 8,
+    SINGLEINST  = 9,
+    BGIMAGE     = 10,
+    LCKFPATH    = 11,
+    PTRDEVNAME  = 12,
+    LOGFNAME    = 13,
+    RAISETIME   = 14,
+    RESTORETIME = 15,
+    CLICKTIME   = 16,
+    LONGWAIT    = 17,
     /****************************************/
     /*Write count of possible arguments here*/
-    OPTIONS_COUNT = 14
+    OPTIONS_COUNT = 18
     /****************************************/
 } argNames;
 
@@ -30,19 +34,20 @@ typedef enum argTypes_
 
 typedef struct argument_
 {
-    int m_SynCnt;
+    int           m_SynCnt;
     const char ** m_SynStrs;
-    argTypes m_Type;
-    argNames m_Name;
-    const char * m_NameStr;
-    Bool m_IsSet;
-    Bool m_HasValue;
-    void * m_Value;
+    argTypes      m_Type;
+    argNames      m_Name;
+    const char *  m_NameStr;
+    Bool          m_IsSet;
+    Bool          m_HasValue;
+    void       *  m_Value;
+    const char *  m_Comment;
 } argument;
 
 typedef struct arguments_
 {
-    int m_ArgCnt;
+    int         m_ArgCnt;
     argument ** m_Args;
 } arguments;
 
@@ -59,6 +64,7 @@ addArg (arguments  * args,
         argTypes     type,
         argNames     name,
         const char * nameStr,
+        const char * comment,
         int          argSynCnt, ...);
 
 void

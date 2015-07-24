@@ -1,6 +1,9 @@
 #ifndef XWCWINUTIL_H
 #define	XWCWINUTIL_H
 
+#include "xwcInit.h"
+
+
 typedef enum triStateLogic_
 {
     UNDEFINED = INT_MIN, //True != INT_MIN && False != INT_MIN
@@ -18,7 +21,7 @@ typedef enum triStateLogic_
  * @sa XGetInputFocus()
  */
 Window
-getFocusedWindow (Display * d);
+getFocusedWindow (XWCContext * ctx);
 
 /**
  * Tries to find top (child-of-root) window which is the parent to 
@@ -30,27 +33,21 @@ getFocusedWindow (Display * d);
  * @sa XQueryTree()
  */
 Window
-getTopWindow (Display * d,
-              Window    start);
+getTopWindow (XWCContext * ctx,
+              Window       start);
 
 /**
  * Tries to find window, at or below the specified window, that has a 
  * WM_STATE property.
- * @param[in] d Pointer to Xlib's Display data struct.
+ * @param[in] ctx Pointer to XWCOptions struct
  * @param[in] start Window xid of window where search begins
  * @return Window XID in case of success or if if no window found, 
  * or 0 (Xlib's `None` macro) if error occured.
  * @sa XmuClientWindow()
  */
 Window
-getNamedWindow (Display * d,
-                Window    start);
-/**
- * Prints window name as reported to window manager (ICCC WM_NAME).
- * @param[in] d Pointer to Xlib's Display data struct.
- * @param[in] w Window xid of window which WM_NAME should be printed
- * @sa XGetWMName(), XmbTextPropertyToTextList()
- */
+getNamedWindow (XWCContext * ctx,
+                Window       start);
 
 /**
  * Tries to get currently active window. Uses different approaches to get
@@ -62,7 +59,8 @@ getNamedWindow (Display * d,
  * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
  */
 Window
-getActiveWindow (XWCContext * ctx, Window implicitW);
+getActiveWindow (XWCContext * ctx, 
+                 Window       implicitW);
 
 /**
  * Prints window name as reported to window manager (ICCC WM_NAME).
@@ -72,48 +70,48 @@ getActiveWindow (XWCContext * ctx, Window implicitW);
  * @sa XAllocClassHint(), XGetClassHint()
  */
 void
-printWindowName (Display * d,
-                 Window    w);
+printWindowName (XWCContext * ctx,
+                 Window       w);
 /**
  * Prints window class as reported to window manager (ICCC WM_CLASS).
- * @param[in] d Pointer to Xlib's Display data struct.
+ * @param[in] ctx Pointer to XWCOptions struct
  * @param[in] w Window xid of window which WM_CLASS should be printed
  * @todo Add return value for result checking
  * @sa XAllocClassHint(), XGetClassHint()
  */
 void
-printWindowClass (Display * d,
-                  Window    w);
+printWindowClass (XWCContext * ctx,
+                  Window       w);
 
 /**
  * Prints window info (class and name).
- * @param[in] d Pointer to Xlib's Display data struct.
+ * @param[in] ctx Pointer to XWCOptions struct
  * @param[in] w Window xid of window which info should be printed
  * @param[in] xWinAttr Pointer to XWindowAttributes data struct
  * @todo Add return value for result checking
  * @sa printWindowName(), printWindowClass(), XWindowAttributes
  */
 void
-printWindowInfo (Display           * d,
+printWindowInfo (XWCContext        * ctx,
                  Window              w,
                  XWindowAttributes * xWinAttr);
 
 /**
  * Sets window name (ICCC WM_NAME). Usually seen in titlebar.
- * @param[in] d Pointer to Xlib's Display data struct.
+ * @param[in] ctx Pointer to XWCOptions struct
  * @param[in] WID Window xid of window which name will be changed
  * @param[in] name Null-terminated array of chars with window name
  * @return Xlib's True on success, False otherwise
  * @sa XSetWMName(), XStringListToTextProperty()
  */
 Bool
-setWinTitlebar (Display    * d,
+setWinTitlebar (XWCContext * ctx,
                 Window       WID,
                 const char * name);
 /**
  * Sets window class properties (ICCC WM_CLASS) which have two c-strings
  * first with permanent window name and second with the name of class.
- * @param[in] d Pointer to Xlib's Display data struct.
+ * @param[in] ctx Pointer to XWCOptions struct
  * @param[in] WID Window xid of window which name will be changed
  * @param[in] permNameStr Null-terminated array of chars with permanent 
  * window name
@@ -123,7 +121,7 @@ setWinTitlebar (Display    * d,
  * PropModeReplace
  */
 Bool
-setWindowClass (Display    * d,
+setWindowClass (XWCContext * ctx,
                 Window       WID,
                 const char * permNameStr,
                 const char * classStr);
