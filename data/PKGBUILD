@@ -1,30 +1,30 @@
 # Maintainer: Konstantin Shalygin (kostya@opentech.ru)
 
 pkgname='xwinclone'
-pkgver='0.1f'
+pkgver='0.1n'
 pkgrel='1'
-pkgdesc='X window WINdow CLONE application'
+pkgdesc="Used to translate another window's content in its own window"
 arch=('any')
-url='https://github.com/awpe/xwinclone'
+url="https://github.com/awpe/${pkgname}"
 depends=('xorg-server-common' 'libxmu' 'imlib2' 'libxcomposite' 'libjpeg-turbo')
 makedepends=('git')
 license=('GPL')
-source=("$pkgname::git+https://github.com/awpe/xwinclone.git")
+source=("$pkgname::git+${url}")
 sha256sums=('SKIP')
 
-pkgver() {
-  cd "$srcdir/$pkgname"
-  git show -s | grep Version | awk '{print $2}'
+prepare() {
+  cd "${pkgname}"
+  git checkout x
+  mkdir "obj"
 }
 
 build() {
-  cd "$pkgname"
-  mkdir "obj"
+  cd "${pkgname}"
   make
 }
 
 package() {
-  pushd "$pkgname"
-  install -Dm775 "$pkgname" "$pkgdir/usr/bin/xwinclone"
+  pushd "${pkgname}"
+  install -Dm775 "${pkgname}" "$pkgdir/usr/bin/${pkgname}"
   popd
 }
