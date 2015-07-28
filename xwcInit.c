@@ -214,6 +214,12 @@ init (int           argCnt,
                    "is not viewable, 0 means default",
                    2, "-longwait", "-lw")
         == False
+
+        || addArg (args, False,  INT,   TRANSONLY, "TRANSONLY",
+                   "Use this option if you don't need to process pointer click"
+                   " events, keyboard sequences are not affected.",
+                   2, "-transonly", "-to")
+        == False
         )
     {
         delArgs (args);
@@ -331,9 +337,9 @@ init (int           argCnt,
     fr          = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
     srcid       = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
     ptrDevName  =   (const char*)     args->m_Args[PTRDEVNAME]->m_Value;
-    raiseT   = * ((int*)           args->m_Args[RAISETIME]->m_Value);
-    clickT   = * ((int*)           args->m_Args[CLICKTIME]->m_Value);
-    resT = * ((int*)           args->m_Args[RESTORETIME]->m_Value);
+    raiseT      = * ((int*)           args->m_Args[RAISETIME]->m_Value);
+    clickT      = * ((int*)           args->m_Args[CLICKTIME]->m_Value);
+    resT        = * ((int*)           args->m_Args[RESTORETIME]->m_Value);
     longWait    = * ((int*)           args->m_Args[LONGWAIT]->m_Value);
     focusTime   = * ((int*)           args->m_Args[FOCUSTIME]->m_Value);
 
@@ -375,6 +381,7 @@ init (int           argCnt,
     ctx->masterPtrDevId       = NO_DEVICE;
     ctx->ptrDevName           = ptrDevName;
     ctx->logFileName          = (const char*) args->m_Args[LOGFNAME]->m_Value;
+    ctx->translateOnly        = args->m_Args[TRANSONLY]->m_IsSet;
 
     LOG_FILE = NULL;
 

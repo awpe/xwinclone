@@ -88,6 +88,8 @@ struct XWCContext_
     const char      * ptrDevName;
     
     const char      * logFileName;
+    
+    Bool              translateOnly;
 
 } ;
 

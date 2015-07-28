@@ -17,7 +17,7 @@
 #define LOG_LVL_2                      2
 #define FIND_PARENTS                   0 
 #define FIND_CHILDREN                  1
-#define MAX_POINTER_DEVICE_NAME_LENGTH 256
+#define MAX_POINTER_DEV_NAME_LENGTH    256
 #define NO_DEVICE                      0
 #define TRACKED_BUTTON                 2 // 2 = lmb
 #define LOG_FILE_NAME_MAX_LENGTH       256   

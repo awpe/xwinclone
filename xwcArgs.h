@@ -21,9 +21,10 @@ typedef enum argNames_
     RESTORETIME = 15,
     CLICKTIME   = 16,
     LONGWAIT    = 17,
+    TRANSONLY   = 18,
     /****************************************/
     /*Write count of possible arguments here*/
-    OPTIONS_COUNT = 18
+    OPTIONS_COUNT = 19
     /****************************************/
 } argNames;
 
