@@ -509,10 +509,18 @@ createTrgWindow (XWCContext * ctx)
     trgWinSetAttr.background_pixel = ctx->bgColor.pixel;
     trgWinSetAttr.border_pixel     = 0;
     trgWinSetAttr.bit_gravity      = NorthWestGravity;
-    trgWinSetAttr.event_mask       = ButtonPressMask | ButtonReleaseMask |
-            ButtonMotionMask;
     mask                           = CWBackPixel | CWColormap | CWBorderPixel |
             CWBitGravity | CWEventMask;
+
+    if (ctx->translateOnly == False)
+    {
+        trgWinSetAttr.event_mask = ButtonPressMask | ButtonReleaseMask |
+                ButtonMotionMask;
+    }
+    else
+    {
+        trgWinSetAttr.event_mask = 0;
+    }
 
     ctx->trgW = createWindow (ctx, xVisInfo.visual, mask, &trgWinSetAttr);
 
@@ -549,26 +557,29 @@ createTrgWindow (XWCContext * ctx)
         return False;
     }
 
-    XIEventMask evmasks[1];
-    unsigned char mask1[(XI_LASTEVENT + 7) / 8];
-
-    memset (mask1, 0, sizeof (mask1));
-
-    XISetMask (mask1, XI_ButtonPress);
-    XISetMask (mask1, XI_ButtonRelease);
-
-    evmasks[0].deviceid = ctx->slavePtrDevId;
-    evmasks[0].mask_len = sizeof (mask1);
-    evmasks[0].mask     = mask1;
-
-    XISelectEvents (ctx->xDpy, ctx->trgW, evmasks, 1);
-
-    if (getXErrState (ctx) == True)
+    if (ctx->translateOnly == False)
     {
-        snprintf (buf, sizeof (buf), "\tfailed to select input events from"
-                  " device \"%s\" for target window attributes!", ctx->ptrDevName);
-        logCtr (buf, LOG_LVL_NO, False);
-        return False;
+        XIEventMask evmasks[1];
+        unsigned char mask1[(XI_LASTEVENT + 7) / 8];
+
+        memset (mask1, 0, sizeof (mask1));
+
+        XISetMask (mask1, XI_ButtonPress);
+        XISetMask (mask1, XI_ButtonRelease);
+
+        evmasks[0].deviceid = ctx->slavePtrDevId;
+        evmasks[0].mask_len = sizeof (mask1);
+        evmasks[0].mask     = mask1;
+
+        XISelectEvents (ctx->xDpy, ctx->trgW, evmasks, 1);
+
+        if (getXErrState (ctx) == True)
+        {
+            snprintf (buf, sizeof (buf), "\tfailed to select input events from"
+                      " device \"%s\" for target window attributes!", ctx->ptrDevName);
+            logCtr (buf, LOG_LVL_NO, False);
+            return False;
+        }
     }
 
     printWindowInfo (ctx, ctx->trgW, &ctx->trgWAttr);

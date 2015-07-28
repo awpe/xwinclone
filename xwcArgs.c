@@ -210,6 +210,9 @@ addArg (arguments  * args,
             *( (int*) arg->m_Value )           = LONG_WAIT;
             break;
 
+        case TRANSONLY:
+            break;
+
         default:
             logCtr ("Unknown argument type detected while creating option!",
                     LOG_LVL_NO, False);
@@ -326,7 +329,7 @@ printUsage (arguments  * args)
 
     printedChars += snprintf (buf + printedChars, sizeof (buf) - printedChars,
                               " }");
-    
+
     buf[printedChars] = '\0';
 
     printBlock (buf, "\t", "OPTIONS := { ");
@@ -362,6 +365,6 @@ printUsage (arguments  * args)
             printf ("\n");
         }
     }
-    
+
     printCurValues (args);
 }

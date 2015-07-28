@@ -224,27 +224,33 @@ getInputDevices (XWCContext * ctx)
         {
             dev = & allDevsInfo[i];
 
-            if (dev->use == XIMasterKeyboard)
+            switch (dev->use)
             {
-                kbdIds[masterKbdCnt] = dev->deviceid;
-                ++ masterKbdCnt;
-            }
+                case XIMasterKeyboard:
+                    kbdIds[masterKbdCnt] = dev->deviceid;
+                    ++ masterKbdCnt;
+                    break;
 
-            if (dev->use == XISlavePointer)
-            {
-                if (strncmp (dev->name, ctx->ptrDevName,
-                             MAX_POINTER_DEVICE_NAME_LENGTH) == STR_EQUAL)
-                {
-                    ctx->slavePtrDevId  = dev->deviceid;
-                    ctx->masterPtrDevId = dev->attachment;
-                }
-            }
+                case XISlavePointer:
+                    if (ctx->translateOnly == False)
+                    {
+                        if (strncmp (dev->name, ctx->ptrDevName,
+                                     MAX_POINTER_DEV_NAME_LENGTH) == STR_EQUAL)
+                        {
+                            ctx->slavePtrDevId  = dev->deviceid;
+                            ctx->masterPtrDevId = dev->attachment;
+                        }
+                    }
+                    break;
 
+                default:
+                    break;
+            }
         }
 
         XIFreeDeviceInfo (allDevsInfo);
 
-        if (ctx->slavePtrDevId == NO_DEVICE)
+        if (ctx->slavePtrDevId == NO_DEVICE && ctx->translateOnly == False)
         {
             snprintf (buf, sizeof (buf), "Cannot get list of all devices: no "
                       "slave pointer with name('%s') found, see '$ xinput list'"
@@ -888,7 +894,10 @@ getPressedComb (XWCContext * ctx)
                 break;
 
             case XI_ButtonRelease:
-                retVal = procBtnEv (ctx, (XIDeviceEvent*) cookie->data);
+                if (ctx->translateOnly == False)
+                {
+                    retVal = procBtnEv (ctx, (XIDeviceEvent*) cookie->data);
+                }
                 break;
 
             default:
