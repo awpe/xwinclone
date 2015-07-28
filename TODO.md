@@ -23,7 +23,7 @@ unmapped
 - [x] If source window was unmapped, make program to wait longer, before 
 checking source window state again
 - [ ] Add comments to the new part of argument processing routine
-- [ ] Add comments to everything
+- [ ] Add comments where it is still needed
 - [x] Clean code
 - [x] Document program flow
 - [ ] Write dependencies list
@@ -45,6 +45,7 @@ checking source window state again
 - [ ] Use libjpeg-turbo instead of imlib2
 - [x] Check if slave pointer is not floating and actually attached to virtual
  master!
+- [x] Add translate only option that disables pointer click events processing
 
 Version 0.2:
 - [ ] Add routine for automatic conversion of background image from various
@@ -55,7 +56,4 @@ Version 0.2:
 - [ ] Add log file state control or use built-in logging system
 
 Version 0.3:
-- [ ] Add remote x server support
-
-Version 0.4:
 - [ ] Move to C++11
