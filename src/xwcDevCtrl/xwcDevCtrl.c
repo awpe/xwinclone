@@ -1,55 +1,55 @@
-#include "xwc.h"
+#include <xwcDevCtrl.h>
 
-Bool
+Bool 
 chckXI2Ext (XWCContext * ctx)
 {
     int event, error, major, minor, rc, majorSupported, minorSupported;
     char buf[1024];
 
-    logCtr ("Checking XInput 2 extension:", LOG_LVL_1, False);
+    logCtrl ("\tChecking XInput 2 extension", LOG_LVL_1, False);
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot check XInput 2 extension: NULL pointer to XWC context"
-                " received.", LOG_LVL_NO, False);
+        logCtrl ("\t\tCannot check XInput 2 extension: NULL pointer to XWC context"
+                " received.", LOG_LVL_NO, True);
         return False;
     }
 
     if (XQueryExtension (ctx->xDpy, "XInputExtension", &ctx->xiOp, &event,
                          &error) == 0)
     {
-        logCtr ("X Input extension not available.", LOG_LVL_NO, False);
+        logCtrl ("\t\tX Input extension not available.", LOG_LVL_NO, True);
         return False;
     }
 
-    majorSupported  = major = SUPPORTED_XI2_VERSION_MAJOR;
+    majorSupported = major = SUPPORTED_XI2_VERSION_MAJOR;
     minorSupported = minor = SUPPORTED_XI2_VERSION_MINOR;
 
     if ((rc = XIQueryVersion (ctx->xDpy, &major, &minor)) == BadRequest)
     {
-        snprintf (buf, sizeof (buf), "XI2 not available. Server supports %d.%d",
+        snprintf (buf, sizeof (buf), "\t\tXI2 not available. Server supports %d.%d",
                   major, minor);
-        logCtr (buf,  LOG_LVL_NO, False);
+        logCtrl (buf,  LOG_LVL_NO, True);
         return False;
     }
     else if (rc != Success)
     {
-        logCtr ("Xlib internal error!", LOG_LVL_NO, False);
+        logCtrl ("\t\tXlib internal error!", LOG_LVL_NO, True);
         return False;
     }
     else if ((major * 1000 + minor) < 1000 * majorSupported + minorSupported)
     {
-        snprintf (buf, sizeof (buf), "Available XI2 extension version (%d.%d)"
+        snprintf (buf, sizeof (buf), "\t\tAvailable XI2 extension version (%d.%d)"
                   " is not supported.", major, minor);
-        logCtr (buf,  LOG_LVL_NO, False);
+        logCtrl (buf,  LOG_LVL_NO, True);
         return False;
     }
 
-    logCtr ("\tSuccess", LOG_LVL_1, True);
-
-    snprintf (buf, sizeof (buf), "\tXI2 extension version is (%d.%d)", major,
+    snprintf (buf, sizeof (buf), "\t\tXI2 extension version is (%d.%d)", major,
               minor);
-    logCtr (buf,  LOG_LVL_2, True);
+    logCtrl (buf,  LOG_LVL_2, True);
+
+    logCtrl ("\t\tSuccess", LOG_LVL_1, True);
 
     return True;
 }
@@ -68,66 +68,66 @@ grabKeyCtrl (XWCContext      * ctx,
     unsigned char     mask[(XI_LASTEVENT + 7) / 8];
     char              buf[1024];
 
-    snprintf (buf, sizeof (buf), "\tGrabbing keycode %d on window 0x%lX:",
+    snprintf (buf, sizeof (buf), "\t\tGrabbing keycode %d on window 0x%lX:",
               xKCode, w);
-    logCtr (buf, LOG_LVL_1, False);
+    logCtrl (buf, LOG_LVL_1, False);
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot grab key: NULL pointer to XWC context received.",
+        logCtrl ("\t\t\tCannot grab key: NULL pointer to XWC context received.",
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (ctx->kbds == NULL)
     {
-        logCtr ("Cannot grab key: NULL pointer to keyboard device list"
+        logCtrl ("\t\t\tCannot grab key: NULL pointer to keyboard device list"
                 " received.", LOG_LVL_NO, False);
         return False;
     }
 
     if (ctx->kbds->nDevs < 0 || ctx->kbds->nDevs > 127)
     {
-        logCtr ("Cannot grab key: bad device count.", LOG_LVL_NO, False);
+        logCtrl ("\t\t\tCannot grab key: bad device count.", LOG_LVL_NO, False);
         return False;
     }
 
     if (ctx->kbds->devs == NULL)
     {
-        logCtr ("Cannot grab key: NULL pointer to device array received.",
+        logCtrl ("\t\t\tCannot grab key: NULL pointer to device array received.",
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (nMods < 0 || nMods > 127)
     {
-        logCtr ("Cannot grab key: bad mods count.", LOG_LVL_NO, False);
+        logCtrl ("\t\t\tCannot grab key: bad mods count.", LOG_LVL_NO, False);
         return False;
     }
 
     if (mods == NULL)
     {
-        logCtr ("Cannot grab key: NULL pointer to modifiers array received.",
+        logCtrl ("\t\t\tCannot grab key: NULL pointer to modifiers array received.",
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (w == None)
     {
-        logCtr ("Cannot grab key: No window specified.", LOG_LVL_NO, False);
+        logCtrl ("\t\t\tCannot grab key: No window specified.", LOG_LVL_NO, False);
         return False;
     }
 
     if (grab == False)
     {
-        for (int i = 0; i < ctx->kbds->nDevs; ++ i)
+        for (i = 0; i < ctx->kbds->nDevs; ++ i)
         {
             XIUngrabKeycode (ctx->xDpy, ctx->kbds->devs[i], xKCode, w, nMods,
                              mods);
 
-            snprintf (buf, sizeof (buf), "\t\tkeycode ungrabbed on device %d.",
+            snprintf (buf, sizeof (buf), "\t\t\tkeycode ungrabbed on device %d.",
                       ctx->kbds->devs[i]);
-            logCtr (buf, LOG_LVL_2, True);
+            logCtrl (buf, LOG_LVL_2, True);
         }
         return True;
     }
@@ -136,7 +136,7 @@ grabKeyCtrl (XWCContext      * ctx,
 
     if (failMods == NULL)
     {
-        logCtr ("Cannot grab key: cannot allocate array for failed mods.",
+        logCtrl ("\t\t\tCannot grab key: cannot allocate array for failed mods.",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -160,9 +160,9 @@ grabKeyCtrl (XWCContext      * ctx,
                                    nMods, failMods);
         if (nfailMods == 0)
         {
-            snprintf (buf, sizeof (buf), "\t\tkeycode grabbed on device %d.",
+            snprintf (buf, sizeof (buf), "\t\t\tkeycode grabbed on device %d.",
                       ctx->kbds->devs[i]);
-            logCtr (buf, LOG_LVL_2, True);
+            logCtrl (buf, LOG_LVL_2, True);
         }
     }
 
@@ -170,9 +170,9 @@ grabKeyCtrl (XWCContext      * ctx,
     {
         for (i = 0; i < nfailMods; ++ i)
         {
-            snprintf (buf, sizeof (buf), "Modifier %x failed with error %d\n",
+            snprintf (buf, sizeof (buf), "\t\t\tModifier %x failed with error %d\n",
                       failMods[i].modifiers, failMods[i].status);
-            logCtr (buf, LOG_LVL_NO, False);
+            logCtrl (buf, LOG_LVL_NO, False);
         }
 
         free (failMods);
@@ -180,8 +180,8 @@ grabKeyCtrl (XWCContext      * ctx,
         return False;
     }
 
-    snprintf (buf, sizeof (buf), "\t\tSuccess");
-    logCtr (buf, LOG_LVL_2, True);
+    snprintf (buf, sizeof (buf), "\t\t\tSuccess");
+    logCtrl (buf, LOG_LVL_2, True);
 
     free (failMods);
 
@@ -195,9 +195,11 @@ getInputDevices (XWCContext * ctx)
     char           buf[1024];
     int            i, * kbdIds, masterKbdCnt, nAllDevs;
 
+    logCtrl ("\tBuiding list of input devices", LOG_LVL_1, False);
+
     if (ctx == NULL)
     {
-        logCtr ("Cannot get list of all devices: NULL pointer to program"
+        logCtrl ("\t\tCannot get list of all devices: NULL pointer to program"
                 " context received!", LOG_LVL_NO, False);
         return False;
     }
@@ -212,7 +214,7 @@ getInputDevices (XWCContext * ctx)
 
         if (kbdIds == NULL)
         {
-            logCtr ("Cannot get list of all devices: cannot allocate memory"
+            logCtrl ("\t\tCannot get list of all devices: cannot allocate memory"
                     " for device's id array!", LOG_LVL_NO, False);
             XIFreeDeviceInfo (allDevsInfo);
             return False;
@@ -252,11 +254,11 @@ getInputDevices (XWCContext * ctx)
 
         if (ctx->slavePtrDevId == NO_DEVICE && ctx->translateOnly == False)
         {
-            snprintf (buf, sizeof (buf), "Cannot get list of all devices: no "
-                      "slave pointer with name('%s') found, see '$ xinput list'"
-                      " to find propriate pointer name for slave pointer!",
+            snprintf (buf, sizeof (buf), "\t\tCannot get list of all devices:"
+                      " no slave pointer with name('%s') found, see '$ xinput "
+                      "list' to find propriate pointer name for slave pointer!",
                       ctx->ptrDevName);
-            logCtr (buf, LOG_LVL_NO, False);
+            logCtrl (buf, LOG_LVL_NO, False);
             free (kbdIds);
             return False;
         }
@@ -265,7 +267,7 @@ getInputDevices (XWCContext * ctx)
 
         if (ctx->kbds == NULL)
         {
-            logCtr ("Cannot get list of all devices: Cannot allocate memory"
+            logCtrl ("\t\tCannot get list of all devices: Cannot allocate memory"
                     " for device list!", LOG_LVL_NO, False);
             free (kbdIds);
             return False;
@@ -276,10 +278,13 @@ getInputDevices (XWCContext * ctx)
     }
     else
     {
-        logCtr ("Cannot get list of all devices: XIQueryDevice error!",
+        logCtrl ("\t\tCannot get list of all devices: XIQueryDevice error!",
                 LOG_LVL_NO, False);
         return False;
     }
+
+    logCtrl ("\t\tsuccess",
+            LOG_LVL_2, True);
 
     return True;
 }
@@ -289,7 +294,7 @@ grabAllKeys (XWCContext * ctx)
 {
     size_t sizeTmp;
 
-    logCtr ("Trying to grab all control keys:", LOG_LVL_1, False);
+    logCtrl ("\tTrying to grab all control keys:", LOG_LVL_1, False);
 
     /**************************************************************************/
     /*prepare modifiers*/
@@ -302,7 +307,7 @@ grabAllKeys (XWCContext * ctx)
 
     if (ctx->clMods == NULL)
     {
-        logCtr ("Error allocating memory for XIGrabModifiers struct!",
+        logCtrl ("\t\tError allocating memory for XIGrabModifiers struct!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -311,7 +316,7 @@ grabAllKeys (XWCContext * ctx)
 
     if (ctx->exitMods == NULL)
     {
-        logCtr ("Error allocating memory for XIGrabModifiers struct!",
+        logCtrl ("\t\tError allocating memory for XIGrabModifiers struct!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -335,7 +340,7 @@ grabAllKeys (XWCContext * ctx)
                      ctx->exitMods, True)
         == False)
     {
-        logCtr ("Error grabbing exit key!", LOG_LVL_NO, False);
+        logCtrl ("\t\tError grabbing exit key!", LOG_LVL_NO, False);
         return False;
     }
     /**************************************************************************/
@@ -348,14 +353,14 @@ grabAllKeys (XWCContext * ctx)
                      ctx->clMods, True)
         == False)
     {
-        logCtr ("Error grabbing clone key!", LOG_LVL_NO, False);
+        logCtrl ("\t\tError grabbing clone key!", LOG_LVL_NO, False);
         grabKeyCtrl (ctx, ctx->rootW, ctx->exitKeyCode, ctx->nMods,
                      ctx->exitMods, False);
         return False;
     }
     /**************************************************************************/
 
-    logCtr ("\tsuccess", LOG_LVL_1, False);
+    logCtrl ("\t\tsuccess", LOG_LVL_1, False);
 
     return True;
 }
@@ -379,7 +384,7 @@ procKeySeqEv (XWCContext    * ctx,
 
     if (xide == NULL || ctx == NULL)
     {
-        logCtr ("Cannot process pressed key: NULL pointer(s) received!",
+        logCtrl ("Cannot process pressed key: NULL pointer(s) received!",
                 LOG_LVL_NO, False);
         return EXIT_COMBINATION;
     }
@@ -391,14 +396,14 @@ procKeySeqEv (XWCContext    * ctx,
      * From http://who-t.blogspot.cz/2009/07/xi2-recipes-part-4.html*/
     if (xide->detail == ctx->cloneKeyCode)
     {
-        logCtr ("Grab window key sequence received", LOG_LVL_NO, False);
+        logCtrl ("Grab window key sequence received", LOG_LVL_NO, False);
 
         return TRANSLATION_COMB;
     }
 
     if (xide->detail == ctx->exitKeyCode)
     {
-        logCtr ("Exit key sequence received", LOG_LVL_NO, False);
+        logCtrl ("Exit key sequence received", LOG_LVL_NO, False);
 
         return EXIT_COMBINATION;
     }
@@ -424,7 +429,7 @@ getTrgWPtrData (XWCContext      * ctx,
     /*TODO change to asserts*/
     if (ctx == NULL || trgX == NULL || trgY == NULL || modsSt == NULL)
     {
-        logCtr ("Cannot get target window pointer data: "
+        logCtrl ("Cannot get target window pointer data: "
                 "NULL pointer received!", LOG_LVL_NO, True);
         return False;
     }
@@ -444,7 +449,7 @@ getTrgWPtrData (XWCContext      * ctx,
 
     if (res == False || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot get target window pointer data: "
+        logCtrl ("Cannot get target window pointer data: "
                 "XIQueryPointer error!", LOG_LVL_NO, True);
         return False;
     }
@@ -472,7 +477,7 @@ adjPtrLoc (XWCContext * ctx,
     if (ctx == NULL || adjX == NULL || adjY == NULL || adjRX == NULL
         || adjRY == NULL)
     {
-        logCtr ("Cannot translate source window coordinates to root window:"
+        logCtrl ("Cannot translate source window coordinates to root window:"
                 " NULL pointer received!", LOG_LVL_NO, False);
         return False;
     }
@@ -514,7 +519,7 @@ adjPtrLoc (XWCContext * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("Cannot translate source window coordinates to root window:"
+        logCtrl ("Cannot translate source window coordinates to root window:"
                 " XTranslateCoordinates error!", LOG_LVL_NO, False);
         return False;
     }
@@ -533,7 +538,7 @@ getBtnEv (XWCContext      * ctx,
 {
     if (ctx == NULL || modsSt == NULL || xev == NULL)
     {
-        logCtr ("Cannot prepare event structure: NULL pointer received!",
+        logCtrl ("Cannot prepare event structure: NULL pointer received!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -567,7 +572,7 @@ mvPtr (XWCContext * ctx,
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot move pointer: ctx is NULL!", LOG_LVL_NO, False);
+        logCtrl ("Cannot move pointer: ctx is NULL!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -581,7 +586,7 @@ mvPtr (XWCContext * ctx,
 
     if (res != Success || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot move pointer: XIWarpPointer error!", LOG_LVL_NO, False);
+        logCtrl ("Cannot move pointer: XIWarpPointer error!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -596,7 +601,7 @@ btnClick (XWCContext * ctx,
 
     if (ctx == NULL || btnEv == NULL)
     {
-        logCtr ("Cannot emulate click: "
+        logCtrl ("Cannot emulate click: "
                 "NULL pointer received!", LOG_LVL_NO, True);
         return False;
     }
@@ -610,12 +615,12 @@ btnClick (XWCContext * ctx,
 
     if (res == 0 || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
+        logCtrl ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
         return False;
     }
     else
     {
-        logCtr ("Button press event sent\n", LOG_LVL_2, True);
+        logCtrl ("Button press event sent\n", LOG_LVL_2, True);
     }
     /**************************************************************************/
 
@@ -635,12 +640,12 @@ btnClick (XWCContext * ctx,
 
     if (res == 0 || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
+        logCtrl ("Cannot emulate click: XSendEvent error!", LOG_LVL_NO, True);
         return False;
     }
     else
     {
-        logCtr ("Button release event sent\n", LOG_LVL_2, True);
+        logCtrl ("Button release event sent\n", LOG_LVL_2, True);
     }
     /**************************************************************************/
 
@@ -658,25 +663,25 @@ procBtnEv (XWCContext    * ctx,
     int             trgRX, trgRY, adjRX, adjRY, adjX, adjY, trgX, trgY;
     char            buf[1024];
 
-    logCtr ("Got click:", LOG_LVL_2, False);
+    logCtrl ("Got click:", LOG_LVL_2, False);
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot process pressed button event: ctx is NULL!",
+        logCtrl ("Cannot process pressed button event: ctx is NULL!",
                 LOG_LVL_NO, True);
         return EXIT_COMBINATION;
     }
 
     if (xide == NULL)
     {
-        logCtr ("Very bad error that should have never happened: XGetEventData "
+        logCtrl ("Very bad error that should have never happened: XGetEventData "
                 "failed completely at procBtnEv!", LOG_LVL_NO, True);
         return EXIT_COMBINATION;
     }
 
     if (xide->buttons.mask == NULL)
     {
-        logCtr ("Very bad error that should have never happened: "
+        logCtrl ("Very bad error that should have never happened: "
                 "xide->buttons.mask surprisingly is NULL at procBtnEv!",
                 LOG_LVL_NO, True);
         return EXIT_COMBINATION;
@@ -684,7 +689,7 @@ procBtnEv (XWCContext    * ctx,
 
     snprintf (buf, sizeof (buf), "btn = %d; tracked = %d\n",
               xide->buttons.mask[0], 1 << (TRACKED_BUTTON - 1));
-    logCtr (buf, LOG_LVL_2, True);
+    logCtrl (buf, LOG_LVL_2, True);
 
     /* button is expressed as 1 shifted to the left by button number,
      * XIButtonState structure has an array of bytes to store pressed 
@@ -700,11 +705,11 @@ procBtnEv (XWCContext    * ctx,
 
         if (visRes == False)
         {
-            logCtr ("Source seems to be hidden", LOG_LVL_2, True);
+            logCtrl ("Source seems to be hidden", LOG_LVL_2, True);
 
             if (toggleHiddenState (ctx, ctx->srcW) == False )
             {
-                logCtr ("Cannot process pressed button event: "
+                logCtrl ("Cannot process pressed button event: "
                         "toggleHiddenState error!", LOG_LVL_NO, True);
                 return EXIT_COMBINATION;
             }
@@ -718,7 +723,7 @@ procBtnEv (XWCContext    * ctx,
 
             if (visRes == False)
             {
-                logCtr ("Cannot process pressed button event: problem occured"
+                logCtrl ("Cannot process pressed button event: problem occured"
                         " while restoring hidden window, if last is true, check"
                         " if source window was on visible(active) desktop!",
                         LOG_LVL_NO, True);
@@ -728,7 +733,7 @@ procBtnEv (XWCContext    * ctx,
 
         if (visRes == UNDEFINED)
         {
-            logCtr ("Error getting source window visibility state: "
+            logCtrl ("Error getting source window visibility state: "
                     "isWinVis error!", LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -740,7 +745,7 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (getTrgWPtrData (ctx, &trgX, &trgY, &modSt, &trgRX, &trgRY) == False)
         {
-            logCtr ("Cannot process pressed button event: "
+            logCtrl ("Cannot process pressed button event: "
                     "getTrgWPtrData error!", LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -752,7 +757,7 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (adjPtrLoc (ctx, trgX, trgY, &adjX, &adjY, &adjRX, &adjRY) == False)
         {
-            logCtr ("Cannot process pressed button event: adjPtrLoc error!",
+            logCtrl ("Cannot process pressed button event: adjPtrLoc error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -766,7 +771,7 @@ procBtnEv (XWCContext    * ctx,
 
         if (wRaiseCtrl (ctx, &focused) == False)
         {
-            logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
+            logCtrl ("Cannot process pressed button event: wRaiseCtrl error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -778,13 +783,13 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (mvPtr (ctx, adjRX, adjRY) == False)
         {
-            logCtr ("Cannot process pressed button event: mvPtr error!",
+            logCtrl ("Cannot process pressed button event: mvPtr error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
         else
         {
-            logCtr ("Pointer moved to source\n", LOG_LVL_2, True);
+            logCtrl ("Pointer moved to source\n", LOG_LVL_2, True);
         }
         /**********************************************************************/
 
@@ -794,7 +799,7 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (getBtnEv (ctx, &modSt, &btnEv, adjX, adjY, adjRX, adjRY) == False)
         {
-            logCtr ("Cannot process pressed button event: getBtnEv"
+            logCtrl ("Cannot process pressed button event: getBtnEv"
                     " error!", LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -806,7 +811,7 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (btnClick (ctx, &btnEv) == False)
         {
-            logCtr ("Cannot process pressed button event: btnClick error!",
+            logCtrl ("Cannot process pressed button event: btnClick error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -818,13 +823,13 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (mvPtr (ctx, trgRX, trgRY) == False)
         {
-            logCtr ("Cannot process pressed button event: mvPtr error!",
+            logCtrl ("Cannot process pressed button event: mvPtr error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
         else
         {
-            logCtr ("Pointer moved to target\n", LOG_LVL_2, True);
+            logCtrl ("Pointer moved to target\n", LOG_LVL_2, True);
         }
         /**********************************************************************/
 
@@ -834,7 +839,7 @@ procBtnEv (XWCContext    * ctx,
         /**********************************************************************/
         if (wRaiseCtrl (ctx, &focused) == False)
         {
-            logCtr ("Cannot process pressed button event: wRaiseCtrl error!",
+            logCtrl ("Cannot process pressed button event: wRaiseCtrl error!",
                     LOG_LVL_NO, True);
             return EXIT_COMBINATION;
         }
@@ -873,7 +878,7 @@ getPressedComb (XWCContext * ctx)
             continue;
         }
 
-        logCtr ("Got generic event", LOG_LVL_2, False);
+        logCtrl ("Got generic event", LOG_LVL_2, False);
 
         if (   cookie->evtype == XI_KeyPress
             || cookie->evtype == XI_ButtonPress)

@@ -1,6 +1,9 @@
 #ifndef XWCARGS_H
 #define	XWCARGS_H
 
+#include <defines.h>
+#include <systemHeaders.h>
+
 typedef enum argNames_
 {
     HELP        = 0,
@@ -12,7 +15,7 @@ typedef enum argNames_
     LOGLVL      = 6,
     SOURCEID    = 7,
     DAEMON      = 8,
-    SINGLEINST  = 9,
+    MULTIINST   = 9,
     BGIMAGE     = 10,
     LCKFPATH    = 11,
     PTRDEVNAME  = 12,
@@ -22,9 +25,13 @@ typedef enum argNames_
     CLICKTIME   = 16,
     LONGWAIT    = 17,
     TRANSONLY   = 18,
+    CONFFILE    = 19,
+    MKCONFIG    = 20,
+    EXITKEY     = 21,
+    CLONEKEY    = 22,
     /****************************************/
     /*Write count of possible arguments here*/
-    OPTIONS_COUNT = 19
+    OPTIONS_COUNT = 23
     /****************************************/
 } argNames;
 
@@ -57,7 +64,7 @@ void
 delArgs (arguments * args);
 
 arguments *
-initArgs ();
+initArgs (void);
 
 Bool
 addArg (arguments  * args,
@@ -73,5 +80,13 @@ printCurValues (arguments  * args);
 
 void
 printUsage (arguments  * args);
+
+Bool
+populateArgs (arguments * args);
+
+Bool
+parseArgs (const char ** argArr,
+           arguments  *  args,
+           int           argCnt);
 
 #endif

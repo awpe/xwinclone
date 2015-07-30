@@ -30,7 +30,8 @@ checking source window state again
 - [x] Add singleton option
 - [x] Fix error with grabbing same keys from multiple applications
 - [x] Fix log text formatting
-- [ ] Add option to select exit and translation control key combinations
+- [x] Add option to select exit and translation control keys
+- [ ] Add option to select exit and translation control key masks
 - [x] Add option to select PID file path
 - [x] Add verbose for resource-cleaning routines
 - [x] Add option to control writing of log info into specified file
@@ -46,12 +47,21 @@ checking source window state again
 - [x] Check if slave pointer is not floating and actually attached to virtual
  master!
 - [x] Add translate only option that disables pointer click events processing
+- [x] Rearrange init routine so subroutines executed in proper order
+- [x] Move LOG file selection and creation to separate routine
+- [x] Move keysyms check and keycode acquiring to separate routine
+- [x] Mutate single instance mode to multi instance mode, so by default only 
+ single instances are allowed and only one can run in daemon mode
+- [x] Add option to write current config to file
+- [ ] Add option to select configuration file to use
+- [x] Change file hierarchy use new makefile
 
 Version 0.2:
-- [ ] Add routine for automatic conversion of background image from various
+- [ ] Add option for automatic conversion of background image from various
  formats to pixmap
 - [ ] Add tray support
 - [ ] Add rectangle translation support
+- [ ] Add offsets for all sides
 - [ ] Set propriate logging levels by using all of them (0, 1, 2)
 - [ ] Add log file state control or use built-in logging system
 

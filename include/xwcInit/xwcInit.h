@@ -1,6 +1,9 @@
 #ifndef XWCINIT_H
 #define	XWCINIT_H
 
+#include <defines.h>
+#include <systemHeaders.h>
+
 struct DevList_
 {
     int * devs;
@@ -53,7 +56,7 @@ struct XWCContext_
                                      *  according to X.h*/
     int               isDaemon;    /**< If program considered to be run in 
                                     * daemon mode*/
-    int               isSingleton; /**< Allow only one instance of program
+    int               multiInst; /**< Allow only one instance of program
                                     *  to be run, automatically set in
                                     *  daemon mode*/
     Display         * xDpy;
@@ -90,7 +93,10 @@ struct XWCContext_
     const char      * logFileName;
     
     Bool              translateOnly;
-
+    
+    const char      * confFileName;
+    
+    const char      * userDir;
 } ;
 
 /** 
@@ -136,6 +142,5 @@ init (int           argCnt,
 
 void
 freeXWCContext (XWCContext * ctx);
-
 
 #endif

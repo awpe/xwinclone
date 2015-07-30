@@ -1,8 +1,9 @@
 #ifndef XWCWINUTIL_H
 #define	XWCWINUTIL_H
 
-#include "xwcInit.h"
-
+#include <defines.h>
+#include <systemHeaders.h>
+#include <xwcHeaders.h>
 
 typedef enum triStateLogic_
 {

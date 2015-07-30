@@ -1,4 +1,5 @@
-#include "xwc.h"
+#include <xwcArgs.h>
+#include <xwcHeaders.h>
 
 void
 delArgs (arguments * args)
@@ -131,7 +132,7 @@ addArg (arguments  * args,
                 break;
 
             default:
-                logCtr ("Error adding argument, bad type specified!",
+                logCtrl ("Error adding argument, bad type specified!",
                         LOG_LVL_NO, False);
                 free (arg->m_SynStrs);
                 va_end (argStrList);
@@ -147,7 +148,7 @@ addArg (arguments  * args,
         case DAEMON:
             break;
 
-        case SINGLEINST:
+        case MULTIINST:
             break;
 
         case AUTOCENTER:
@@ -213,8 +214,23 @@ addArg (arguments  * args,
         case TRANSONLY:
             break;
 
+        case CONFFILE:
+            arg->m_Value                       = (void*) CONFIG_FILE_PATH;
+            break;
+
+        case MKCONFIG:
+            break;
+
+        case EXITKEY:
+            arg->m_Value                       = (void*) EXIT_KEY;
+            break;
+
+        case CLONEKEY:
+            arg->m_Value                       = (void*) TRANSLATION_CTRL_KEY;
+            break;
+
         default:
-            logCtr ("Unknown argument type detected while creating option!",
+            logCtrl ("Unknown argument type detected while creating option!",
                     LOG_LVL_NO, False);
             va_end (argStrList);
             return False;
@@ -234,7 +250,7 @@ printCurValues (arguments  * args)
                 "you can specify option of interest with -h option and you "
                 "will see how program understood it in this section",
                 "\t",
-                "Notice: ");
+                "Notice: ", NULL, 0);
 
     printf ("\n\tValues:\n");
 
@@ -270,24 +286,25 @@ printCurValues (arguments  * args)
                     break;
 
                 default:
-                    logCtr ("Unknown argument type detected during arguments "
+                    logCtrl ("Unknown argument type detected during arguments "
                             "list traversing!\n", LOG_LVL_NO, False);
                     break;
             }
         }
     }
 
-    printf ("\n\tpress %s to exit program\n", EXIT_STR);
+    printf ("\n\tpress CTRL + SHIFT + %s to exit program\n",
+            (const char*) args->m_Args[EXITKEY]->m_Value);
 
-    printf ("\n\tuse %s combination for translation control\n\n",
-            TRANSLATION_CTRL_STR);
+    printf ("\n\tuse CTRL + SHIFT + %s combination for translation control\n\n",
+            (const char*) args->m_Args[CLONEKEY]->m_Value);
 }
 
 void
 printUsage (arguments  * args)
 {
     /*FIXME: This is shit, normal formatted output function needed!!!*/
-    int  printedChars, i;
+    int  printedChars, i, j;
     char buf[1024];
 
     memset (buf, 0, sizeof (buf));
@@ -301,7 +318,7 @@ printUsage (arguments  * args)
 
     printf ("\nNAME\n");
 
-    printBlock (PROGRAM_BRIEF, "\t", PROGRAM_EXE_NAME_STR" - ");
+    printBlock (PROGRAM_BRIEF, "\t", PROGRAM_EXE_NAME_STR" - ", NULL, 0);
 
     printf ("\nSYNOPSIS\n\t%s [OPTIONS]\n\n", PROGRAM_EXE_NAME_STR);
 
@@ -332,14 +349,14 @@ printUsage (arguments  * args)
 
     buf[printedChars] = '\0';
 
-    printBlock (buf, "\t", "OPTIONS := { ");
+    printBlock (buf, "\t", "OPTIONS := { ", NULL, 0);
 
     printf ("\nOPTIONS\n");
 
-    for (int i = 0; i < args->m_ArgCnt; ++ i)
+    for (i = 0; i < args->m_ArgCnt; ++ i)
     {
         printf ("\t");
-        for (int j = 0; j < args->m_Args[i]->m_SynCnt; ++ j)
+        for (j = 0; j < args->m_Args[i]->m_SynCnt; ++ j)
         {
             printf ("%s", args->m_Args[i]->m_SynStrs[j]);
 
@@ -358,7 +375,7 @@ printUsage (arguments  * args)
 
         const char * comment = args->m_Args[i]->m_Comment;
 
-        printBlock (comment, "\t\t", NULL);
+        printBlock (comment, "\t\t", NULL, NULL, 0);
 
         if (i + 1 < args->m_ArgCnt)
         {

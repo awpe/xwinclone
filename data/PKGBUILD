@@ -1,7 +1,7 @@
 # Maintainer: Konstantin Shalygin (kostya@opentech.ru)
 
 pkgname='xwinclone'
-pkgver='0.1n'
+pkgver='0.1o'
 pkgrel='1'
 pkgdesc="Used to translate another window's content in its own window"
 arch=('any')
@@ -15,7 +15,6 @@ sha256sums=('SKIP')
 prepare() {
   cd "${pkgname}"
   git checkout x
-  mkdir "obj"
 }
 
 build() {
@@ -25,6 +24,6 @@ build() {
 
 package() {
   pushd "${pkgname}"
-  install -Dm775 "${pkgname}" "$pkgdir/usr/bin/${pkgname}"
+  install -Dm775 bin/"${pkgname}" "$pkgdir/usr/bin/${pkgname}"
   popd
 }

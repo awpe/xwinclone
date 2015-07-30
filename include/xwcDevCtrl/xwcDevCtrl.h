@@ -1,7 +1,9 @@
 #ifndef XWCDEVCTRL_H
 #define	XWCDEVCTRL_H
 
-#include "xwcInit.h"
+#include <defines.h>
+#include <systemHeaders.h>
+#include <xwcHeaders.h>
 
 /**
  * Registers exit key combination for a given window.

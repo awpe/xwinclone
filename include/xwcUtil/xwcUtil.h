@@ -1,8 +1,9 @@
-#ifndef XWCLIB_H
-#define	XWCLIB_H
+#ifndef XWCUTIL_H
+#define	XWCUTIL_H
 
-#include "defines.h"
-#include "headers.h"
+#include <defines.h>
+#include <systemHeaders.h>
+#include <xwcHeaders.h>
 
 /****************************************/
 /*Redefine imlib2 functions*/
@@ -25,7 +26,7 @@ extern FILE * LOG_FILE;
  * @param[in] sequenced if this log msg is a part of sequence
  */
 void
-logCtr (const char * msg,
+logCtrl (const char * msg,
         int          lvl,
         Bool         sequenced);
 
@@ -42,15 +43,29 @@ Bool
 ifSingleInst (XWCContext * ctx);
 
 Bool
-bgImgPrepare (XWCContext        * ctx,
-              Pixmap            * bgImgPm,
-              unsigned int      * bgImgWidth,
-              unsigned int      * bgImgHeight);
+bgImgPrepare (XWCContext * ctx,
+              Pixmap     * bgImgPm,
+              int        * bgImgWidth,
+              int        * bgImgHeight);
 
 void
 printBlock (const char * str,
             const char * linePrefix,
-            const char * blockPrefix);
+            const char * blockPrefix,
+            char       * extBuf,
+            int          extBufSize);
 
+Bool
+createConfFile (XWCContext * ctx,
+                arguments  * args);
+
+Bool
+getUserDir (XWCContext * ctx);
+
+Bool
+enableLogFile (XWCContext * ctx);
+
+Bool
+checkFileMode (const char * fname,
+               int          mode);
 #endif
-

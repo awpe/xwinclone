@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#define XWINCLONE_VERSION_STR          "0.1n"
+#define XWINCLONE_VERSION_STR          "0.1o"
 
 /**************************************************************************/
 /*Program definitions*/
@@ -30,6 +30,8 @@
 /*Options*/
 #define _POSIX_C_SOURCE                200112L
 
+/*if set will cause program to try maniulating windows even if WM is not EWMH 
+ *compiant*/
 #define ALLOW_NON_EWMH_COMPILANT_WM    0
 
 #define FRAMERATE_FPS                  30   //fps
@@ -48,15 +50,13 @@
 
 #define EXIT_KEY                       "g"
 #define EXIT_MASK                      (ControlMask | ShiftMask)
-#define EXIT_STR                       "CTRL + SHIFT + g"
 
 #define TRANSLATION_CTRL_KEY           "u"
 #define TRANSLATION_CTRL_MASK          (ControlMask | ShiftMask)
-#define TRANSLATION_CTRL_STR           "CTRL + Shift + u"
 
 #define WM_CLASS_PRG_NAME_STR          "XWinClone"
 #define WM_CLASS_CLASS_NAME_STR        "xwinclone"
-#define AUTOCENTERING                  0 //1=true; 0=false
+#define AUTOCENTERING                  0  //1=true; 0=false
 #define TOP_OFFSET                     71 // in pixels
 #define PROGRAM_EXE_NAME_STR           "xwinclone"
 #define BG_IMAGE_PATH                  "./"
@@ -65,6 +65,7 @@
 #define DEFAULT_BGIMAGE_PATH           "/usr/share/wallpapers/e2e4.jpeg"
 #define TRACKED_PTR_NAME               "A4Tech USB Optical Mouse"
 #define LOG_FILE_NAME                  "stdout"
+#define CONFIG_FILE_PATH               "~/.config/xwinclone/xwc.conf"
 /**************************************************************************/
 
 /**************************************************************************/
@@ -76,4 +77,3 @@
 /**************************************************************************/
 
 #endif
-

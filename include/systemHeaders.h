@@ -12,10 +12,12 @@
 #include <math.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <pwd.h>
     
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/select.h>
+#include <sys/types.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -27,11 +29,6 @@
 
 #include <Imlib2.h>
 
-#include "xwcArgs.h"
-#include "xwcDevCtrl.h"
-#include "xwcInit.h"
-#include "xwcWinUtil.h"
-#include "xwcXSrvUtil.h"
 
 #endif
 

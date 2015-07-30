@@ -1,5 +1,10 @@
 #ifndef XWCXSRVUTIL_H
 #define	XWCXSRVUTIL_H
+
+#include <defines.h>
+#include <systemHeaders.h>
+#include <xwcHeaders.h>
+
 /*****************************************/
 /*Redefine XComposite extension functions*/
 /*****************************************/
@@ -32,11 +37,12 @@ extern int  X_ERROR_CODE;
 
 /**
  * Opens connection to default X display. Provides simple verbose.
- * @return A pointer to Xlib's Display struct or NULL if fails
- * @sa XCloseDisplay()
+ * @param[in] ctx Pointer to program's context structure
+ * @return Xlib's True on success, False otherwise
+ * @sa XOpenDisplay(), XCloseDisplay(), XSetErrorHandler()
  */
-Display *
-openDefaultDisplay (void);
+Bool
+openDefaultDisplay (XWCContext * ctx);
 
 /**
  * Custom Xlib error handler. Provides verbose for errors. And sets global 
@@ -71,11 +77,13 @@ getVisOfScr (XWCContext  * ctx,
              XVisualInfo * xVisInfo);
 
 /**
- * Returns default root window of display
- * @param[in] d Pointer to Xlib's Display data struct.
+ * Gets default screen and default root window with attributes for established 
+ * x server connection
+ * @param[in] ctx Pointer to program context
+ * @return Xlib's True on success, False otherwise
  */
-Window
-getDefaultRootWindow (Display * d);
+Bool
+getDefaultDisplayData (XWCContext * ctx);
 
 /**
  * Checks if x server we have connection to has composite extension of 
@@ -90,16 +98,6 @@ Bool
 parseColor (XWCContext * cfg);
 
 /**
- * Extracts pointer to screen where window belongs.
- * @param[in] d Pointer to Xlib's Display data struct.
- * @param[in] WID Window xid of window which name will be changed
- * @return Pointer to Xlib's Screen structure or NULL in case of error.
- */
-Screen *
-getScreenByWindowAttr (XWCContext        * ctx,
-                       XWindowAttributes * winAttr);
-
-/**
  * Searches for root window in Xlib's Screen struct.
  * @param[in] s Pointer to Xlib's Screen data struct
  * @return Xlib's window with root window xid for specified screen 
@@ -111,6 +109,9 @@ getRootWinOfScr (Screen * s);
 Colormap
 createColormap (XWCContext * ctx,
                 Visual     * xVis);
+
+Bool
+getCtrlKeycodes (XWCContext * ctx);
 
 #endif
 

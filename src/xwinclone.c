@@ -1,4 +1,6 @@
-#include "xwc.h"
+#include <defines.h>
+#include <systemHeaders.h>
+#include <xwcHeaders.h>
 
 int
 main (int     argc,
@@ -12,9 +14,8 @@ main (int     argc,
     XGCValues              xGCVals;
     Pixmap                 pm, srcWinPm, bgImgPm, srcWinPmOld;
     char                   buf[1024];
-    int                    retVal, trgWinLOff, trgWinTOff, pressedKey,
-            trgWinW, trgWinH, srcWinW, srcWinH;
-    unsigned int           bgImgW, bgImgH;
+    int                    retVal, trgWinLOff, trgWinTOff, pressedKey, trgWinW;
+    int                    trgWinH, srcWinW, srcWinH, bgImgW, bgImgH;
     /**************************************************************************/
 
 
@@ -90,7 +91,7 @@ main (int     argc,
             snprintf (buf, sizeof (buf), "Move focus to desired window and"
                       " press %s to start translation", ctx->transCtrlKeyStr);
 
-            logCtr (buf, LOG_LVL_NO, False);
+            logCtrl (buf, LOG_LVL_NO, False);
 
             while ((pressedKey = getPressedComb (ctx)) == NO_KEY_PRESSED)
             {
@@ -116,7 +117,7 @@ main (int     argc,
         /**********************************************************************/
         if (ctx->isDaemon == False)
         {
-            logCtr ("Waiting for focus to be moved to source window", LOG_LVL_NO,
+            logCtrl ("Waiting for focus to be moved to source window", LOG_LVL_NO,
                     False);
             nanosleep (&ctx->focusDelay, NULL);
         }
@@ -258,7 +259,7 @@ main (int     argc,
                         break;
                     }
                     srcWinPm = None;
-                    logCtr ("Spurious error: An attempt to remap window"
+                    logCtrl ("Spurious error: An attempt to remap window"
                             " during pixmap creation!", LOG_LVL_2, False);
                     nanosleep (&ctx->longWait, NULL);
                     continue;
@@ -348,7 +349,7 @@ freeResources:
 
         if (getXErrState (ctx) == True)
         {
-            logCtr ("Error freeing resources\n", LOG_LVL_1, False);
+            logCtrl ("Error freeing resources\n", LOG_LVL_1, False);
         }
 
         /**********************************************************************/
@@ -374,7 +375,7 @@ freeResources:
     ungrabAllKeys (ctx);
 
     XCloseDisplay (ctx->xDpy);
-    if (ctx->isSingleton == True)
+    if (ctx->multiInst == True)
     {
         flock (ctx->lckFD, LOCK_UN);
     }

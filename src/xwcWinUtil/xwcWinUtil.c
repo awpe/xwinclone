@@ -1,11 +1,11 @@
-#include "xwc.h"
+#include <xwcWinUtil.h> 
 
 Window
 getFocusedWindow (XWCContext * ctx)
 {
     if (ctx == NULL)
     {
-        logCtr ("Error getting focused window: NULL pointer to context"
+        logCtrl ("Error getting focused window: NULL pointer to context"
                 " received!", LOG_LVL_NO, False);
         return None;
     }
@@ -17,25 +17,25 @@ getFocusedWindow (XWCContext * ctx)
     Window w;
     char   buf[1024];
 
-    logCtr ("Searching for focused window:", LOG_LVL_1, False);
+    logCtrl ("Searching for focused window:", LOG_LVL_1, False);
 
     XGetInputFocus (ctx->xDpy, &w, &revert_to);
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("\tfail to get focused window", LOG_LVL_NO, True);
+        logCtrl ("\tfail to get focused window", LOG_LVL_NO, True);
         return None;
     }
 
     if (w == None)
     {
-        logCtr ("\tno focus window", LOG_LVL_NO, True);
+        logCtrl ("\tno focus window", LOG_LVL_NO, True);
     }
 
     else
     {
         snprintf (buf, sizeof (buf), "\tsuccess, window XID is %lX", w);
-        logCtr (buf, LOG_LVL_1, True);
+        logCtrl (buf, LOG_LVL_1, True);
     }
 
     return w;
@@ -58,19 +58,19 @@ getTopWindow (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error getting top window: No display specified!",
+        logCtrl ("Error getting top window: No display specified!",
                 LOG_LVL_NO, False);
         return None;
     }
 
     if (start == None)
     {
-        logCtr ("Error getting top window: Invalid window specified!",
+        logCtrl ("Error getting top window: Invalid window specified!",
                 LOG_LVL_NO, False);
         return None;
     }
 
-    logCtr ("getting child-of-root window:", LOG_LVL_1, False);
+    logCtrl ("getting child-of-root window:", LOG_LVL_1, False);
 
     while (parent != root)
     {
@@ -86,15 +86,15 @@ getTopWindow (XWCContext * ctx,
 
         if (getXErrState (ctx) == True)
         {
-            logCtr ("\tfailed to get top-most window\n", LOG_LVL_NO, True);
+            logCtrl ("\tfailed to get top-most window\n", LOG_LVL_NO, True);
             return None;
         }
         snprintf (buf, sizeof (buf), "\tgot parent, window XID is %lX", w);
-        logCtr (buf, LOG_LVL_1, True);
+        logCtrl (buf, LOG_LVL_1, True);
     }
 
     snprintf (buf, sizeof (buf), "\tsuccess, window XID is %lX", w);
-    logCtr (buf, LOG_LVL_1, True);
+    logCtrl (buf, LOG_LVL_1, True);
 
     return w;
 }
@@ -108,29 +108,29 @@ getNamedWindow (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error getting named window: No display specified!",
+        logCtrl ("Error getting named window: No display specified!",
                 LOG_LVL_NO, False);
         return None;
     }
 
     if (start == None)
     {
-        logCtr ("Error getting named window: Invalid window specified!",
+        logCtrl ("Error getting named window: Invalid window specified!",
                 LOG_LVL_NO, False);
         return None;
     }
 
-    logCtr ("Getting named window:", LOG_LVL_1, False);
+    logCtrl ("Getting named window:", LOG_LVL_1, False);
 
     w = XmuClientWindow (ctx->xDpy, start);
     if (w == start)
     {
-        logCtr ("\tfail to get named window or window already "
+        logCtrl ("\tfail to get named window or window already "
                 "has WM_STATE property", LOG_LVL_1, True);
     }
 
     snprintf (buf, sizeof (buf), "\twindow XID is %lX", w);
-    logCtr (buf, LOG_LVL_1, True);
+    logCtrl (buf, LOG_LVL_1, True);
 
     return w;
 }
@@ -141,14 +141,14 @@ getActiveWindow (XWCContext * ctx,
 {
     if (ctx == NULL)
     {
-        logCtr ("Error getting active window: No program options"
+        logCtrl ("Error getting active window: No program options"
                 " data specified!", LOG_LVL_NO, False);
         return None;
     }
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error getting active window: No display specified!",
+        logCtrl ("Error getting active window: No display specified!",
                 LOG_LVL_NO, False);
         return None;
     }
@@ -162,7 +162,7 @@ getActiveWindow (XWCContext * ctx,
         || ( implicitW = getTopWindow (ctx, implicitW)   ) == None
         || ( implicitW = getNamedWindow (ctx, implicitW) ) == None )
     {
-        logCtr ("Error getting active window: No active window found!",
+        logCtrl ("Error getting active window: No active window found!",
                 LOG_LVL_NO, False);
         return None;
     }
@@ -181,14 +181,14 @@ printWindowName (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error printing window name: No display specified!",
+        logCtrl ("Error printing window name: No display specified!",
                 LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error printing window name: Invalid window specified!",
+        logCtrl ("Error printing window name: Invalid window specified!",
                 LOG_LVL_NO, False);
         return;
     }
@@ -196,7 +196,7 @@ printWindowName (XWCContext * ctx,
     memset (&prop, 0, sizeof (prop ));
     prop.value = NULL;
 
-    logCtr ("window name:", LOG_LVL_1, False);
+    logCtrl ("window name:", LOG_LVL_1, False);
 
     if (getXErrState (ctx) == False && XGetWMName (ctx->xDpy, w, &prop) != 0)
     {
@@ -207,11 +207,11 @@ printWindowName (XWCContext * ctx,
         if (result == Success)
         {
             snprintf (buf, 1024, "\t%s", list[0]);
-            logCtr (buf, LOG_LVL_1, True);
+            logCtrl (buf, LOG_LVL_1, True);
         }
         else
         {
-            logCtr ("\tError printing window name: "
+            logCtrl ("\tError printing window name: "
                     "XmbTextPropertyToTextList err", LOG_LVL_NO, True);
         }
         if (list != NULL)
@@ -228,7 +228,7 @@ printWindowName (XWCContext * ctx,
     }
     else
     {
-        logCtr ("\tError printing window name: XGetWMName err", LOG_LVL_NO,
+        logCtrl ("\tError printing window name: XGetWMName err", LOG_LVL_NO,
                 True);
     }
 
@@ -247,14 +247,14 @@ printWindowClass (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error printing window class: No display specified!",
+        logCtrl ("Error printing window class: No display specified!",
                 LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error printing window class: Invalid window specified!",
+        logCtrl ("Error printing window class: Invalid window specified!",
                 LOG_LVL_NO, False);
         return;
     }
@@ -263,7 +263,7 @@ printWindowClass (XWCContext * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("Error printing window class info: XAllocClassHint err",
+        logCtrl ("Error printing window class info: XAllocClassHint err",
                 LOG_LVL_NO, False);
         if (class != NULL)
         {
@@ -277,11 +277,11 @@ printWindowClass (XWCContext * ctx,
         snprintf (buf, sizeof (buf), "application:\n\tname:\t%s\n\tclass:\t%s",
                   class->res_name, class->res_class);
 
-        logCtr (buf, LOG_LVL_1, False);
+        logCtrl (buf, LOG_LVL_1, False);
     }
     else
     {
-        logCtr ("Error printing window class info: XGetClassHint err",
+        logCtrl ("Error printing window class info: XGetClassHint err",
                 LOG_LVL_NO, False);
     }
 
@@ -311,21 +311,21 @@ printWindowInfo (XWCContext        * ctx,
 
     if (ctx == NULL)
     {
-        logCtr ("Error cannot print window information: "
+        logCtrl ("Error cannot print window information: "
                 "Bad context pointer", LOG_LVL_NO, False);
         return;
     }
 
     if (w == None)
     {
-        logCtr ("Error cannot print window information: No window specified",
+        logCtrl ("Error cannot print window information: No window specified",
                 LOG_LVL_NO, False);
         return;
     }
 
     if (xWinAttr == NULL)
     {
-        logCtr ("Error cannot print window information: "
+        logCtrl ("Error cannot print window information: "
                 "No window attributes data specified", LOG_LVL_NO, False);
         return;
     }
@@ -337,7 +337,7 @@ printWindowInfo (XWCContext        * ctx,
               "Depth:\t%d",
               xWinAttr->width, xWinAttr->height, xWinAttr->depth);
 
-    logCtr (buf, LOG_LVL_1, False);
+    logCtrl (buf, LOG_LVL_1, False);
 }
 
 Bool
@@ -349,26 +349,26 @@ setWinTitlebar (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error changing window name: No display specified!",
+        logCtrl ("Error changing window name: No display specified!",
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (name == NULL)
     {
-        logCtr ("Error changing window name: Name string is not specified!",
+        logCtrl ("Error changing window name: Name string is not specified!",
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (WID == None)
     {
-        logCtr ("Error changing window name: No window specified!\n",
+        logCtrl ("Error changing window name: No window specified!\n",
                 LOG_LVL_NO, False);
         return False;
     }
 
-    logCtr ("\tSetting window titlebar text:", LOG_LVL_1, False);
+    logCtrl ("\tSetting window titlebar text:", LOG_LVL_1, False);
 
     memset (&tp, 0, sizeof (tp ));
     tp.value = NULL;
@@ -378,7 +378,7 @@ setWinTitlebar (XWCContext * ctx,
      * so let's think it is const...*/
     if (XStringListToTextProperty ((char **) &name, 1, &tp) == False)
     {
-        logCtr ("\t\tError setting name of window: "
+        logCtrl ("\t\tError setting name of window: "
                 "XStringListToTextProperty err", LOG_LVL_NO, True);
         return False;
     }
@@ -395,12 +395,12 @@ setWinTitlebar (XWCContext * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("\t\tError setting name of window: "
+        logCtrl ("\t\tError setting name of window: "
                 "XChangeProperty err", LOG_LVL_NO, True);
         return False;
     }
 
-    logCtr ("\t\tSuccess", LOG_LVL_1, True);
+    logCtrl ("\t\tSuccess", LOG_LVL_1, True);
 
     return True;
 }
@@ -415,33 +415,33 @@ setWindowClass (XWCContext * ctx,
 
     if (ctx->xDpy == NULL)
     {
-        logCtr ("Error changing window class: No display specified!" ,
+        logCtrl ("Error changing window class: No display specified!" ,
                 LOG_LVL_NO, False);
         return False;
     }
 
     if (permNameStr == NULL)
     {
-        logCtr ("Error changing window class: Window permanent name string "
+        logCtrl ("Error changing window class: Window permanent name string "
                 "is not specified!", LOG_LVL_NO, False);
         return False;
     }
 
     if (classStr == NULL)
     {
-        logCtr ("Error changing window class: Class string is not "
+        logCtrl ("Error changing window class: Class string is not "
                 "specified!", LOG_LVL_NO, False);
         return False;
     }
 
     if (WID == None)
     {
-        logCtr ("Error changing window class: No window specified!",
+        logCtrl ("Error changing window class: No window specified!",
                 LOG_LVL_NO, False);
         return False;
     }
 
-    logCtr ("\tSetting window class strings:", LOG_LVL_1, False);
+    logCtrl ("\tSetting window class strings:", LOG_LVL_1, False);
 
     if (( xClassHint = XAllocClassHint () ) == NULL || getXErrState (ctx) == True)
     {
@@ -449,7 +449,7 @@ setWindowClass (XWCContext * ctx,
         {
             XFree (xClassHint);
         }
-        logCtr ("\t\terror setting window class strings!", LOG_LVL_NO, True);
+        logCtrl ("\t\terror setting window class strings!", LOG_LVL_NO, True);
         return False;
     }
 
@@ -468,7 +468,7 @@ setWindowClass (XWCContext * ctx,
 
     if (getXErrState (ctx) == False)
     {
-        logCtr ("\t\tSuccess", LOG_LVL_1, True);
+        logCtrl ("\t\tSuccess", LOG_LVL_1, True);
         return True;
     }
 
@@ -497,11 +497,11 @@ createTrgWindow (XWCContext * ctx)
     long long int         mask;
     char                  buf[1024];
 
-    logCtr ("Creating translation window:", LOG_LVL_1, False);
+    logCtrl ("Creating translation window:", LOG_LVL_1, False);
 
     if (getVisOfScr (ctx, &xVisInfo) == False)
     {
-        logCtr ("\tError: no such visual", LOG_LVL_NO, False);
+        logCtrl ("\tError: no such visual", LOG_LVL_NO, False);
         return False;
     }
 
@@ -530,7 +530,7 @@ createTrgWindow (XWCContext * ctx)
         {
             XDestroyWindow (ctx->xDpy, ctx->trgW);
         }
-        logCtr ("\tfailed to create window!", LOG_LVL_NO, False);
+        logCtrl ("\tfailed to create window!", LOG_LVL_NO, False);
         return None;
     }
 
@@ -545,7 +545,7 @@ createTrgWindow (XWCContext * ctx)
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("\tfailed to map window!", LOG_LVL_NO, False);
+        logCtrl ("\tfailed to map window!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -553,7 +553,7 @@ createTrgWindow (XWCContext * ctx)
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("\tfailed to get target window attributes!", LOG_LVL_NO, False);
+        logCtrl ("\tfailed to get target window attributes!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -577,14 +577,14 @@ createTrgWindow (XWCContext * ctx)
         {
             snprintf (buf, sizeof (buf), "\tfailed to select input events from"
                       " device \"%s\" for target window attributes!", ctx->ptrDevName);
-            logCtr (buf, LOG_LVL_NO, False);
+            logCtrl (buf, LOG_LVL_NO, False);
             return False;
         }
     }
 
     printWindowInfo (ctx, ctx->trgW, &ctx->trgWAttr);
 
-    logCtr ("\tsuccess", LOG_LVL_1, True);
+    logCtrl ("\tsuccess", LOG_LVL_1, True);
 
     return True;
 }
@@ -614,13 +614,13 @@ getWPrprtByAtom (XWCContext * ctx,
     if (getXErrState (ctx) == True)
     {
         snprintf (buf, sizeof (buf), "Cannot get window property by atom!");
-        logCtr (buf, LOG_LVL_NO, False);
+        logCtrl (buf, LOG_LVL_NO, False);
         return NULL;
     }
 
     if (status != Success)
     {
-        logCtr ("XGetWindowProperty failed!", LOG_LVL_NO, False);
+        logCtrl ("XGetWindowProperty failed!", LOG_LVL_NO, False);
         return NULL;
     }
 
@@ -713,7 +713,7 @@ findWClient (XWCContext * ctx,
             {
                 snprintf (buf, sizeof (buf), "Invalid findWClient direction"
                           " (%d)\n", direction);
-                logCtr (buf, LOG_LVL_NO, False);
+                logCtrl (buf, LOG_LVL_NO, False);
 
                 *window_ret = 0;
 
@@ -749,14 +749,14 @@ isWinVis (XWCContext * ctx,
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot check window visibility: "
+        logCtrl ("Cannot check window visibility: "
                 "context pointer is NULL!", LOG_LVL_NO, False);
         return UNDEFINED;
     }
 
     if (checkW == None)
     {
-        logCtr ("Cannot check window visibility: "
+        logCtrl ("Cannot check window visibility: "
                 "window id is None!", LOG_LVL_NO, False);
         return UNDEFINED;
     }
@@ -765,7 +765,7 @@ isWinVis (XWCContext * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("Cannot check window visibility: "
+        logCtrl ("Cannot check window visibility: "
                 "XGetWindowAttributes error!", LOG_LVL_NO, False);
         return UNDEFINED;
     }
@@ -779,7 +779,7 @@ isWinVis (XWCContext * ctx,
 
     if (netWmState == None || netWmStHidden == None || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot check window visibility: "
+        logCtrl ("Cannot check window visibility: "
                 "XInternAtom error!", LOG_LVL_NO, False);
         return UNDEFINED;
     }
@@ -792,7 +792,7 @@ isWinVis (XWCContext * ctx,
 
     if (getXErrState (ctx) == True || r != Success)
     {
-        logCtr ("Cannot check window visibility: "
+        logCtrl ("Cannot check window visibility: "
                 "XGetWindowProperty error!", LOG_LVL_NO, False);
         if (ctx->xDpyata != NULL)
         {
@@ -805,7 +805,7 @@ isWinVis (XWCContext * ctx,
 
     if (actualType == None || actualType != XA_ATOM)
     {
-        logCtr ("Cannot check window visibility: XGetWindowProperty error OR"
+        logCtrl ("Cannot check window visibility: XGetWindowProperty error OR"
                 " current Window manager is not EWMH compilant!", LOG_LVL_NO,
                 False);
         if (ctx->xDpyata != NULL)
@@ -859,7 +859,7 @@ wRaiseCtrl (XWCContext * ctx,
 
     if (ctx == NULL || ioWin == NULL || * ioWin == None)
     {
-        logCtr ("Cannot raise window: bad input data!", LOG_LVL_NO, False);
+        logCtrl ("Cannot raise window: bad input data!", LOG_LVL_NO, False);
         return False;
     }
 
@@ -867,7 +867,7 @@ wRaiseCtrl (XWCContext * ctx,
 
     if (currentTopWin == None)
     {
-        logCtr ("Cannot raise window: Cannot get active window!", LOG_LVL_NO,
+        logCtrl ("Cannot raise window: Cannot get active window!", LOG_LVL_NO,
                 False);
         return False;
     }
@@ -876,7 +876,7 @@ wRaiseCtrl (XWCContext * ctx,
     {
         if (raiseW (ctx, *ioWin) == False)
         {
-            logCtr ("Cannot raise window: XRaiseWindow AND/OR XSetInputFocus "
+            logCtrl ("Cannot raise window: XRaiseWindow AND/OR XSetInputFocus "
                     "error!", LOG_LVL_NO, False);
             return False;
         }
@@ -902,14 +902,14 @@ toggleHiddenState (XWCContext * ctx,
 
     if (ctx == NULL)
     {
-        logCtr ("Cannot toggle window hidden state: NULL pointer to context"
+        logCtrl ("Cannot toggle window hidden state: NULL pointer to context"
                 " received!", LOG_LVL_NO, False);
         return False;
     }
 
     if (win == None)
     {
-        logCtr ("Cannot toggle window hidden state: Bad window id received!",
+        logCtrl ("Cannot toggle window hidden state: Bad window id received!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -923,7 +923,7 @@ toggleHiddenState (XWCContext * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("Cannot toggle window hidden state: XInternAtom error!",
+        logCtrl ("Cannot toggle window hidden state: XInternAtom error!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -943,7 +943,7 @@ toggleHiddenState (XWCContext * ctx,
     if (   XSendEvent (ctx->xDpy, ctx->rootW, False, mask, &event) == 0
         || getXErrState (ctx) == True)
     {
-        logCtr ("Cannot toggle window hidden state: XSendEvent error!",
+        logCtrl ("Cannot toggle window hidden state: XSendEvent error!",
                 LOG_LVL_NO, False);
         return False;
     }
@@ -960,16 +960,16 @@ getWAttr (XWCContext        * ctx,
 
     if (getXErrState (ctx) == True)
     {
-        logCtr ("Cannot get window attributes(getWAttr): ", LOG_LVL_NO, False);
+        logCtrl ("Cannot get window attributes(getWAttr): ", LOG_LVL_NO, False);
         if (X_ERROR_CODE == BadWindow)
         {
             *win = None;
-            logCtr ("\tXGetWindowAttributes failed on given window,"
+            logCtrl ("\tXGetWindowAttributes failed on given window,"
                     " maybe it was closed?", LOG_LVL_NO, True);
         }
         else
         {
-            logCtr ("\tXGetWindowAttributes error!", LOG_LVL_NO, True);
+            logCtrl ("\tXGetWindowAttributes error!", LOG_LVL_NO, True);
         }
         return False;
     }

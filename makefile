@@ -1,29 +1,37 @@
-PrgName = xwinclone
+PROGNAME   := xwinclone
+BINDIR     := bin
+INCLUDEDIR := include
+SRCDIR     := src
+OBJDIR     := obj
+SRCSUBDIR  := . xwcArgs xwcInit xwcUtil xwcDevCtrl xwcWinUtil xwcXSrvUtil
+CCFLAGS    := -Wall -MD -pipe -pedantic -Werror -std=c11 -O2
+LINKFLAGS  := -s -pipe
+LIBS       := -lX11 -lXi -lXcomposite -lXmu -lImlib2 -lm
 
-CC      = gcc
+INCLUDEFLAGS  := $(addprefix $(INCLUDEDIR)/, $(SRCSUBDIR))
+RELSRCSUBDIRS := $(addprefix $(SRCDIR)/, $(SRCSUBDIR))
+OBJDIRS       := $(addprefix $(OBJDIR)/, $(RELSRCSUBDIRS))
+OBJECTS       := $(wildcard $(addsuffix /*.c, $(RELSRCSUBDIRS)))
+OBJECTS       := $(OBJECTS:.c=.o)
+OBJECTS       := $(addprefix $(OBJDIR)/, $(OBJECTS))
+PROGNAME      := $(addprefix $(BINDIR)/, $(PROGNAME))
+DIRMARKS      := $(addsuffix /.f, $(OBJDIRS)) $(BINDIR)/.f
 
-CFLAGS  = -Wall -pedantic -std=c11 -Og -Werror
+all : $(PROGNAME)
 
-ODIR    = obj
+$(PROGNAME) : $(OBJECTS)
+		gcc -o $@ $(OBJECTS) $(LINKFLAGS) $(LIBS)
+	
+$(OBJDIR)/%.o : %.c | $(DIRMARKS)
+		gcc -o $@ -c $< $(CCFLAGS) $(addprefix -I, $(INCLUDEFLAGS))
+	
+$(DIRMARKS):
+		-mkdir -p $(dir $@)
+		-touch $@
 
-LIBS    = -lX11 -lXmu -lXcomposite -lImlib2 -lXi -lm
-
-DEPS    = xwc.h xwcArgs.h xwcDevCtrl.h xwcInit.h xwcWinUtil.h xwcXSrvUtil.h
-
-_OBJ    = $(patsubst %.h,%.o,$(DEPS)) xwinclone.o 
-
-###############################################################################
-
-OBJ     = $(patsubst %,$(ODIR)/%,$(_OBJ))
-
-$(ODIR)/%.o: %.c $(DEPS)
-		@echo compiling $@
-		$(CC) -c -o $@ $< $(CFLAGS)
-
-$(PrgName): $(OBJ)
-		@echo $(OBJ)
-		@echo linking $@
-		gcc -o $@ $^ $(CFLAGS) $(LIBS)
-
-clean:
-		rm -f $(ODIR)/*.o $(PrgName)
+.PHONY : clean
+ 
+clean :
+		rm -rf $(OBJDIR) $(BINDIR)
+ 
+-include $(wildcard $(addsuffix /*.d, $(OBJDIRS)))
