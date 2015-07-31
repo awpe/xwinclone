@@ -104,7 +104,7 @@ getDefaultDisplayData (XWCContext * ctx)
     {
         logCtrl ("\t\tError getting default display data: NULL pointer to "
                 "program context received", LOG_LVL_NO, True);
-        return NULL;
+        return False;
     }
 
     ctx->rootW = DefaultRootWindow (ctx->xDpy);
@@ -129,14 +129,14 @@ getDefaultDisplayData (XWCContext * ctx)
     {
         logCtrl ("\t\tError getting screen by window attributes: "
                 "No display specified", LOG_LVL_NO, True);
-        return NULL;
+        return False;
     }
 
     if (ctx->rootWAttr.screen == NULL)
     {
         logCtrl ("\t\tError getting default screen: No valid screen pointer "
                 "found in root window's attributes struct", LOG_LVL_NO, True);
-        return NULL;
+        return False;
     }
 
     ctx->xScr = ctx->rootWAttr.screen;
