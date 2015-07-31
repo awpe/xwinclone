@@ -86,6 +86,7 @@ createConfFile (XWCContext * ctx,
                 snprintf (buf, sizeof (buf), "Error writing arument %s to "
                           "config file\n", args->m_Args[i]->m_NameStr);
                 logCtrl (buf, LOG_LVL_NO, False);
+		fclose (config);
                 return False;
             }
         }
