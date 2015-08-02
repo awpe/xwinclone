@@ -19,7 +19,6 @@ extern XCompRedirSubWin_t redirSubWin;
 
 typedef void (*XCompUnRedirSubWin_t)(Display *, Window, int) ;
 extern XCompUnRedirSubWin_t unRedirSubWin;
-
 /****************************************/
 
 

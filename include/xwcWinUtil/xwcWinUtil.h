@@ -60,7 +60,7 @@ getNamedWindow (XWCContext * ctx,
  * @sa getFocusedWindow(), getTopWindow(), getNamedWindow()
  */
 Window
-getActiveWindow (XWCContext * ctx, 
+getActiveWindow (XWCContext * ctx,
                  Window       implicitW);
 
 /**
@@ -122,10 +122,10 @@ setWinTitlebar (XWCContext * ctx,
  * PropModeReplace
  */
 Bool
-setWindowClass (XWCContext * ctx,
-                Window       WID,
-                const char * permNameStr,
-                const char * classStr);
+setWinClass (XWCContext * ctx,
+             Window       WID,
+             const char * permNameStr,
+             const char * classStr);
 
 Window
 createWindow (XWCContext           * ctx,
@@ -134,21 +134,19 @@ createWindow (XWCContext           * ctx,
               XSetWindowAttributes * attr);
 
 Bool
-createTrgWindow (XWCContext * ctx);
+createTrgWin (XWCContext * ctx);
 
 unsigned char *
-getWPrprtByAtom (XWCContext * ctx,
-                 Window       window,
-                 Atom         atom,
-                 long       * nitems,
-                 Atom       * type,
-                 int        * size);
+getWPropertyByAtom (XWCContext * ctx,
+                    Window       window,
+                    Atom         atom,
+                    long       * nitems,
+                    Atom       * type,
+                    int        * size);
 
-int
-findWClient (XWCContext * ctx,
-             Window       window,
-             Window     * window_ret,
-             int          direction);
+Bool
+raiseWin (XWCContext * ctx,
+          Window       w);
 
 /**
  * if window ioWin is not focused, raises it and sets input focus to that window
@@ -162,12 +160,12 @@ findWClient (XWCContext * ctx,
  * minimize/maximize routine
  */
 Bool
-wRaiseCtrl (XWCContext * ctx,
-            Window     * ioWin);
+winRaiseCtrl (XWCContext * ctx,
+              Window     * ioWin);
 
 triState
-isWinVis (XWCContext * ctx,
-          Window       checkW);
+checkWinVisState (XWCContext * ctx,
+                  Window       checkW);
 
 Bool
 toggleHiddenState (XWCContext * ctx,

@@ -10,6 +10,7 @@ init (int           argCnt,
     unsigned long       srcid;
     const char        * ptrDevName;
     XWCContext        * ctx;
+    Bool                daemonState, multiInst, procbtnev;
 
     /*Make a program to be portable to all locales*/
     setlocale (LC_ALL, "");
@@ -30,7 +31,6 @@ init (int           argCnt,
 
     ctx->bgColorStr      = NULL;
     ctx->bgImgFilePath   = NULL;
-    ctx->cfgFPath        = NULL;
     ctx->exitKeyStr      = NULL;
     ctx->kbds            = NULL;
     ctx->lckFPath        = NULL;
@@ -65,16 +65,48 @@ init (int           argCnt,
         return NULL;
     }
 
+    if (getUserDir (ctx) == False)
+    {
+        freeXWCContext (ctx);
+        delArgs (args);
+        return NULL;
+    }
+
+    if (args->m_Args[CONFFILE]->m_Val != NULL)
+    {
+        if (readConfFile (ctx, args) == False)
+        {
+            if (   args->m_Args[CONFFILE]->m_IsSet == True
+                && args->m_Args[MKCONFIG]->m_IsSet == False)
+            {
+                logCtrl ("\t\tError: Cannot process specified config file!\n",
+                         LOG_LVL_NO, False);
+                freeXWCContext (ctx);
+                delArgs (args);
+                return NULL;
+            }
+            else if (   args->m_Args[MKCONFIG]->m_IsSet == False
+                     && args->m_Args[CONFFILE]->m_IsSet == False)
+            {
+                logCtrl ("\t\tWARNING: Cannot process default config file!\n",
+                         LOG_LVL_1, False);
+            }
+        }
+    }
+
     /*boilerplate wa*/
-    LOG_LVL     = * ((int*)           args->m_Args[LOGLVL]->m_Value);
-    fr          = * ((int*)           args->m_Args[FRAMERATE]->m_Value);
-    srcid       = * ((unsigned long*) args->m_Args[SOURCEID]->m_Value);
-    ptrDevName  =   (const char*)     args->m_Args[PTRDEVNAME]->m_Value;
-    raiseT      = * ((int*)           args->m_Args[RAISETIME]->m_Value);
-    clickT      = * ((int*)           args->m_Args[CLICKTIME]->m_Value);
-    resT        = * ((int*)           args->m_Args[RESTORETIME]->m_Value);
-    longWait    = * ((int*)           args->m_Args[LONGWAIT]->m_Value);
-    focusTime   = * ((int*)           args->m_Args[FOCUSTIME]->m_Value);
+    LOG_LVL     = * ((int*)           args->m_Args[LOGLVL]->m_Val);
+    fr          = * ((int*)           args->m_Args[FRAMERATE]->m_Val);
+    srcid       = * ((unsigned long*) args->m_Args[SOURCEID]->m_Val);
+    ptrDevName  =   (const char*)     args->m_Args[PTRDEVNAME]->m_Val;
+    raiseT      = * ((int*)           args->m_Args[RAISETIME]->m_Val);
+    clickT      = * ((int*)           args->m_Args[CLICKTIME]->m_Val);
+    resT        = * ((int*)           args->m_Args[RESTORETIME]->m_Val);
+    longWait    = * ((int*)           args->m_Args[LONGWAIT]->m_Val);
+    focusTime   = * ((int*)           args->m_Args[FOCUSTIME]->m_Val);
+    daemonState = args->m_Args[DAEMON]->m_IsSet;
+    multiInst   = args->m_Args[MULTIINST]->m_IsSet;
+    procbtnev   = args->m_Args[PROCBTNEV]->m_IsSet;
 
     if (longWait == 0)
     {
@@ -95,28 +127,43 @@ init (int           argCnt,
     ctx->restoreDelay.tv_nsec = resT   == 0 ? 0 : (resT   % 1000) * 1000000L;
     ctx->clickDelay.tv_sec    = clickT == 0 ? 0 :  clickT / 1000;
     ctx->clickDelay.tv_nsec   = clickT == 0 ? 0 : (clickT % 1000) * 1000000L;
-    ctx->autoCenter           = * ((int*) args->m_Args[AUTOCENTER]->m_Value);
-    ctx->topOffset            = * ((int*) args->m_Args[TOPOFFSET]->m_Value);
-    ctx->bgColorStr           = (const char*) args->m_Args[BGCOLOR]->m_Value;
-    ctx->bgImgFilePath        = (const char*) args->m_Args[BGIMAGE]->m_Value;
+    ctx->autoCenter           = * ((int*) args->m_Args[AUTOCENTER]->m_Val);
+    ctx->topOffset            = * ((int*) args->m_Args[TOPOFFSET]->m_Val);
+    ctx->bgColorStr           = (const char*) args->m_Args[BGCOLOR]->m_Val;
+    ctx->bgColorNeedFree      = args->m_Args[BGCOLOR]->m_NeedFree;
+    ctx->bgImgFilePath        = (const char*) args->m_Args[BGIMAGE]->m_Val;
+    ctx->bgImgNeedFree        = args->m_Args[BGIMAGE]->m_NeedFree;
     ctx->bgImgFileSet         = args->m_Args[BGIMAGE]->m_IsSet;
     ctx->bgImgStatus          = False;
-    ctx->exitKeyStr           = args->m_Args[EXITKEY]->m_Value;
+    ctx->exitKeyStr           = args->m_Args[EXITKEY]->m_Val;
+    ctx->exitKeyStrNeedFree   = args->m_Args[EXITKEY]->m_NeedFree;
     ctx->exitKeyMask          = EXIT_MASK;
-    ctx->transCtrlKeyStr      = args->m_Args[CLONEKEY]->m_Value;
+    ctx->transCtrlKeyStr      = args->m_Args[CLONEKEY]->m_Val;
+    ctx->transCtrlKeyNeedFree = args->m_Args[CLONEKEY]->m_NeedFree;
     ctx->cloneKeyMask         = TRANSLATION_CTRL_MASK;
     ctx->srcW                 = srcid;
-    ctx->isDaemon             = args->m_Args[DAEMON]->m_IsSet;
-    ctx->lckFPath             = args->m_Args[LCKFPATH]->m_Value;
-    ctx->multiInst            = args->m_Args[MULTIINST]->m_IsSet;
+    ctx->isDaemon             = daemonState;
+    ctx->lckFPath             = args->m_Args[LCKFPATH]->m_Val;
+    ctx->lckFileNameNeedFree  = args->m_Args[LCKFPATH]->m_NeedFree;
+    ctx->multiInst            = multiInst;
     ctx->multiInst            = ctx->isDaemon == False ? ctx->multiInst : True;
     ctx->slavePtrDevId        = NO_DEVICE;
     ctx->masterPtrDevId       = NO_DEVICE;
     ctx->ptrDevName           = ptrDevName;
-    ctx->logFileName          = (const char*) args->m_Args[LOGFNAME]->m_Value;
-    ctx->translateOnly        = args->m_Args[TRANSONLY]->m_IsSet;
-    ctx->confFileName         = (const char*) args->m_Args[CONFFILE]->m_Value;
+    ctx->ptrDevNameNeedFree   = args->m_Args[PTRDEVNAME]->m_NeedFree;
+    ctx->logFileName          = (const char*) args->m_Args[LOGFNAME]->m_Val;
+    ctx->logFileNameNeedFree  = args->m_Args[LOGFNAME]->m_NeedFree;
+    ctx->procBtnEv            = procbtnev;
+    ctx->confFileName         = (const char*) args->m_Args[CONFFILE]->m_Val;
     ctx->userDir              = NULL;
+
+    if (args->m_Args[HELP]->m_IsSet == True)
+    {
+        printUsage (args);
+        freeXWCContext (ctx);
+        delArgs (args);
+        return NULL;
+    }
 
     if (enableLogFile (ctx) == False)
     {
@@ -126,7 +173,7 @@ init (int           argCnt,
     }
 
     if (   (ctx->multiInst == False || ctx->isDaemon == True)
-        && ifSingleInst (ctx) == False)
+        && checkInstCount (ctx) == False)
     {
         freeXWCContext (ctx);
         delArgs (args);
@@ -157,14 +204,6 @@ init (int           argCnt,
     }
 
     if (getDefaultDisplayData (ctx) == False)
-    {
-        XCloseDisplay (ctx->xDpy);
-        freeXWCContext (ctx);
-        delArgs (args);
-        return NULL;
-    }
-
-    if (getUserDir (ctx) == False)
     {
         XCloseDisplay (ctx->xDpy);
         freeXWCContext (ctx);
@@ -204,9 +243,9 @@ init (int           argCnt,
         return NULL;
     }
 
-    if (args->m_Args[HELP]->m_IsSet == True)
+    if (args->m_Args[CHECKARGS]->m_IsSet == True)
     {
-        printUsage (args);
+        printCurValues (args);
         XCloseDisplay (ctx->xDpy);
         freeXWCContext (ctx);
         delArgs (args);
@@ -235,25 +274,4 @@ init (int           argCnt,
 
     delArgs (args);
     return ctx;
-}
-
-void
-freeXWCContext (XWCContext * ctx)
-{
-    if (ctx->clMods != NULL)
-    {
-        free (ctx->clMods);
-        free (ctx->exitMods);
-    }
-
-    if (ctx->kbds != NULL)
-    {
-        if (ctx->kbds->devs != NULL)
-        {
-            free (ctx->kbds->devs);
-        }
-        free (ctx->kbds);
-    }
-
-    free (ctx);
 }

@@ -1,6 +1,6 @@
 #include <xwcUtil.h>
 
-imgLibCreateCrSc_t   imgLibCreateCrSc = & imlib_create_cropped_scaled_image;
+imgLibCreateCrSc_t imgLibCreateCrSc = & imlib_create_cropped_scaled_image;
 
 Bool
 bgImgPrepare (XWCContext * ctx,

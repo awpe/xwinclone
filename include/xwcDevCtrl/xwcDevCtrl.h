@@ -87,5 +87,39 @@ adjPtrLoc (XWCContext * ctx,
 int
 getPressedComb (XWCContext * ctx);
 
+int
+procKeySeqEv (XWCContext    * ctx,
+              XIDeviceEvent * xide);
+
+int
+procBtnEv (XWCContext    * ctx,
+           XIDeviceEvent * xide);
+
+Bool
+mvPtr (XWCContext * ctx,
+       int          x,
+       int          y);
+
+Bool
+getTrgWPtrData (XWCContext      * ctx,
+                int             * trgX,
+                int             * trgY,
+                XIModifierState * modsSt,
+                int             * trgRX,
+                int             * trgRY);
+
+Bool
+btnClick (XWCContext * ctx,
+          XEvent     * btnEv);
+
+Bool
+getBtnEv (XWCContext      * ctx,
+          XIModifierState * modsSt,
+          XEvent          * xev,
+          int               adjX,
+          int               adjY,
+          int               adjRX,
+          int               adjRY);
+
 #endif
 

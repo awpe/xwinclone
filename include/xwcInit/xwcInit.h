@@ -27,9 +27,11 @@ struct XWCContext_
     int               topOffset;   /**< Source window top offset (pixels)*/
     XColor            bgColor;     /**< Background color data*/
     const char      * bgColorStr;  /**< Background color string (#rrggbb)*/
+    Bool              bgColorNeedFree;
     const char      * bgImgFilePath; /**< Background image file path*/
     Bool              bgImgFileSet; /**< Shows if background image file path
                                       *  was specified*/
+    Bool              bgImgNeedFree;
     Bool              bgImgStatus; /**< Shows if background image file has
                                      *  been loaded to x server's pixmap*/
     struct timespec   focusDelay;  /**< how long to wait, before you focuse 
@@ -46,8 +48,11 @@ struct XWCContext_
     
     const char      * exitKeyStr;  /**< string representing exit key 
                                       * (keysymdef.h)*/
+    Bool              exitKeyStrNeedFree;
+    
     const char      * transCtrlKeyStr;  /**< string representing translation
                                          *  control key (keysymdef.h)*/
+    Bool              transCtrlKeyNeedFree;
     KeyCode           exitKeyCode; /**< result of exit key string parsing*/
     int               exitKeyMask; /**< Exit key modifier according to X.h*/
     KeyCode           cloneKeyCode; /**< result of translation control key
@@ -72,7 +77,8 @@ struct XWCContext_
     int               lckFD;
 
     const char      * lckFPath;
-    const char      * cfgFPath;
+    Bool              lckFileNameNeedFree;
+   
 
     DevList         * kbds; /**< List of master keyboard devices*/
 
@@ -89,10 +95,12 @@ struct XWCContext_
     int               masterPtrDevId; /**< Used to manipulate pointer*/
 
     const char      * ptrDevName;
+    Bool              ptrDevNameNeedFree;
     
     const char      * logFileName;
+    Bool              logFileNameNeedFree;
     
-    Bool              translateOnly;
+    Bool              procBtnEv;
     
     const char      * confFileName;
     

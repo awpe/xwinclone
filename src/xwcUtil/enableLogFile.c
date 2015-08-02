@@ -12,7 +12,7 @@ enableLogFile (XWCContext * ctx)
     if (ctx == NULL)
     {
         logCtrl ("\t\tError enabling LOG file: NULL program context pointer "
-                "received", LOG_LVL_NO, False);
+                 "received", LOG_LVL_NO, False);
         return False;
     }
 

@@ -117,8 +117,8 @@ main (int     argc,
         /**********************************************************************/
         if (ctx->isDaemon == False)
         {
-            logCtrl ("Waiting for focus to be moved to source window", LOG_LVL_NO,
-                    False);
+            logCtrl ("Waiting for focus to be moved to source window",
+                     LOG_LVL_NO, False);
             nanosleep (&ctx->focusDelay, NULL);
         }
 
@@ -182,7 +182,7 @@ main (int     argc,
         /**********************************************************************/
         /*Create translation window*/
         /**********************************************************************/
-        if (createTrgWindow (ctx) == False)
+        if (createTrgWin (ctx) == False)
         {
             goto freeResources;
         }
@@ -259,8 +259,8 @@ main (int     argc,
                         break;
                     }
                     srcWinPm = None;
-                    logCtrl ("Spurious error: An attempt to remap window"
-                            " during pixmap creation!", LOG_LVL_2, False);
+                    logCtrl ("Spurious error: An attempt to remap window "
+                             "during pixmap creation!", LOG_LVL_2, False);
                     nanosleep (&ctx->longWait, NULL);
                     continue;
                 }
@@ -375,12 +375,13 @@ freeResources:
     ungrabAllKeys (ctx);
 
     XCloseDisplay (ctx->xDpy);
+
     if (ctx->multiInst == True)
     {
         flock (ctx->lckFD, LOCK_UN);
     }
-    freeXWCContext (ctx);
 
+    freeXWCContext (ctx);
 
     return retVal;
 }

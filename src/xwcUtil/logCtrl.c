@@ -1,5 +1,10 @@
 #include <xwcUtil.h>
 
+/*Global LOG_LVL initialization*/
+int LOG_LVL = DEFAULT_LOG_LVL;
+
+FILE * LOG_FILE = NULL;
+
 void
 logCtrl (const char * msg,
          int          lvl,

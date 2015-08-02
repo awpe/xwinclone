@@ -4,7 +4,7 @@ Version 0.1:
 - [x] Add exit hotkey
 - [x] Show last valid frame if source window becomes unavailable,
  instead of throwing fatal error and killing process.
-- [ ] Add configuration file support
+- [x] Add configuration file support
 - [x] Make command prompt arguments processing routine process any number of 
 arguments in any order
 - [x] Add background image support
@@ -46,15 +46,17 @@ checking source window state again
 - [ ] Use libjpeg-turbo instead of imlib2
 - [x] Check if slave pointer is not floating and actually attached to virtual
  master!
-- [x] Add translate only option that disables pointer click events processing
 - [x] Rearrange init routine so subroutines executed in proper order
 - [x] Move LOG file selection and creation to separate routine
 - [x] Move keysyms check and keycode acquiring to separate routine
 - [x] Mutate single instance mode to multi instance mode, so by default only 
  single instances are allowed and only one can run in daemon mode
 - [x] Add option to write current config to file
-- [ ] Add option to select configuration file to use
+- [x] Add option to select configuration file to use
+- [x] Config file routines should understand '~' sign as user home directory
 - [x] Change file hierarchy use new makefile
+- [x] Move printing of prompt args check results into separate option
+- [x] Change translate only option to process button events option
 
 Version 0.2:
 - [ ] Add option for automatic conversion of background image from various
@@ -62,8 +64,8 @@ Version 0.2:
 - [ ] Add tray support
 - [ ] Add rectangle translation support
 - [ ] Add offsets for all sides
-- [ ] Set propriate logging levels by using all of them (0, 1, 2)
-- [ ] Add log file state control or use built-in logging system
+- [x] Set proper logging levels by using all of them (0, 1, 2)
+- [x] Add log file state control or use built-in logging system
 
 Version 0.3:
 - [ ] Move to C++11

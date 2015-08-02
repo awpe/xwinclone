@@ -10,6 +10,8 @@
 /****************************************/
 typedef
 Imlib_Image (*imgLibCreateCrSc_t)(int, int, int, int, int, int) ;
+
+extern imgLibCreateCrSc_t imgLibCreateCrSc;
 /****************************************/
 
 /** @var int LOG_LVL
@@ -27,8 +29,8 @@ extern FILE * LOG_FILE;
  */
 void
 logCtrl (const char * msg,
-        int          lvl,
-        Bool         sequenced);
+         int          lvl,
+         Bool         sequenced);
 
 /**
  * Prints out program version
@@ -40,7 +42,7 @@ printVersion (void);
  * Checks if no other instance of this program is running.
  */
 Bool
-ifSingleInst (XWCContext * ctx);
+checkInstCount (XWCContext * ctx);
 
 Bool
 bgImgPrepare (XWCContext * ctx,
@@ -68,4 +70,19 @@ enableLogFile (XWCContext * ctx);
 Bool
 checkFileMode (const char * fname,
                int          mode);
+
+void
+printCurValues (arguments  * args);
+
+void
+printUsage (arguments  * args);
+
+Bool
+readConfFile (XWCContext * ctx,
+              arguments  * args);
+
+Bool
+getArgName (arguments  * args,
+            const char * buf,
+            argNames   * retName);
 #endif

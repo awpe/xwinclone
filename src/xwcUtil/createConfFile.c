@@ -41,7 +41,8 @@ createConfFile (XWCContext * ctx,
         snprintf (fnameTmp, sizeof (fnameTmp), "%s", ctx->confFileName);
     }
 
-    if (checkFileMode (fnameTmp, W_OK) == False)
+    if (   checkFileMode (fnameTmp, F_OK) == True
+        && checkFileMode (fnameTmp, W_OK) == False)
     {
         snprintf (buf, sizeof (buf), "No write permission for file %s",
                   fnameTmp);
@@ -52,8 +53,7 @@ createConfFile (XWCContext * ctx,
     if ((config = fopen (fnameTmp, "w")) == NULL)
     {
         snprintf (buf, sizeof (buf), "Error opening file '%s' for writing "
-                  "configuration!\nError: %s\n", fnameTmp,
-                  strerror (errno));
+                  "configuration!\nError: %s\n", fnameTmp, strerror (errno));
         logCtrl (buf, LOG_LVL_NO, False);
         return False;
     }
@@ -65,20 +65,36 @@ createConfFile (XWCContext * ctx,
 
     for (int i = 0; i < args->m_ArgCnt; ++ i)
     {
-        if (args->m_Args[i]->m_HasValue)
+        if (args->m_Args[i]->m_IsInConf == True)
         {
             printBlock (args->m_Args[i]->m_Comment, "# ", NULL, buf,
                         sizeof (buf));
             res = fprintf (config, "%s#\n", buf);
-            if (args->m_Args[i]->m_Type == C_STR)
+            if (args->m_Args[i]->m_HasValue == True)
             {
-                res = fprintf (config, "%s = \"%s\"\n\n", args->m_Args[i]->m_NameStr,
-                               (const char *) args->m_Args[i]->m_Value );
+                switch (args->m_Args[i]->m_Type)
+                {
+                    case C_STR:
+                        res = fprintf (config, "%s = \"%s\"\n\n",
+                                       args->m_Args[i]->m_NameStr,
+                                       (const char *) args->m_Args[i]->m_Val);
+                        break;
+                    case INT:
+                        res = fprintf (config, "%s = %d\n\n",
+                                       args->m_Args[i]->m_NameStr,
+                                       *( (int *) args->m_Args[i]->m_Val) );
+                        break;
+                    case ULONG:
+                        break;
+                    default:
+                        break;
+                }
             }
-            else if (args->m_Args[i]->m_Type == INT)
+            else
             {
-                res = fprintf (config, "%s = %d\n\n", args->m_Args[i]->m_NameStr,
-                               *( (int *) args->m_Args[i]->m_Value) );
+                res = fprintf (config, "%s = %s\n\n",
+                               args->m_Args[i]->m_NameStr,
+                               args->m_Args[i]->m_IsSet == True ? "1" : "0" );
             }
 
             if (res < 0)
@@ -86,7 +102,7 @@ createConfFile (XWCContext * ctx,
                 snprintf (buf, sizeof (buf), "Error writing arument %s to "
                           "config file\n", args->m_Args[i]->m_NameStr);
                 logCtrl (buf, LOG_LVL_NO, False);
-		fclose (config);
+                fclose (config);
                 return False;
             }
         }

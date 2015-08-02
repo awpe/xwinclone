@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define	DEFINES_H
 
-#define XWINCLONE_VERSION_STR          "0.1o"
+#define XWINCLONE_VERSION_STR          "0.1p"
 
 /**************************************************************************/
 /*Program definitions*/
@@ -24,6 +24,7 @@
 #define SUPPORTED_XI2_VERSION_MAJOR    2  
 #define SUPPORTED_XI2_VERSION_MINOR    3
 #define OUTPUT_MAX_COLUMNS             80
+#define MAX_FILE_LINE_LENGTH           512
 /**************************************************************************/
 
 /**************************************************************************/

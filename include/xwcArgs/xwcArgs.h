@@ -24,14 +24,15 @@ typedef enum argNames_
     RESTORETIME = 15,
     CLICKTIME   = 16,
     LONGWAIT    = 17,
-    TRANSONLY   = 18,
+    PROCBTNEV   = 18,
     CONFFILE    = 19,
     MKCONFIG    = 20,
     EXITKEY     = 21,
     CLONEKEY    = 22,
+    CHECKARGS   = 23,
     /****************************************/
     /*Write count of possible arguments here*/
-    OPTIONS_COUNT = 23
+    OPTIONS_COUNT = 24
     /****************************************/
 } argNames;
 
@@ -47,10 +48,14 @@ typedef struct argument_
     argTypes      m_Type;
     argNames      m_Name;
     const char *  m_NameStr;
-    Bool          m_IsSet;
+    Bool          m_IsSet; //i.e. by user or config
+    Bool          m_ConfFAllow; //i.e. if it CAN be set in config
     Bool          m_HasValue;
-    void       *  m_Value;
+    Bool          m_NeedFree;
+    Bool          m_SetInConf;
+    void       *  m_Val;
     const char *  m_Comment;
+    Bool          m_IsInConf;
 } argument;
 
 typedef struct arguments_
@@ -69,17 +74,12 @@ initArgs (void);
 Bool
 addArg (arguments  * args,
         Bool         hasValue,
+        Bool         usedInConfig,
         argTypes     type,
         argNames     name,
         const char * nameStr,
         const char * comment,
         int          argSynCnt, ...);
-
-void
-printCurValues (arguments  * args);
-
-void
-printUsage (arguments  * args);
 
 Bool
 populateArgs (arguments * args);
@@ -88,5 +88,8 @@ Bool
 parseArgs (const char ** argArr,
            arguments  *  args,
            int           argCnt);
+
+Bool
+argSetDefaultVal (argument * arg);
 
 #endif

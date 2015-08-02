@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <pwd.h>
+#include <ctype.h>
     
 #include <sys/file.h>
 #include <sys/time.h>

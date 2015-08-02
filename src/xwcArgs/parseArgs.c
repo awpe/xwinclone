@@ -10,6 +10,27 @@ parseArgs (const char ** argArr,
     char * endPtr, buf[2048];
     Bool   argFound;
 
+    if (argArr == NULL)
+    {
+        logCtrl ("Cannot parse arguments: NULL pointer to user input array!",
+                 LOG_LVL_NO, False);
+        return False;
+    }
+
+    if (args == NULL)
+    {
+        logCtrl ("Cannot parse arguments: NULL pointer to arguments array!",
+                 LOG_LVL_NO, False);
+        return False;
+    }
+
+    if (argCnt < 1 || argCnt > (1 + OPTIONS_COUNT * 2))
+    {
+        logCtrl ("Cannot parse arguments: Bad argument count!",
+                 LOG_LVL_NO, False);
+        return False;
+    }
+
     nextArgOffset = 2;
 
     for (i = 1; i < argCnt; i += nextArgOffset)
@@ -41,8 +62,8 @@ parseArgs (const char ** argArr,
                     switch (args->m_Args[j]->m_Type)
                     {
                         case INT:
-                            *( (int*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 10);
+                            *( (int*) args->m_Args[j]->m_Val ) =
+                                strtol (argArr[i + 1], &endPtr, 10);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -57,8 +78,8 @@ parseArgs (const char ** argArr,
                             break;
 
                         case ULONG:
-                            *( (unsigned long*) args->m_Args[j]->m_Value ) =
-                                    strtol (argArr[i + 1], &endPtr, 0);
+                            *( (unsigned long*) args->m_Args[j]->m_Val ) =
+                                strtol (argArr[i + 1], &endPtr, 0);
 
                             if (endPtr == argArr[i + 1])
                             {
@@ -73,7 +94,7 @@ parseArgs (const char ** argArr,
                             break;
 
                         case C_STR:
-                            args->m_Args[j]->m_Value = (void*) argArr[i + 1];
+                            args->m_Args[j]->m_Val = (void*) argArr[i + 1];
                             break;
 
                         default:
