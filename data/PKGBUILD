@@ -1,7 +1,7 @@
 # Maintainer: Konstantin Shalygin (kostya@opentech.ru)
 
 pkgname='xwinclone'
-pkgver='0.1o'
+pkgver='0.1p'
 pkgrel='1'
 pkgdesc="Used to translate another window's content in its own window"
 arch=('any')
