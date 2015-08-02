@@ -9,7 +9,7 @@ createConfFile (XWCContext * ctx,
     char fnameTmp[1024];
     int  res;
 
-    logCtrl ("Creating config file\n", LOG_LVL_1, False);
+    logCtrl ("\tCreating config file\n", LOG_LVL_1, False);
 
     if (ctx->confFileName == NULL)
     {
@@ -20,17 +20,17 @@ createConfFile (XWCContext * ctx,
 
     if (*ctx->confFileName == '~')
     {
-        logCtrl ("\tgetting user directory", LOG_LVL_2, True);
+        logCtrl ("\t\tgetting user directory", LOG_LVL_2, True);
 
         if (ctx->userDir == NULL)
         {
-            logCtrl ("error: Cannot determine user home directory!",
+            logCtrl ("\t\t\terror: Cannot determine user home directory!",
                      LOG_LVL_NO, False);
             return False;
         }
         else
         {
-            logCtrl ("\t\tsuccess", LOG_LVL_2, True);
+            logCtrl ("\t\t\tsuccess", LOG_LVL_2, True);
         }
 
         snprintf (fnameTmp, sizeof (fnameTmp), "%s%s", ctx->userDir,
@@ -44,7 +44,7 @@ createConfFile (XWCContext * ctx,
     if (   checkFileMode (fnameTmp, F_OK) == True
         && checkFileMode (fnameTmp, W_OK) == False)
     {
-        snprintf (buf, sizeof (buf), "No write permission for file %s",
+        snprintf (buf, sizeof (buf), "\t\tNo write permission for file %s",
                   fnameTmp);
         logCtrl (buf, LOG_LVL_NO, False);
         return False;
@@ -52,14 +52,14 @@ createConfFile (XWCContext * ctx,
 
     if ((config = fopen (fnameTmp, "w")) == NULL)
     {
-        snprintf (buf, sizeof (buf), "Error opening file '%s' for writing "
+        snprintf (buf, sizeof (buf), "\t\tError opening file '%s' for writing "
                   "configuration!\nError: %s\n", fnameTmp, strerror (errno));
         logCtrl (buf, LOG_LVL_NO, False);
         return False;
     }
     else
     {
-        snprintf (buf, sizeof (buf), "\twill write config to %s\n", fnameTmp);
+        snprintf (buf, sizeof (buf), "\t\twill write config to %s\n", fnameTmp);
         logCtrl (buf, LOG_LVL_1, False);
     }
 
@@ -99,7 +99,7 @@ createConfFile (XWCContext * ctx,
 
             if (res < 0)
             {
-                snprintf (buf, sizeof (buf), "Error writing arument %s to "
+                snprintf (buf, sizeof (buf), "\t\tError writing arument %s to "
                           "config file\n", args->m_Args[i]->m_NameStr);
                 logCtrl (buf, LOG_LVL_NO, False);
                 fclose (config);
@@ -109,6 +109,8 @@ createConfFile (XWCContext * ctx,
     }
 
     fclose (config);
+
+    logCtrl ("\t\tsuccess", LOG_LVL_2, True);
 
     return True;
 }

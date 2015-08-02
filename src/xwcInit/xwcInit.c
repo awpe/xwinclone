@@ -39,6 +39,7 @@ init (int           argCnt,
     ctx->xScr            = NULL;
     ctx->clMods          = NULL;
     ctx->exitMods        = NULL;
+    ctx->userDir         = NULL;
 
     args = initArgs ();
 
@@ -155,7 +156,6 @@ init (int           argCnt,
     ctx->logFileNameNeedFree  = args->m_Args[LOGFNAME]->m_NeedFree;
     ctx->procBtnEv            = procbtnev;
     ctx->confFileName         = (const char*) args->m_Args[CONFFILE]->m_Val;
-    ctx->userDir              = NULL;
 
     if (args->m_Args[HELP]->m_IsSet == True)
     {
