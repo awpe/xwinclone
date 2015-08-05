@@ -66,7 +66,9 @@
 #define DEFAULT_BGIMAGE_PATH           "/usr/share/wallpapers/e2e4.jpeg"
 #define TRACKED_PTR_NAME               "A4Tech USB Optical Mouse"
 #define LOG_FILE_NAME                  "stdout"
+#define CREATE_CONFIG_IF_NOT_FOUND     True
 #define CONFIG_FILE_PATH               "~/.config/xwinclone/xwc.conf"
+#define CONFIG_FILE_DIR_CREATE_MODE    0775
 /**************************************************************************/
 
 /**************************************************************************/
@@ -75,6 +77,26 @@
  specified device, the window which content you wish to translate is called\
  \"source\" window, the window where content of source is translated is called\
  \"target\" window"
+
+#define PROGRAM_DESCRIPTION "X window system's WINdow CLONE application.\
+\n\n\
+Program aimed to be light-weight and utilise few system resources.\
+\n\n\
+This program can be used to translate another window's content in its own \
+window with some features like background color/image, window centering, \
+start/stop hotkeys,FPS control.\
+\n\n\
+In order to translate window content and grab key combination event, program \
+communicates with xorg server directly using Xlib and its composite and \
+xinput2 extensions. Minimal Xlib's composite extension supported version \
+is 0.2, for xinput2 minimal supported version is 2.2\
+\n\n\
+Window selection mechanism depends on mode, in daemon mode user has to use \
+key combinations to start/stop translation/program, in normal mode after \
+program starts user have some time to change focus to window which content \
+have to be translated. Program registers key press event for root window on \
+all keyboard devices, so you window manager or other program must not grab \
+this keys or entire keyboard."
 /**************************************************************************/
 
 #endif
