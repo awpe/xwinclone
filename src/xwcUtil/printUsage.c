@@ -82,4 +82,9 @@ printUsage (arguments  * args)
             printf ("\n");
         }
     }
+
+    printf ("\nDESCRIPTION\n");
+    
+    printBlock (PROGRAM_DESCRIPTION, "\t", NULL, NULL, 0);
+
 }
