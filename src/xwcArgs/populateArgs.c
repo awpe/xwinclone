@@ -140,7 +140,7 @@ populateArgs (arguments * args)
 
         || addArg (args, False, False, INT,   MKCONFIG,    "MKCONFIG",
                    "Writes out config file. Using CONFFILE argument it is "
-                   "possible to provide name of file to be created or"
+                   "possible to provide name of file to be created or "
                    "overwritten. If you haven't specified any other arguments "
                    "default values will be used, otherwise those argument "
                    "values will be stored in created file",
