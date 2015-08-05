@@ -6,7 +6,7 @@ createConfFile (XWCContext * ctx,
 {
     FILE * config;
     char buf[4096];
-    char fnameTmp[1024];
+    char fnameTmp[1024], * fnameDirBuf, *dirnameRes;
     int  res;
 
     logCtrl ("\tCreating config file\n", LOG_LVL_1, False);
@@ -50,11 +50,39 @@ createConfFile (XWCContext * ctx,
         return False;
     }
 
+    fnameDirBuf = (char *) malloc (sizeof (char) * (strlen (fnameTmp) + 1 ));
+
+    if (fnameDirBuf == NULL)
+    {
+        return False;
+    }
+
+    memcpy (fnameDirBuf, fnameTmp, strlen (fnameTmp));
+    fnameDirBuf[strlen (fnameTmp)] = '\0';
+
+    dirnameRes = dirname (fnameDirBuf);
+
+    if (dirnameRes == NULL)
+    {
+        free (fnameDirBuf);
+        return False;
+    }
+
+    if (mkdirRec (dirnameRes) == False)
+    {
+        snprintf (buf, sizeof (buf), "\t\tCannot create directory %s for "
+                  "config file!", dirname (fnameTmp));
+        logCtrl (buf, LOG_LVL_NO, False);
+        free (fnameDirBuf);
+        return False;
+    }
+
     if ((config = fopen (fnameTmp, "w")) == NULL)
     {
         snprintf (buf, sizeof (buf), "\t\tError opening file '%s' for writing "
                   "configuration!\nError: %s\n", fnameTmp, strerror (errno));
         logCtrl (buf, LOG_LVL_NO, False);
+        free (fnameDirBuf);
         return False;
     }
     else
@@ -103,12 +131,14 @@ createConfFile (XWCContext * ctx,
                           "config file\n", args->m_Args[i]->m_NameStr);
                 logCtrl (buf, LOG_LVL_NO, False);
                 fclose (config);
+                free (fnameDirBuf);
                 return False;
             }
         }
     }
 
     fclose (config);
+    free (fnameDirBuf);
 
     logCtrl ("\t\tsuccess", LOG_LVL_2, True);
 

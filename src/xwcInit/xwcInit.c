@@ -90,7 +90,20 @@ init (int           argCnt,
                      && args->m_Args[CONFFILE]->m_IsSet == False)
             {
                 logCtrl ("\t\tWARNING: Cannot process default config file!\n",
-                         LOG_LVL_1, False);
+                         LOG_LVL_1, True);
+
+                if (CREATE_CONFIG_IF_NOT_FOUND == True)
+                {
+                    logCtrl ("\t\tTrying to create default config!\n",
+                             LOG_LVL_1, False);
+                    if (createConfFile (ctx, args) == False)
+                    {
+                        logCtrl ("\t\t\tError creating config file!",
+                                 LOG_LVL_NO, False);
+                    }
+                    logCtrl ("\t\tsuccess!\n",
+                             LOG_LVL_1, False);
+                }
             }
         }
     }
