@@ -14,11 +14,13 @@
 #include <errno.h>
 #include <pwd.h>
 #include <ctype.h>
+#include <libgen.h>
     
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
