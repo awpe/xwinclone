@@ -51,11 +51,11 @@ bgImgPrepare (XWCContext * ctx,
               int        * bgImgHeight);
 
 void
-printBlock (const char * str,
-            const char * linePrefix,
-            const char * blockPrefix,
+printBlock (const char * text,
+            const char * lnPreIn,
+            const char * blPreIn,
             char       * extBuf,
-            int          extBufSize);
+            int          extBufLen);
 
 Bool
 createConfFile (XWCContext * ctx,
@@ -85,4 +85,7 @@ Bool
 getArgName (arguments  * args,
             const char * buf,
             argNames   * retName);
+
+Bool
+mkdirRec (const char * dir);
 #endif
