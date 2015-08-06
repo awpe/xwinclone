@@ -1,3 +1,13 @@
+/* Copyright (c) 2015, Anton Lantcevich
+    
+   This file is part of the xwinclone.
+   <https://github.com/awpe/xwinclone>
+  
+   Xwinclone is released under the BSD 3-Clause License.
+   You should have received a copy of the BSD 3-Clause
+   License along with this software; if not see
+   <https://github.com/awpe/xwinclone/blob/master/LICENSE.md>.  */
+
 #ifndef DEFINES_H
 #define	DEFINES_H
 
@@ -95,7 +105,7 @@ Window selection mechanism depends on mode, in daemon mode user has to use \
 key combinations to start/stop translation/program, in normal mode after \
 program starts user have some time to change focus to window which content \
 have to be translated. Program registers key press event for root window on \
-all keyboard devices, so you window manager or other program must not grab \
+all keyboard devices, so your window manager or other program must not grab \
 this keys or entire keyboard."
 /**************************************************************************/
 

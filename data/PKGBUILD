@@ -6,9 +6,9 @@ pkgrel='1'
 pkgdesc="Used to translate another window's content in its own window"
 arch=('any')
 url="https://github.com/awpe/${pkgname}"
-depends=('xorg-server-common' 'libxmu' 'imlib2' 'libxcomposite' 'libjpeg-turbo')
+depends=('xorg-server-common' 'libxmu' 'libxcomposite' 'imlib2' 'libjpeg-turbo')
 makedepends=('git')
-license=('GPL')
+license=('BSD 3-Clause')
 source=("$pkgname::git+${url}")
 sha256sums=('SKIP')
 

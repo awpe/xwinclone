@@ -57,6 +57,7 @@ checking source window state again
 - [x] Change file hierarchy use new makefile
 - [x] Move printing of prompt args check results into separate option
 - [x] Change translate only option to process button events option
+- [x] Add license notice to source files
 
 Version 0.2:
 - [ ] Add option for automatic conversion of background image from various
