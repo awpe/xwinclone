@@ -14,7 +14,7 @@ sha256sums=('SKIP')
 
 prepare() {
   cd "${pkgname}"
-  git checkout x
+  git checkout master
 }
 
 build() {
